@@ -1,0 +1,376 @@
+.free-page {
+  min-height: 100vh;
+  background: #f7f8ff;
+  color: #080812;
+  padding-bottom: 90px;
+}
+
+.free-hero {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 90px 32px 70px;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 46px;
+  align-items: center;
+}
+
+.free-label {
+  display: inline-flex;
+  width: fit-content;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #ebe7ff;
+  color: #6045ff;
+  font-size: 14px;
+  font-weight: 900;
+  margin: 0 0 18px;
+}
+
+.free-label--dark {
+  background: rgba(255, 255, 255, 0.12);
+  color: #d9ff40;
+}
+
+.free-hero h1 {
+  margin: 0;
+  max-width: 850px;
+  font-size: clamp(46px, 6vw, 86px);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  font-weight: 950;
+}
+
+.free-hero h1 span {
+  color: #6045ff;
+}
+
+.free-hero p {
+  max-width: 760px;
+  margin: 26px 0 34px;
+  color: #5d6075;
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.free-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.free-btn {
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-weight: 950;
+  transition: 0.2s ease;
+}
+
+.free-btn:hover {
+  transform: translateY(-2px);
+}
+
+.free-btn--primary {
+  color: white;
+  background: linear-gradient(135deg, #704cff, #0ea5e9);
+  box-shadow: 0 18px 40px rgba(80, 70, 255, 0.25);
+}
+
+.free-btn--light {
+  color: #111320;
+  background: white;
+  border: 1px solid #e1e3ef;
+}
+
+.free-hero__visual {
+  min-height: 400px;
+  border-radius: 40px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(217, 255, 64, 0.9),
+      transparent 35%
+    ),
+    linear-gradient(135deg, #6045ff, #111320);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 26px 70px rgba(15, 15, 30, 0.18);
+}
+
+.free-main-icon {
+  font-size: 110px;
+}
+
+.free-float {
+  position: absolute;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: white;
+  color: #111320;
+  font-weight: 950;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+}
+
+.free-float--one {
+  top: 34px;
+  right: 28px;
+}
+
+.free-float--two {
+  bottom: 36px;
+  left: 28px;
+}
+
+.free-float--three {
+  right: 34px;
+  bottom: 92px;
+  background: #d9ff40;
+}
+
+.free-materials-section,
+.free-steps-section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 60px 32px;
+}
+
+.free-section-head {
+  margin-bottom: 36px;
+}
+
+.free-section-head h2,
+.free-dark h2,
+.free-final h2 {
+  margin: 0;
+  max-width: 960px;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.free-section-head p {
+  max-width: 780px;
+  margin-top: 18px;
+  color: #5d6075;
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.free-materials {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.free-card {
+  background: white;
+  border-radius: 30px;
+  padding: 28px;
+  box-shadow: 0 18px 44px rgba(20, 20, 40, 0.07);
+  transition: 0.2s ease;
+}
+
+.free-card:hover {
+  transform: translateY(-6px);
+}
+
+.free-card-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  background: #f0edff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  margin-bottom: 22px;
+}
+
+.free-card h3 {
+  font-size: 23px;
+  line-height: 1.1;
+  margin: 0 0 12px;
+}
+
+.free-card p {
+  min-height: 120px;
+  color: #5d6075;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.free-card-link {
+  margin-top: 22px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: #6045ff;
+  color: white;
+  text-decoration: none;
+  font-weight: 950;
+  display: inline-flex;
+  align-items: center;
+}
+
+.free-dark {
+  max-width: 1280px;
+  margin: 60px auto;
+  padding: 60px;
+  border-radius: 42px;
+  background: #111320;
+  color: white;
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 44px;
+  align-items: start;
+}
+
+.free-dark p {
+  color: #c8ccdc;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.free-checklist {
+  display: grid;
+  gap: 14px;
+}
+
+.free-checklist div {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.free-checklist span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #d9ff40;
+  color: #111320;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 950;
+}
+
+.free-checklist p {
+  margin: 0;
+  color: white;
+  font-weight: 800;
+}
+
+.free-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.free-step-card {
+  background: white;
+  border-radius: 30px;
+  padding: 28px;
+  box-shadow: 0 18px 44px rgba(20, 20, 40, 0.07);
+}
+
+.free-step-card span {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #111320;
+  color: #d9ff40;
+  font-weight: 950;
+  margin-bottom: 18px;
+}
+
+.free-step-card h3 {
+  font-size: 24px;
+  margin: 0 0 12px;
+}
+
+.free-step-card p {
+  margin: 0;
+  color: #5d6075;
+  line-height: 1.55;
+}
+
+.free-final {
+  max-width: 1180px;
+  margin: 40px auto 0;
+  padding: 56px 32px;
+  border-radius: 40px;
+  background:
+    radial-gradient(circle at right, rgba(217, 255, 64, 0.85), transparent 35%),
+    linear-gradient(135deg, #ffffff, #ebe7ff);
+  text-align: center;
+  box-shadow: 0 18px 44px rgba(20, 20, 40, 0.08);
+}
+
+.free-final h2 {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.free-final p {
+  max-width: 700px;
+  margin: 18px auto 28px;
+  color: #5d6075;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1050px) {
+  .free-hero,
+  .free-dark {
+    grid-template-columns: 1fr;
+  }
+
+  .free-materials {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 740px) {
+  .free-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .free-hero,
+  .free-materials-section,
+  .free-steps-section {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .free-materials {
+    grid-template-columns: 1fr;
+  }
+
+  .free-dark,
+  .free-final {
+    margin-left: 18px;
+    margin-right: 18px;
+    padding: 34px 22px;
+  }
+
+  .free-float {
+    display: none;
+  }
+
+  .free-hero__visual {
+    min-height: 300px;
+  }
+}

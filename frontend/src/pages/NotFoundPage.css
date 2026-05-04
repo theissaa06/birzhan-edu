@@ -1,0 +1,164 @@
+.notfound-page {
+  min-height: 100vh;
+  background: #f7f8ff;
+  color: #080812;
+  padding: 90px 32px;
+}
+
+.notfound-card {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 42px;
+  align-items: center;
+}
+
+.notfound-label {
+  display: inline-flex;
+  width: fit-content;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #ebe7ff;
+  color: #6045ff;
+  font-size: 14px;
+  font-weight: 950;
+  margin: 0 0 22px;
+}
+
+.notfound-content h1 {
+  margin: 0;
+  max-width: 800px;
+  font-size: clamp(48px, 7vw, 96px);
+  line-height: 0.9;
+  letter-spacing: -0.07em;
+  font-weight: 950;
+}
+
+.notfound-content h1 span {
+  color: #6045ff;
+}
+
+.notfound-content p {
+  max-width: 680px;
+  margin: 26px 0 34px;
+  color: #5d6075;
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.notfound-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.notfound-btn {
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-weight: 950;
+  transition: 0.2s ease;
+}
+
+.notfound-btn:hover {
+  transform: translateY(-2px);
+}
+
+.notfound-btn--primary {
+  color: white;
+  background: linear-gradient(135deg, #704cff, #0ea5e9);
+  box-shadow: 0 18px 40px rgba(80, 70, 255, 0.25);
+}
+
+.notfound-btn--light {
+  color: #111320;
+  background: white;
+  border: 1px solid #e1e3ef;
+}
+
+.notfound-visual {
+  min-height: 420px;
+  border-radius: 42px;
+  padding: 32px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(217, 255, 64, 0.9),
+      transparent 35%
+    ),
+    linear-gradient(135deg, #6045ff, #111320);
+  color: white;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  box-shadow: 0 26px 70px rgba(15, 15, 30, 0.18);
+  overflow: hidden;
+}
+
+.notfound-number {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  font-size: 92px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  opacity: 0.18;
+}
+
+.notfound-icon {
+  font-size: 110px;
+  margin-bottom: auto;
+  z-index: 2;
+}
+
+.notfound-float {
+  position: absolute;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: white;
+  color: #111320;
+  font-weight: 950;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+}
+
+.notfound-float--one {
+  right: 28px;
+  top: 34px;
+}
+
+.notfound-float--two {
+  left: 28px;
+  bottom: 34px;
+  background: #d9ff40;
+}
+
+@media (max-width: 900px) {
+  .notfound-card {
+    grid-template-columns: 1fr;
+  }
+
+  .notfound-visual {
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .notfound-page {
+    padding: 50px 18px;
+  }
+
+  .notfound-visual {
+    border-radius: 30px;
+  }
+
+  .notfound-float {
+    display: none;
+  }
+}
