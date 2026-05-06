@@ -379,3 +379,255 @@
     padding-right: 18px;
   }
 }
+/* =========================================================
+   ProfilePage premium additions
+========================================================= */
+
+.profile-page {
+  background:
+    linear-gradient(rgba(99, 102, 241, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.045) 1px, transparent 1px),
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(124, 58, 237, 0.16),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(14, 165, 233, 0.12),
+      transparent 32%
+    ),
+    linear-gradient(180deg, #f8faff 0%, #eef3ff 100%);
+  background-size:
+    42px 42px,
+    42px 42px,
+    auto,
+    auto,
+    auto;
+}
+
+.profile-hero h1 span {
+  background: linear-gradient(135deg, #7c3aed, #2563eb, #0ea5e9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.profile-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 30% 15%,
+      rgba(255, 255, 255, 0.18),
+      transparent 30%
+    ),
+    linear-gradient(135deg, #111827 0%, #312e81 48%, #7c3aed 100%);
+}
+
+.profile-card::after {
+  content: "2026";
+  position: absolute;
+  right: -18px;
+  bottom: -12px;
+  color: rgba(255, 255, 255, 0.07);
+  font-size: 96px;
+  line-height: 1;
+  font-weight: 1000;
+  letter-spacing: -7px;
+}
+
+.profile-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-stats div,
+.profile-panel {
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.08),
+    0 0 30px rgba(124, 58, 237, 0.05);
+}
+
+.profile-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.profile-overview-grid div {
+  min-height: 130px;
+  padding: 20px;
+  border-radius: 24px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.1),
+      transparent 34%
+    ),
+    linear-gradient(180deg, #ffffff, #f6f3ff);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.profile-overview-grid span {
+  font-size: 30px;
+}
+
+.profile-overview-grid strong {
+  display: block;
+  margin-top: 14px;
+  color: #111827;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 1000;
+}
+
+.profile-overview-grid p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.profile-course-card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.profile-course-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(124, 58, 237, 0.22);
+  box-shadow: 0 18px 42px rgba(124, 58, 237, 0.08);
+}
+
+.profile-course-card a {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+}
+
+.profile-certificate-list {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-certificate-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  text-decoration: none;
+  color: #111827;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(217, 255, 64, 0.28),
+      transparent 36%
+    ),
+    linear-gradient(180deg, #ffffff, #f8faff);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.profile-certificate-card > span {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  font-size: 26px;
+}
+
+.profile-certificate-card strong {
+  display: block;
+  font-size: 18px;
+}
+
+.profile-certificate-card p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-weight: 750;
+}
+
+.profile-empty-certificates {
+  padding: 26px;
+  border-radius: 26px;
+  text-align: center;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.1),
+      transparent 36%
+    ),
+    #f8faff;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.profile-empty-certificates span {
+  display: block;
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+.profile-empty-certificates strong {
+  display: block;
+  font-size: 22px;
+  color: #111827;
+}
+
+.profile-empty-certificates p {
+  max-width: 520px;
+  margin: 10px auto 18px;
+  color: #64748b;
+  line-height: 1.6;
+  font-weight: 750;
+}
+
+.profile-premium-box {
+  color: #ffffff;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(217, 255, 64, 0.36),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #111827 0%, #312e81 50%, #7c3aed 100%);
+}
+
+.profile-premium-box .profile-label {
+  color: #111827;
+  background: #d9ff40;
+}
+
+.profile-premium-box h2 {
+  color: #ffffff;
+}
+
+.profile-premium-box p {
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.65;
+  font-weight: 750;
+}
+
+.profile-premium-box .profile-btn {
+  width: 100%;
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .profile-overview-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .profile-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-certificate-card {
+    align-items: flex-start;
+  }
+}

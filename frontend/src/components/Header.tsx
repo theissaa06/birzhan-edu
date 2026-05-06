@@ -5,6 +5,7 @@ import { getUser, logout, isLoggedIn } from "../services/auth";
 export default function Header() {
   const [freeOpen, setFreeOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
   const navigate = useNavigate();
   const user = getUser();
   const loggedIn = isLoggedIn();
@@ -15,308 +16,195 @@ export default function Header() {
     window.location.reload();
   };
 
+  const navItems = [
+    ["Каталог", "/courses"],
+    ["Для детей", "/kids"],
+    ["Онлайн-колледж", "/online-college"],
+    ["🤖 AI помощник", "/ai-assistant"],
+    ["🎁 Бонус", "/bonus"],
+    ["О платформе", "/about"],
+    ["Мои сертификаты", "/my-certificates"],
+    ["💎 Premium", "/premium"],
+  ];
+
   return (
-    <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 1000,
-        background: "rgba(255,255,255,0.95)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid var(--gray-border)",
-        boxShadow: "0 2px 20px rgba(0,0,0,0.06)",
-      }}
-    >
-      {/* Discount Banner */}
-      <div
-        style={{
-          background: "var(--gradient)",
-          color: "#fff",
-          textAlign: "center",
-          padding: "8px",
-          fontSize: "14px",
-          fontWeight: 600,
-        }}
-      >
+    <header className="be-header">
+      {/* Promo bar */}
+      <div className="be-sale-bar">
         🎉 Скидка 30% на все курсы до 31 мая 2026! Используй промокод:{" "}
         <strong>BIRZHAN30</strong>
       </div>
 
-      <div
-        className="container"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "16px 20px",
-        }}
-      >
-        {/* Logo */}
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: "var(--gradient)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-              fontWeight: 800,
-              fontSize: 18,
-            }}
-          >
-            B
-          </div>
-          <span
-            style={{ fontWeight: 800, fontSize: 18, color: "var(--black)" }}
-          >
-            Birzhan-<span className="gradient-text">Edu</span>
+      {/* Верхняя строка: logo + auth */}
+      <div className="be-header-top">
+        <Link to="/" className="be-logo">
+          <span className="be-logo-icon">B</span>
+          <span className="be-logo-text">
+            Birzhan-<b>Edu</b>
           </span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav
-          style={{ display: "flex", alignItems: "center", gap: 28 }}
-          className="desktop-nav"
-        >
-          <Link
-            to="/courses"
-            style={{
-              fontWeight: 500,
-              color: "var(--black)",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--purple)")
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--black)")}
-          >
-            Каталог
-          </Link>
-          <Link
-            to="/kids"
-            style={{
-              fontWeight: 500,
-              color: "var(--black)",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--purple)")
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--black)")}
-          >
-            Для детей
-          </Link>
-          <Link
-            to="/online-college"
-            style={{
-              fontWeight: 500,
-              color: "var(--black)",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--purple)")
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--black)")}
-          >
-            Онлайн-колледж
-          </Link>
-
-          {/* Dropdown */}
-          <div
-            style={{ position: "relative" }}
-            onMouseEnter={() => setFreeOpen(true)}
-            onMouseLeave={() => setFreeOpen(false)}
-          >
-            <span
-              style={{
-                fontWeight: 500,
-                color: "var(--black)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                transition: "color 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--purple)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "var(--black)")
-              }
-            >
-              Бесплатно <span style={{ fontSize: 10 }}>▼</span>
-            </span>
-            {freeOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  left: 0,
-                  background: "#fff",
-                  border: "1px solid var(--gray-border)",
-                  borderRadius: 12,
-                  boxShadow: "var(--shadow-lg)",
-                  padding: "8px",
-                  minWidth: 180,
-                  zIndex: 100,
-                }}
-              >
-                {[
-                  ["Профориентация", "/free/career-test"],
-                  ["Вебинары", "/free/webinars"],
-                  ["Медиа", "/media"],
-                ].map(([label, path]) => (
-                  <Link
-                    key={path}
-                    to={path}
-                    onClick={() => setFreeOpen(false)}
-                    style={{
-                      display: "block",
-                      padding: "10px 16px",
-                      borderRadius: 8,
-                      fontWeight: 500,
-                      color: "var(--black)",
-                      transition: "background 0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "var(--purple-light)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "transparent")
-                    }
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Link to="/bonus" style={{ fontWeight: 600, color: "var(--purple)" }}>
-            🎁 Бонус
-          </Link>
-          <Link
-            to="/about"
-            style={{
-              fontWeight: 500,
-              color: "var(--black)",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--purple)")
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--black)")}
-          >
-            О платформе
-          </Link>
-          <Link to="/my-certificates">Мои сертификаты</Link>
-        </nav>
-
-        {/* Auth Buttons */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="be-auth">
           {loggedIn ? (
             <>
               {user?.role === "ADMIN" && (
-                <Link
-                  to="/admin"
-                  className="btn btn-outline"
-                  style={{ padding: "8px 18px", fontSize: 13 }}
-                >
+                <Link to="/admin" className="be-auth-btn be-auth-btn--outline">
                   Админ
                 </Link>
               )}
-              <span style={{ fontWeight: 600, color: "var(--purple)" }}>
-                {user?.username}
-              </span>
+
+              <Link to="/profile" className="be-user-chip">
+                <span>{(user?.username || user?.email || "U").charAt(0)}</span>
+                {user?.username || user?.email || "Профиль"}
+              </Link>
+
               <button
+                type="button"
                 onClick={handleLogout}
-                className="btn btn-outline"
-                style={{ padding: "8px 18px", fontSize: 13 }}
+                className="be-auth-btn be-auth-btn--outline"
               >
                 Выйти
               </button>
             </>
           ) : (
             <>
-              <Link
-                to="/login"
-                className="btn btn-outline"
-                style={{ padding: "10px 22px", fontSize: 14 }}
-              >
+              <Link to="/login" className="be-auth-btn be-auth-btn--outline">
                 Войти
               </Link>
-              <Link
-                to="/register"
-                className="btn btn-primary"
-                style={{ padding: "10px 22px", fontSize: 14 }}
-              >
+
+              <Link to="/register" className="be-auth-btn be-auth-btn--fill">
                 Регистрация
               </Link>
             </>
           )}
-          {/* Burger */}
+
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            style={{
-              display: "none",
-              background: "none",
-              fontSize: 22,
-              color: "var(--black)",
-            }}
-            className="burger-btn"
+            type="button"
+            className="be-burger"
+            onClick={() => setMenuOpen((prev) => !prev)}
+            aria-label="Открыть меню"
           >
-            ☰
+            {menuOpen ? "✕" : "☰"}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Нижняя строка: функции сайта */}
+      <nav className="be-header-nav">
+        <div className="be-header-nav-inner">
+          <Link to="/courses" className="be-nav-link">
+            Каталог
+          </Link>
+
+          <Link to="/kids" className="be-nav-link">
+            Для детей
+          </Link>
+
+          <Link to="/online-college" className="be-nav-link">
+            Онлайн-колледж
+          </Link>
+
+          <Link to="/ai-assistant" className="be-nav-link be-nav-link--ai">
+            🤖 AI помощник
+          </Link>
+
+          <div
+            className="be-free-dropdown"
+            onMouseEnter={() => setFreeOpen(true)}
+            onMouseLeave={() => setFreeOpen(false)}
+          >
+            <button
+              type="button"
+              className="be-nav-link be-free-btn"
+              onClick={() => setFreeOpen((prev) => !prev)}
+            >
+              Бесплатно <span>▼</span>
+            </button>
+
+            {freeOpen && (
+              <div className="be-free-menu">
+                <Link to="/free" onClick={() => setFreeOpen(false)}>
+                  🎁 Все бесплатное
+                </Link>
+                <Link to="/free/career-test" onClick={() => setFreeOpen(false)}>
+                  🧭 Профориентация
+                </Link>
+                <Link to="/free/webinars" onClick={() => setFreeOpen(false)}>
+                  🎙️ Вебинары
+                </Link>
+                <Link to="/media" onClick={() => setFreeOpen(false)}>
+                  🎬 Медиа
+                </Link>
+                <Link to="/reviews" onClick={() => setFreeOpen(false)}>
+                  ⭐ Отзывы
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <Link to="/bonus" className="be-nav-link be-nav-link--bonus">
+            🎁 Бонус
+          </Link>
+
+          <Link to="/about" className="be-nav-link">
+            О платформе
+          </Link>
+
+          <Link to="/my-certificates" className="be-nav-link">
+            Мои сертификаты
+          </Link>
+
+          <Link to="/premium" className="be-nav-link be-nav-link--premium">
+            💎 Premium
+          </Link>
+        </div>
+      </nav>
+
+      {/* Mobile menu */}
       {menuOpen && (
-        <div
-          style={{
-            background: "#fff",
-            borderTop: "1px solid var(--gray-border)",
-            padding: "16px 20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          {[
-            ["Каталог", "/courses"],
-            ["Для детей", "/kids"],
-            ["Онлайн-колледж", "/online-college"],
-            ["Профориентация", "/free/career-test"],
-            ["Вебинары", "/free/webinars"],
-            ["Медиа", "/media"],
-            ["🎁 Бонус", "/bonus"],
-            ["О платформе", "/about"],
-          ].map(([label, path]) => (
+        <div className="be-mobile-menu">
+          {navItems.map(([label, path]) => (
             <Link
               key={path}
               to={path}
               onClick={() => setMenuOpen(false)}
-              style={{
-                fontWeight: 500,
-                padding: "8px 0",
-                borderBottom: "1px solid var(--gray-border)",
-              }}
+              className={
+                label.includes("AI")
+                  ? "be-mobile-link be-mobile-link--ai"
+                  : label.includes("Premium")
+                    ? "be-mobile-link be-mobile-link--premium"
+                    : "be-mobile-link"
+              }
             >
               {label}
             </Link>
           ))}
+
+          <Link
+            to="/free/career-test"
+            onClick={() => setMenuOpen(false)}
+            className="be-mobile-link"
+          >
+            🧭 Профориентация
+          </Link>
+
+          <Link
+            to="/free/webinars"
+            onClick={() => setMenuOpen(false)}
+            className="be-mobile-link"
+          >
+            🎙️ Вебинары
+          </Link>
+
+          <Link
+            to="/media"
+            onClick={() => setMenuOpen(false)}
+            className="be-mobile-link"
+          >
+            🎬 Медиа
+          </Link>
         </div>
       )}
-
-      <style>{`
-        @media (max-width: 900px) {
-          .desktop-nav { display: none !important; }
-          .burger-btn { display: block !important; }
-        }
-      `}</style>
     </header>
   );
 }

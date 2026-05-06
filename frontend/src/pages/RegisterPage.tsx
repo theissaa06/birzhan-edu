@@ -1,5 +1,6 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Turnstile } from "@marsidev/react-turnstile";
 import api from "../services/api";
 import "./RegisterPage.css";
 
@@ -13,8 +14,14 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
 
+  const [captchaToken, setCaptchaToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({
@@ -41,14 +48,21 @@ export default function RegisterPage() {
       return;
     }
 
+    if (turnstileSiteKey && !captchaToken) {
+      setError("Подтвердите, что вы не бот.");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
 
       const response = await api.post("/auth/register", {
         name: form.name,
+        username: form.name,
         email: form.email,
         password: form.password,
+        turnstileToken: captchaToken,
       });
 
       const data = response.data;
@@ -64,9 +78,15 @@ export default function RegisterPage() {
       }
 
       navigate("/courses");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Ошибка регистрации:", err);
-      setError("Не удалось зарегистрироваться. Проверь backend или email.");
+
+      const message =
+        err?.response?.data?.message ||
+        "Не удалось зарегистрироваться. Проверь backend или email.";
+
+      setError(message);
+      setCaptchaToken("");
     } finally {
       setLoading(false);
     }
@@ -137,27 +157,70 @@ export default function RegisterPage() {
 
           <label>
             Пароль
-            <input
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Минимум 6 символов"
-              autoComplete="new-password"
-            />
+            <div className="password-field">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Минимум 6 символов"
+                autoComplete="new-password"
+              />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </label>
 
           <label>
             Повторите пароль
-            <input
-              name="confirmPassword"
-              type="password"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              placeholder="Повторите пароль"
-              autoComplete="new-password"
-            />
+            <div className="password-field">
+              <input
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                value={form.confirmPassword}
+                onChange={handleChange}
+                placeholder="Повторите пароль"
+                autoComplete="new-password"
+              />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                aria-label={
+                  showConfirmPassword ? "Скрыть пароль" : "Показать пароль"
+                }
+              >
+                {showConfirmPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </label>
+
+          {turnstileSiteKey && (
+            <div className="register-turnstile">
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                onSuccess={(token: string) => {
+                  setCaptchaToken(token);
+                  setError("");
+                }}
+                onExpire={() => setCaptchaToken("")}
+                onError={() => setCaptchaToken("")}
+              />
+
+              <div className="register-turnstile-note">
+                <strong>Защита аккаунта</strong>
+                Регистрация защищена от автоматических ботов и спама.
+              </div>
+            </div>
+          )}
 
           <button className="register-submit" type="submit" disabled={loading}>
             {loading ? "Создаём аккаунт..." : "Зарегистрироваться"}

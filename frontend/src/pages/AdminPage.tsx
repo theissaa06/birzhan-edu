@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import {
@@ -82,6 +82,8 @@ export default function AdminPage() {
     SupportMessage[]
   >([]);
   const [adminReplyText, setAdminReplyText] = useState("");
+
+  const supportMessagesRef = useRef<HTMLDivElement | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [lessonsLoading, setLessonsLoading] = useState(false);
@@ -390,6 +392,40 @@ export default function AdminPage() {
       [e.target.name]: e.target.value,
     });
   }
+  function applyLessonTemplate(type: LessonType) {
+    if (type === "VIDEO") {
+      setNewLesson((prev) => ({
+        ...prev,
+        type: "VIDEO",
+        title: prev.title || "Видеоурок: базовые действия",
+        content:
+          prev.content ||
+          "В этом уроке ученик смотрит видео, повторяет действия преподавателя и закрепляет материал на практике.",
+      }));
+    }
+
+    if (type === "TEXT") {
+      setNewLesson((prev) => ({
+        ...prev,
+        type: "TEXT",
+        title: prev.title || "Теория: основные понятия",
+        content:
+          prev.content ||
+          "Изучи основные термины, принципы и последовательность действий. После прочтения переходи к практическому заданию.",
+      }));
+    }
+
+    if (type === "PRACTICE") {
+      setNewLesson((prev) => ({
+        ...prev,
+        type: "PRACTICE",
+        title: prev.title || "Практика: повтори и сохрани результат",
+        content:
+          prev.content ||
+          "Выполни практическое задание: повтори действия из урока, создай короткий монтаж и сохрани готовый результат.",
+      }));
+    }
+  }
 
   function handleSelectCourse(courseId: number) {
     setSelectedCourseId(courseId);
@@ -639,27 +675,102 @@ export default function AdminPage() {
   const selectedCourse = courses.find(
     (course) => course.id === selectedCourseId,
   );
+  function scrollSupportToBottom() {
+    setTimeout(() => {
+      const box = supportMessagesRef.current;
+
+      if (!box) return;
+
+      box.scrollTop = box.scrollHeight;
+    }, 80);
+  }
+
   async function loadSupportMessages() {
     try {
       const data = await getSupportMessages();
-      setSupportMessagesList(data);
+      const safeData = Array.isArray(data) ? data : [];
+
+      setSupportMessagesList(safeData);
+
+      return safeData;
     } catch (err) {
       console.error("Ошибка загрузки чата:", err);
+      setError("Не удалось загрузить сообщения поддержки.");
+      return [];
     }
   }
 
   async function handleAdminReply() {
-    if (!adminReplyText.trim()) return;
+    const text = adminReplyText.trim();
 
-    const newMessage = await sendSupportMessage({
-      text: adminReplyText,
-      from: "admin",
-    });
+    if (!text) {
+      setError("Напиши текст ответа перед отправкой.");
+      return;
+    }
 
-    setSupportMessagesList((prev) => [...prev, newMessage]);
-    setAdminReplyText("");
+    try {
+      setError("");
+
+      const newMessage = await sendSupportMessage({
+        text,
+        from: "admin",
+      });
+
+      setSupportMessagesList((prev) => [...prev, newMessage]);
+      setAdminReplyText("");
+      setSuccessMessage("Ответ отправлен пользователю.");
+
+      scrollSupportToBottom();
+    } catch (err) {
+      console.error("Ошибка отправки ответа:", err);
+      setSuccessMessage("");
+      setError("Не удалось отправить ответ. Проверь backend поддержки.");
+    }
   }
 
+  async function handleDeleteSupportMessage(messageId: number) {
+    const isConfirmed = window.confirm("Удалить это сообщение из поддержки?");
+
+    if (!isConfirmed) return;
+
+    try {
+      setError("");
+
+      await deleteSupportMessage(messageId);
+
+      setSupportMessagesList((prev) =>
+        prev.filter((message) => message.id !== messageId),
+      );
+
+      setSuccessMessage("Сообщение поддержки удалено.");
+    } catch (err) {
+      console.error("Ошибка удаления сообщения:", err);
+      setSuccessMessage("");
+      setError("Не удалось удалить сообщение поддержки.");
+    }
+  }
+
+  async function handleRefreshSupportChat() {
+    setError("");
+
+    const data = await loadSupportMessages();
+
+    setSuccessMessage(`Чат обновлён. Сообщений: ${data.length}.`);
+
+    scrollSupportToBottom();
+  }
+
+  function handleScrollToLastSupportMessage() {
+    const box = supportMessagesRef.current;
+
+    if (!box) {
+      setError("Блок сообщений ещё не загружен.");
+      return;
+    }
+
+    box.scrollTop = box.scrollHeight;
+    setSuccessMessage("Прокручено к последнему сообщению.");
+  }
   return (
     <main className="admin-page">
       <section className="admin-hero">
@@ -720,7 +831,13 @@ export default function AdminPage() {
           <span>заявок</span>
         </div>
 
-        <div>
+        <div className="admin-stat-support">
+          {supportMessagesList.length > 0 && (
+            <span className="admin-notification-dot">
+              {supportMessagesList.length}
+            </span>
+          )}
+
           <strong>{supportMessagesList.length}</strong>
           <span>сообщений поддержки</span>
         </div>
@@ -1046,6 +1163,28 @@ export default function AdminPage() {
                   placeholder="Например: CapCut PRO"
                 />
               </label>
+              <div className="admin-lesson-templates">
+                <button
+                  type="button"
+                  onClick={() => applyLessonTemplate("VIDEO")}
+                >
+                  🎥 Видеоурок
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyLessonTemplate("TEXT")}
+                >
+                  📘 Теория
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyLessonTemplate("PRACTICE")}
+                >
+                  📝 Практика
+                </button>
+              </div>
 
               <label>
                 Категория
@@ -1121,6 +1260,30 @@ export default function AdminPage() {
             <h2>{editingLessonId ? "Изменение урока" : "Добавление урока"}</h2>
 
             <form className="admin-form" onSubmit={handleSaveLesson}>
+              {selectedCourse ? (
+                <div className="admin-selected-course">
+                  <div className="admin-selected-course-icon">🎬</div>
+
+                  <div>
+                    <span>Выбранный курс</span>
+                    <strong>{selectedCourse.title}</strong>
+                    <p>
+                      {selectedCourse.category} · {selectedCourse.level} ·{" "}
+                      {selectedCourse.duration}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="admin-selected-course admin-selected-course--empty">
+                  <div className="admin-selected-course-icon">⚠️</div>
+
+                  <div>
+                    <span>Курс не выбран</span>
+                    <strong>Сначала выбери курс</strong>
+                    <p>Урок нельзя создать без привязки к курсу.</p>
+                  </div>
+                </div>
+              )}
               <label>
                 Курс
                 <select
@@ -1181,9 +1344,29 @@ export default function AdminPage() {
                   name="videoUrl"
                   value={newLesson.videoUrl}
                   onChange={handleLessonChange}
-                  placeholder="https://..."
+                  placeholder="Вставь ссылку YouTube: https://youtu.be/... или https://youtube.com/watch?v=..."
                 />
               </label>
+
+              {newLesson.videoUrl.trim() && (
+                <div className="admin-video-preview">
+                  <div className="admin-video-preview-head">
+                    <span>🎬 Предпросмотр видео</span>
+                    <small>
+                      Ссылка автоматически преобразуется в embed-формат
+                    </small>
+                  </div>
+
+                  <div className="admin-video-frame">
+                    <iframe
+                      src={convertYouTubeToEmbed(newLesson.videoUrl)}
+                      title="Предпросмотр урока"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              )}
 
               <label>
                 Текст урока
@@ -1211,29 +1394,94 @@ export default function AdminPage() {
             </form>
           </section>
           <section className="admin-panel admin-support">
-            <p className="admin-label">Техподдержка</p>
-            <h2>Сообщения</h2>
+            <div className="admin-support-title-row">
+              <div>
+                <p className="admin-label">Техподдержка</p>
+                <h2>Сообщения</h2>
+              </div>
 
-            <div className="admin-messages">
-              {supportMessagesList.map((message: SupportMessage) => (
-                <div
-                  key={message.id}
-                  className={
-                    message.from === "admin"
-                      ? "admin-message admin-message--admin"
-                      : "admin-message"
-                  }
-                >
-                  <span>
-                    {new Date(message.createdAt).toLocaleTimeString("ru-RU", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+              <span className="admin-support-badge">
+                {supportMessagesList.length} сообщений
+              </span>
+            </div>
 
-                  <p>{message.text}</p>
+            {supportMessagesList.length > 0 ? (
+              <div className="admin-support-notice">
+                💬 Есть активные сообщения от пользователей. Можно ответить
+                сразу здесь.
+              </div>
+            ) : (
+              <div className="admin-support-notice">
+                💬 Новых сообщений пока нет. Нажми “Обновить чат”, чтобы
+                проверить.
+              </div>
+            )}
+
+            <div className="admin-support-tools">
+              <button type="button" onClick={handleRefreshSupportChat}>
+                🔄 Обновить чат
+              </button>
+
+              <button type="button" onClick={handleScrollToLastSupportMessage}>
+                ↓ К последнему сообщению
+              </button>
+            </div>
+
+            <div className="admin-messages" ref={supportMessagesRef}>
+              {supportMessagesList.length === 0 ? (
+                <div className="admin-support-empty">
+                  <span>💬</span>
+                  <strong>Сообщений пока нет</strong>
+                  <p>
+                    Когда пользователь напишет в поддержку, сообщение появится
+                    здесь.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                supportMessagesList.map((message: SupportMessage) => (
+                  <div
+                    key={message.id}
+                    className={
+                      message.from === "admin"
+                        ? "admin-message admin-message--admin"
+                        : "admin-message"
+                    }
+                  >
+                    <div
+                      className={
+                        message.from === "admin"
+                          ? "admin-chat-avatar admin-chat-avatar--admin"
+                          : "admin-chat-avatar"
+                      }
+                    >
+                      {message.from === "admin" ? "A" : "U"}
+                    </div>
+
+                    <div className="admin-message-bubble">
+                      <span>
+                        {message.from === "admin" ? "Админ" : "Пользователь"} ·{" "}
+                        {new Date(message.createdAt).toLocaleTimeString(
+                          "ru-RU",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </span>
+
+                      <p>{message.text}</p>
+
+                      <button
+                        type="button"
+                        className="admin-message-delete"
+                        onClick={() => handleDeleteSupportMessage(message.id)}
+                      >
+                        удалить
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="admin-reply-box">
@@ -1249,24 +1497,17 @@ export default function AdminPage() {
                 placeholder="Напиши ответ пользователю..."
               />
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                <button onClick={handleAdminReply}>Ответить</button>
+              <div className="admin-reply-actions">
+                <button type="button" onClick={handleAdminReply}>
+                  Отправить ответ
+                </button>
 
-                <button onClick={loadSupportMessages}>Обновить чат</button>
+                <button type="button" onClick={handleRefreshSupportChat}>
+                  Обновить чат
+                </button>
               </div>
             </div>
           </section>
-
-          <button
-            className="admin-small-btn"
-            type="button"
-            onClick={async () => {
-              const data = await getSupportMessages();
-              setSupportMessagesList(data);
-            }}
-          >
-            Обновить чат
-          </button>
 
           <section className="admin-panel admin-quick">
             <p className="admin-label">Быстрые действия</p>

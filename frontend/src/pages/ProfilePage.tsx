@@ -9,10 +9,18 @@ type User = {
   role?: string;
 };
 
+type Certificate = {
+  courseId: number;
+  courseTitle: string;
+  claimedAt: string;
+};
+
 const progressItems = [
   {
     title: "CapCut с нуля до PRO",
-    progress: 72,
+    progress: Number(localStorage.getItem("lesson-completed-1") === "true")
+      ? 100
+      : 72,
     lessons: "4 из 6 уроков",
     icon: "✂️",
   },
@@ -37,11 +45,42 @@ const bonuses = [
   "Шаблон портфолио",
 ];
 
+function readCertificates(): Certificate[] {
+  const saved = localStorage.getItem("my-certificates");
+
+  if (!saved) return [];
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ProfilePage() {
   const navigate = useNavigate();
 
   const savedUser = localStorage.getItem("user");
   const user: User | null = savedUser ? JSON.parse(savedUser) : null;
+
+  const certificates = readCertificates();
+  const isPremium =
+    localStorage.getItem("premium") === "true" ||
+    localStorage.getItem("isPremium") === "true";
+
+  const activeCourses = progressItems.filter((item) => item.progress > 0);
+  const completedCourses = progressItems.filter((item) => item.progress >= 100);
+
+  const totalProgress = Math.round(
+    progressItems.reduce((sum, item) => sum + item.progress, 0) /
+      progressItems.length,
+  );
+
+  const completedLessons = progressItems.reduce((sum, item) => {
+    const match = item.lessons.match(/^(\d+)/);
+    return sum + Number(match?.[1] || 0);
+  }, 0);
 
   function logout() {
     localStorage.removeItem("token");
@@ -61,13 +100,20 @@ export default function ProfilePage() {
           </h1>
 
           <p>
-            Здесь отображается ваш прогресс обучения, бонусы, быстрые ссылки и
-            информация об аккаунте.
+            Здесь отображается ваш прогресс обучения, бонусы, сертификаты,
+            Premium-статус и быстрые ссылки платформы.
           </p>
 
           <div className="profile-actions">
             <Link to="/courses" className="profile-btn profile-btn--primary">
               Продолжить обучение
+            </Link>
+
+            <Link
+              to="/my-certificates"
+              className="profile-btn profile-btn--light"
+            >
+              Мои сертификаты
             </Link>
 
             <button className="profile-btn profile-btn--light" onClick={logout}>
@@ -83,18 +129,18 @@ export default function ProfilePage() {
 
           <strong>{user?.username || user?.name || "Пользователь"}</strong>
           <span>{user?.email || "email не указан"}</span>
-          <em>{user?.role || "USER"}</em>
+          <em>{isPremium ? "PREMIUM PRO" : user?.role || "USER"}</em>
         </div>
       </section>
 
       <section className="profile-stats">
         <div>
-          <strong>3</strong>
+          <strong>{activeCourses.length}</strong>
           <span>активных курса</span>
         </div>
 
         <div>
-          <strong>7</strong>
+          <strong>{completedLessons}</strong>
           <span>пройденных уроков</span>
         </div>
 
@@ -104,13 +150,46 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <strong>45%</strong>
+          <strong>{totalProgress}%</strong>
           <span>общий прогресс</span>
         </div>
       </section>
 
       <section className="profile-layout">
         <div className="profile-main">
+          <section className="profile-panel profile-overview-panel">
+            <div className="profile-panel-head">
+              <p className="profile-label">Обзор</p>
+              <h2>Состояние обучения</h2>
+            </div>
+
+            <div className="profile-overview-grid">
+              <div>
+                <span>🚀</span>
+                <strong>{activeCourses.length}</strong>
+                <p>курсов начато</p>
+              </div>
+
+              <div>
+                <span>✅</span>
+                <strong>{completedCourses.length}</strong>
+                <p>курсов завершено</p>
+              </div>
+
+              <div>
+                <span>🎓</span>
+                <strong>{certificates.length}</strong>
+                <p>сертификатов</p>
+              </div>
+
+              <div>
+                <span>💎</span>
+                <strong>{isPremium ? "PRO" : "Free"}</strong>
+                <p>статус аккаунта</p>
+              </div>
+            </div>
+          </section>
+
           <section className="profile-panel">
             <div className="profile-panel-head">
               <p className="profile-label">Прогресс</p>
@@ -134,10 +213,59 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <Link to="/courses">Открыть</Link>
+                  <Link to="/courses">
+                    {item.progress > 0 ? "Продолжить" : "Открыть"}
+                  </Link>
                 </article>
               ))}
             </div>
+          </section>
+
+          <section className="profile-panel">
+            <div className="profile-panel-head">
+              <p className="profile-label">Сертификаты</p>
+              <h2>Мои достижения</h2>
+            </div>
+
+            {certificates.length === 0 ? (
+              <div className="profile-empty-certificates">
+                <span>🎓</span>
+                <strong>Сертификатов пока нет</strong>
+                <p>
+                  Завершите курс на 100%, чтобы получить первый сертификат
+                  Birzhan-Edu.
+                </p>
+
+                <Link
+                  to="/courses"
+                  className="profile-btn profile-btn--primary"
+                >
+                  Перейти к курсам
+                </Link>
+              </div>
+            ) : (
+              <div className="profile-certificate-list">
+                {certificates.map((certificate) => (
+                  <Link
+                    to="/certificate"
+                    key={certificate.courseId}
+                    className="profile-certificate-card"
+                  >
+                    <span>🎓</span>
+
+                    <div>
+                      <strong>{certificate.courseTitle}</strong>
+                      <p>
+                        Получен:{" "}
+                        {new Date(certificate.claimedAt).toLocaleDateString(
+                          "ru-RU",
+                        )}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="profile-panel">
@@ -159,6 +287,21 @@ export default function ProfilePage() {
         </div>
 
         <aside className="profile-sidebar">
+          <section className="profile-panel profile-premium-box">
+            <p className="profile-label">Premium</p>
+            <h2>{isPremium ? "Premium активен" : "Free аккаунт"}</h2>
+
+            <p>
+              {isPremium
+                ? "У вас открыт Premium PRO: бонусы, закрытые материалы и расширенные возможности."
+                : "Подключите Premium, чтобы открыть расширенные материалы, бонусы и дополнительные возможности."}
+            </p>
+
+            <Link to="/premium" className="profile-btn profile-btn--primary">
+              {isPremium ? "Управлять Premium" : "Открыть Premium"}
+            </Link>
+          </section>
+
           <section className="profile-panel">
             <p className="profile-label">Аккаунт</p>
             <h2>Данные</h2>
@@ -178,6 +321,11 @@ export default function ProfilePage() {
                 <span>Роль</span>
                 <strong>{user?.role || "USER"}</strong>
               </div>
+
+              <div>
+                <span>Статус</span>
+                <strong>{isPremium ? "Premium PRO" : "Free"}</strong>
+              </div>
             </div>
           </section>
 
@@ -187,6 +335,7 @@ export default function ProfilePage() {
 
             <Link to="/courses">🎬 Курсы</Link>
             <Link to="/bonus">🎁 Бонусы</Link>
+            <Link to="/my-certificates">🎓 Сертификаты</Link>
             <Link to="/free/webinars">🎙️ Вебинары</Link>
             <Link to="/career-center">🚀 Центр карьеры</Link>
             <Link to="/support">💬 Поддержка</Link>

@@ -239,6 +239,40 @@ export default function LessonPage() {
               Урок {currentIndex + 1} из {sortedLessons.length}
             </p>
           </div>
+          <div className="lesson-progress-box">
+            <div className="lesson-progress-head">
+              <span>Прогресс курса</span>
+              <strong>
+                {Math.round(
+                  (sortedLessons.filter(
+                    (lesson) =>
+                      localStorage.getItem(`lesson-completed-${lesson.id}`) ===
+                      "true",
+                  ).length /
+                    Math.max(sortedLessons.length, 1)) *
+                    100,
+                )}
+                %
+              </strong>
+            </div>
+
+            <div className="lesson-progress-bar">
+              <div
+                style={{
+                  width: `${Math.round(
+                    (sortedLessons.filter(
+                      (lesson) =>
+                        localStorage.getItem(
+                          `lesson-completed-${lesson.id}`,
+                        ) === "true",
+                    ).length /
+                      Math.max(sortedLessons.length, 1)) *
+                      100,
+                  )}%`,
+                }}
+              />
+            </div>
+          </div>
 
           <div className="lesson-list">
             {sortedLessons.map((lesson, index) => {
@@ -293,6 +327,31 @@ export default function LessonPage() {
           <div className="lesson-task">
             <h2>Практическое задание</h2>
             <p>{getPracticeText(currentLesson.type, course.category)}</p>
+          </div>
+          <div className="lesson-checklist">
+            <h2>Чек-лист урока</h2>
+
+            <div className="lesson-checklist-grid">
+              <div>
+                <span>01</span>
+                Посмотри материал до конца
+              </div>
+
+              <div>
+                <span>02</span>
+                Повтори действия в редакторе
+              </div>
+
+              <div>
+                <span>03</span>
+                Сохрани свой результат
+              </div>
+
+              <div>
+                <span>04</span>
+                Нажми “Завершить урок”
+              </div>
+            </div>
           </div>
 
           {!nextLesson && (

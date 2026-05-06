@@ -1,9 +1,17 @@
 const router = require("express").Router();
 const prisma = require("../config/prisma");
-const {
-  authMiddleware,
-  adminMiddleware,
-} = require("../middleware/auth.middleware");
+const { authMiddleware } = require("../middleware/auth.middleware");
+
+function adminMiddleware(req, res, next) {
+  if (!req.user || req.user.role !== "ADMIN") {
+    return res.status(403).json({
+      success: false,
+      message: "Доступ только для администратора",
+    });
+  }
+
+  next();
+}
 
 router.get("/", async (req, res) => {
   try {
@@ -138,16 +146,18 @@ router.put("/:id", authMiddleware, adminMiddleware, async (req, res) => {
       });
     }
 
+    const updateData = {};
+
+    if (title !== undefined) updateData.title = title.trim();
+    if (content !== undefined) updateData.content = content?.trim() || null;
+    if (videoUrl !== undefined) updateData.videoUrl = videoUrl?.trim() || null;
+    if (orderNumber !== undefined) updateData.orderNumber = Number(orderNumber);
+    if (type !== undefined) updateData.type = type || "VIDEO";
+    if (courseId !== undefined) updateData.courseId = Number(courseId);
+
     const lesson = await prisma.lesson.update({
       where: { id },
-      data: {
-        title: title?.trim(),
-        content: content?.trim() || null,
-        videoUrl: videoUrl?.trim() || null,
-        orderNumber: Number(orderNumber),
-        type: type || "VIDEO",
-        courseId: Number(courseId),
-      },
+      data: updateData,
     });
 
     res.json({

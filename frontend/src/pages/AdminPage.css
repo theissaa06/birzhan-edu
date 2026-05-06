@@ -1287,3 +1287,428 @@
     transform: translateY(0) scale(1);
   }
 }
+
+/* =========================================================
+   FINAL FIX: Admin support buttons and chat
+   Добавлено в самый низ. Не удаляет твои старые стили, а перебивает конфликтующие.
+========================================================= */
+
+.admin-support {
+  position: relative;
+  overflow: visible !important;
+}
+
+.admin-support * {
+  box-sizing: border-box;
+}
+
+.admin-support-title-row {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.admin-support-badge {
+  border: none !important;
+  pointer-events: none !important;
+  cursor: default !important;
+  padding: 8px 12px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #ef4444, #f97316) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 12px 26px rgba(239, 68, 68, 0.25) !important;
+}
+
+.admin-support-notice {
+  width: 100% !important;
+  margin: 12px 0 !important;
+  padding: 12px 14px !important;
+  border: none !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(239, 68, 68, 0.12),
+      transparent 34%
+    ),
+    rgba(124, 58, 237, 0.08) !important;
+  color: #4c1d95 !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  line-height: 1.45 !important;
+  text-align: left !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+.admin-support-tools {
+  position: relative !important;
+  z-index: 50 !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  margin: 12px 0 !important;
+}
+
+.admin-support-tools button,
+.admin-reply-actions button {
+  position: relative !important;
+  z-index: 60 !important;
+  pointer-events: auto !important;
+  min-height: 44px !important;
+  border: none !important;
+  border-radius: 14px !important;
+  cursor: pointer !important;
+  color: #ffffff !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+  box-shadow: 0 12px 26px rgba(124, 58, 237, 0.22) !important;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease !important;
+}
+
+.admin-support-tools button:nth-child(2),
+.admin-reply-actions button:nth-child(2) {
+  background: #111827 !important;
+}
+
+.admin-support-tools button:hover,
+.admin-reply-actions button:hover {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.05) !important;
+}
+
+.admin-support-tools button:active,
+.admin-reply-actions button:active {
+  transform: translateY(0) scale(0.99) !important;
+}
+
+.admin-messages {
+  position: relative !important;
+  z-index: 1 !important;
+  height: 420px !important;
+  max-height: 420px !important;
+  overflow-y: auto !important;
+  padding: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.08),
+      transparent 36%
+    ),
+    #f8faff !important;
+  border: 1px solid rgba(124, 58, 237, 0.1) !important;
+  scroll-behavior: smooth !important;
+}
+
+.admin-message {
+  position: relative !important;
+  z-index: 2 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.admin-message::before {
+  display: none !important;
+}
+
+.admin-message--admin {
+  flex-direction: row-reverse !important;
+  margin-left: 0 !important;
+}
+
+.admin-chat-avatar {
+  width: 42px !important;
+  height: 42px !important;
+  flex: 0 0 42px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #ffffff !important;
+  font-weight: 950 !important;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25) !important;
+}
+
+.admin-chat-avatar--admin {
+  background: linear-gradient(135deg, #111827, #7c3aed) !important;
+}
+
+.admin-message-bubble {
+  width: fit-content !important;
+  max-width: 78% !important;
+  min-width: 130px !important;
+  padding: 13px 15px !important;
+  border-radius: 18px !important;
+  background: #eef0f6 !important;
+  color: #111827 !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08) !important;
+  word-break: break-word !important;
+}
+
+.admin-message--admin .admin-message-bubble {
+  background: linear-gradient(135deg, #7c3aed, #9333ea) !important;
+  color: #ffffff !important;
+  box-shadow: 0 16px 34px rgba(124, 58, 237, 0.32) !important;
+}
+
+.admin-message-bubble span {
+  display: block !important;
+  margin-bottom: 6px !important;
+  color: #8b92a6 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.admin-message--admin .admin-message-bubble span {
+  color: #fef08a !important;
+}
+
+.admin-message-bubble p {
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  white-space: pre-wrap !important;
+}
+
+.admin-message-delete {
+  position: relative !important;
+  z-index: 70 !important;
+  pointer-events: auto !important;
+  margin-top: 8px !important;
+  border: none !important;
+  background: transparent !important;
+  color: inherit !important;
+  opacity: 0.58 !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  font-weight: 850 !important;
+}
+
+.admin-message-delete:hover {
+  opacity: 1 !important;
+}
+
+.admin-reply-box {
+  position: relative !important;
+  z-index: 50 !important;
+  margin-top: 14px !important;
+  padding: 12px !important;
+  border-radius: 18px !important;
+  background: rgba(124, 58, 237, 0.08) !important;
+}
+
+.admin-reply-box textarea {
+  position: relative !important;
+  z-index: 60 !important;
+  pointer-events: auto !important;
+  width: 100% !important;
+  min-height: 86px !important;
+  border: 1px solid rgba(124, 58, 237, 0.22) !important;
+  border-radius: 14px !important;
+  padding: 12px !important;
+  resize: vertical !important;
+  outline: none !important;
+  font-weight: 700 !important;
+  background: #ffffff !important;
+}
+
+.admin-reply-box textarea:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12) !important;
+}
+
+.admin-reply-actions {
+  position: relative !important;
+  z-index: 60 !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  margin-top: 10px !important;
+}
+/* ===== Admin lesson YouTube preview ===== */
+
+.admin-video-preview {
+  margin-top: -4px;
+  padding: 14px;
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.12),
+      transparent 34%
+    ),
+    linear-gradient(180deg, #ffffff, #f8f5ff);
+  border: 1px solid rgba(124, 58, 237, 0.16);
+  box-shadow: 0 14px 32px rgba(124, 58, 237, 0.08);
+}
+
+.admin-video-preview-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.admin-video-preview-head span {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.admin-video-preview-head small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.admin-video-frame {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #111827;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.admin-video-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+/* ===== Admin selected course info ===== */
+
+.admin-selected-course {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.12),
+      transparent 34%
+    ),
+    linear-gradient(180deg, #ffffff, #f8f5ff);
+  border: 1px solid rgba(124, 58, 237, 0.16);
+  box-shadow: 0 14px 32px rgba(124, 58, 237, 0.08);
+}
+
+.admin-selected-course-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  box-shadow: 0 14px 28px rgba(124, 58, 237, 0.24);
+}
+
+.admin-selected-course span {
+  display: block;
+  margin-bottom: 5px;
+  color: #6d28d9;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-selected-course strong {
+  display: block;
+  color: #111827;
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 950;
+}
+
+.admin-selected-course p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 750;
+}
+
+.admin-selected-course--empty {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(239, 68, 68, 0.1),
+      transparent 34%
+    ),
+    linear-gradient(180deg, #ffffff, #fff7f7);
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.admin-selected-course--empty .admin-selected-course-icon {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+/* ===== Admin lesson templates ===== */
+
+.admin-lesson-templates {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.admin-lesson-templates button {
+  min-height: 44px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  color: #111827;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.1),
+      transparent 34%
+    ),
+    linear-gradient(180deg, #ffffff, #f8f5ff);
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.06);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-lesson-templates button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.28);
+  box-shadow: 0 14px 30px rgba(124, 58, 237, 0.12);
+}
+
+@media (max-width: 640px) {
+  .admin-lesson-templates {
+    grid-template-columns: 1fr;
+  }
+}

@@ -317,3 +317,521 @@
 .course-certificate-btn:hover {
   transform: translateY(-2px);
 }
+/* =========================================================
+   CoursesPage premium polish — добавлять в самый низ
+========================================================= */
+
+.courses-page {
+  background:
+    linear-gradient(rgba(99, 102, 241, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.045) 1px, transparent 1px),
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(124, 58, 237, 0.16),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(14, 165, 233, 0.12),
+      transparent 32%
+    ),
+    linear-gradient(180deg, #f8faff 0%, #eef3ff 100%);
+  background-size:
+    42px 42px,
+    42px 42px,
+    auto,
+    auto,
+    auto;
+}
+
+.courses-label {
+  box-shadow: 0 12px 28px rgba(96, 69, 255, 0.12);
+  border: 1px solid rgba(96, 69, 255, 0.12);
+}
+
+.courses-hero h1 span {
+  background: linear-gradient(135deg, #7c3aed, #2563eb, #0ea5e9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.courses-hero-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 30% 15%,
+      rgba(255, 255, 255, 0.18),
+      transparent 28%
+    ),
+    linear-gradient(135deg, #111827 0%, #312e81 48%, #7c3aed 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.courses-hero-card::before {
+  content: "EDU";
+  position: absolute;
+  right: -12px;
+  bottom: -12px;
+  color: rgba(255, 255, 255, 0.07);
+  font-size: 92px;
+  line-height: 1;
+  font-weight: 1000;
+  letter-spacing: -6px;
+}
+
+.courses-search {
+  border-color: rgba(124, 58, 237, 0.14);
+  box-shadow:
+    0 18px 42px rgba(15, 23, 42, 0.07),
+    0 0 28px rgba(124, 58, 237, 0.06);
+}
+
+.courses-search:focus-within {
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow:
+    0 0 0 4px rgba(124, 58, 237, 0.08),
+    0 22px 48px rgba(15, 23, 42, 0.08);
+}
+
+.course-category {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+}
+
+.course-category.active {
+  background: linear-gradient(135deg, #111827, #312e81, #7c3aed);
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow:
+    0 14px 28px rgba(124, 58, 237, 0.18),
+    0 0 22px rgba(37, 99, 235, 0.1);
+}
+
+.course-card {
+  position: relative;
+  border: 1px solid rgba(124, 58, 237, 0.1);
+}
+
+.course-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 30px;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.08),
+    transparent 35%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.course-card:hover::after {
+  opacity: 1;
+}
+
+.course-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-card-placeholder {
+  position: relative;
+}
+
+.course-card-placeholder::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 25% 20%,
+      rgba(255, 255, 255, 0.22),
+      transparent 30%
+    ),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 45%);
+}
+
+.course-card-badge {
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+}
+
+.course-card-progress {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8faff, #f4f1ff);
+  border: 1px solid rgba(124, 58, 237, 0.1);
+}
+
+.course-card-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.course-card-progress-head strong {
+  color: #6d28d9;
+}
+
+.course-card-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.course-card-progress-bar div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #7c3aed, #2563eb, #0ea5e9);
+  box-shadow: 0 8px 16px rgba(124, 58, 237, 0.2);
+}
+
+.course-card-progress p {
+  min-height: auto !important;
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.course-card-link {
+  width: 100%;
+  justify-content: center;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  box-shadow:
+    0 16px 30px rgba(124, 58, 237, 0.18),
+    0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
+.course-card-link:hover {
+  transform: translateY(-1px);
+}
+
+.courses-empty {
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.1),
+      transparent 36%
+    ),
+    #ffffff;
+}
+
+.courses-empty h3 {
+  margin-top: 0;
+  font-size: 28px;
+  letter-spacing: -0.04em;
+}
+
+.courses-error {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(239, 68, 68, 0.08),
+      transparent 36%
+    ),
+    #ffffff;
+}
+/* =========================================================
+   CoursesPage stronger 2026 visual upgrade
+   Добавь в самый низ CSS
+========================================================= */
+
+.courses-page {
+  overflow-x: hidden;
+}
+
+.courses-hero {
+  position: relative;
+}
+
+.courses-hero::after {
+  content: "";
+  position: absolute;
+  right: 28px;
+  bottom: -10px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(124, 58, 237, 0.14),
+    transparent 68%
+  );
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.courses-controls {
+  position: sticky;
+  top: 118px;
+  z-index: 20;
+  padding-top: 14px;
+  padding-bottom: 22px;
+  border-radius: 0 0 30px 30px;
+  background: rgba(248, 250, 255, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.courses-search {
+  height: 64px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at left, rgba(124, 58, 237, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.94);
+  border: 2px solid rgba(124, 58, 237, 0.22);
+}
+
+.courses-search span {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(124, 58, 237, 0.09);
+}
+
+.courses-search input {
+  font-weight: 750;
+}
+
+.courses-categories {
+  gap: 12px;
+}
+
+.course-category {
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.course-category span {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.course-category.active {
+  border-radius: 18px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed, #2563eb, #0ea5e9);
+}
+
+.course-category.active span {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.courses-result-head {
+  padding: 20px 0 8px;
+}
+
+.courses-result-head h2 {
+  position: relative;
+  width: fit-content;
+}
+
+.courses-result-head h2::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  bottom: -12px;
+  width: 72px;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb, #0ea5e9);
+}
+
+.courses-result-head p {
+  padding: 10px 15px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+/* ===== карточки курсов ===== */
+
+.course-card {
+  border-radius: 34px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff, #fbfcff);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  box-shadow:
+    0 26px 70px rgba(15, 23, 42, 0.08),
+    0 0 30px rgba(124, 58, 237, 0.05);
+}
+
+.course-card:hover {
+  transform: translateY(-10px) scale(1.01);
+  box-shadow:
+    0 34px 90px rgba(15, 23, 42, 0.14),
+    0 0 36px rgba(124, 58, 237, 0.1);
+}
+
+.course-card-image {
+  height: 230px;
+  border-radius: 0 0 32px 32px;
+  background:
+    radial-gradient(
+      circle at 25% 18%,
+      rgba(255, 255, 255, 0.22),
+      transparent 30%
+    ),
+    linear-gradient(135deg, #111827 0%, #312e81 48%, #7c3aed 100%);
+}
+
+.course-card-image::after {
+  content: "Birzhan-Edu";
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  color: rgba(255, 255, 255, 0.13);
+  font-size: 15px;
+  font-weight: 1000;
+  letter-spacing: 0.02em;
+}
+
+.course-card-placeholder {
+  font-size: 70px;
+  text-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.22),
+    0 0 28px rgba(255, 255, 255, 0.18);
+}
+
+.course-card-badge {
+  top: 16px;
+  left: 16px;
+  padding: 9px 14px;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+}
+
+.course-card-body {
+  padding: 26px;
+}
+
+.course-card-meta {
+  margin-bottom: 16px;
+}
+
+.course-card-meta span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.course-card-body h3 {
+  font-size: 25px;
+  line-height: 1.08;
+  margin-bottom: 12px;
+}
+
+.course-card-body > p {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.course-card-progress {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.08),
+      transparent 34%
+    ),
+    linear-gradient(180deg, #ffffff, #f6f3ff);
+  border: 1px solid rgba(124, 58, 237, 0.14);
+}
+
+.course-card-progress-bar {
+  height: 9px;
+  background: rgba(124, 58, 237, 0.11);
+}
+
+.course-card-progress-bar div {
+  background: linear-gradient(90deg, #7c3aed, #2563eb, #0ea5e9);
+}
+
+.course-card-link {
+  margin-top: 18px;
+  min-height: 50px;
+  border-radius: 18px;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #7c3aed, #2563eb 60%, #0ea5e9);
+}
+
+.course-card-link:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 40px rgba(124, 58, 237, 0.24),
+    0 10px 22px rgba(37, 99, 235, 0.14);
+}
+
+/* ===== пустое состояние ===== */
+
+.courses-empty {
+  position: relative;
+  overflow: hidden;
+}
+
+.courses-empty::before {
+  content: "🔎";
+  display: block;
+  margin-bottom: 12px;
+  font-size: 42px;
+}
+
+/* ===== adaptive guard ===== */
+
+@media (max-width: 1050px) {
+  .courses-controls {
+    position: static;
+    backdrop-filter: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .courses-search {
+    height: 56px;
+    border-radius: 18px;
+  }
+
+  .course-category {
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 15px;
+  }
+
+  .course-card-image {
+    height: 205px;
+  }
+
+  .course-card-body {
+    padding: 22px;
+  }
+}

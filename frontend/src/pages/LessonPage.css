@@ -643,3 +643,219 @@
     font-size: 13px;
   }
 }
+/* =========================================================
+   LessonPage 2026 polish — progress + checklist
+========================================================= */
+
+.lesson-page {
+  background:
+    linear-gradient(rgba(99, 102, 241, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.045) 1px, transparent 1px),
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(124, 58, 237, 0.16),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(14, 165, 233, 0.12),
+      transparent 32%
+    ),
+    linear-gradient(180deg, #f8faff 0%, #eef3ff 100%);
+  background-size:
+    42px 42px,
+    42px 42px,
+    auto,
+    auto,
+    auto;
+}
+
+.lesson-sidebar {
+  background:
+    radial-gradient(
+      circle at 20% 10%,
+      rgba(255, 255, 255, 0.16),
+      transparent 30%
+    ),
+    linear-gradient(135deg, #111827 0%, #312e81 48%, #7c3aed 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.lesson-back {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px 14px;
+  border-radius: 999px;
+}
+
+.lesson-progress-box {
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.lesson-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.lesson-progress-head strong {
+  color: #d9ff40;
+}
+
+.lesson-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.lesson-progress-bar div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d9ff40, #22c55e, #0ea5e9);
+  box-shadow: 0 0 18px rgba(217, 255, 64, 0.24);
+}
+
+.lesson-top,
+.lesson-task,
+.lesson-checklist,
+.lesson-actions {
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.08),
+    0 0 30px rgba(124, 58, 237, 0.05);
+}
+
+.lesson-label {
+  border: 1px solid rgba(96, 69, 255, 0.12);
+  box-shadow: 0 12px 26px rgba(96, 69, 255, 0.1);
+}
+
+.lesson-top h1 {
+  background: linear-gradient(135deg, #111827, #312e81, #7c3aed);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lesson-video-box {
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  box-shadow:
+    0 28px 80px rgba(15, 23, 42, 0.15),
+    0 0 45px rgba(124, 58, 237, 0.12);
+}
+
+.lesson-task {
+  position: relative;
+  overflow: hidden;
+}
+
+.lesson-task::after {
+  content: "PRACTICE";
+  position: absolute;
+  right: -8px;
+  bottom: -14px;
+  color: rgba(124, 58, 237, 0.06);
+  font-size: 72px;
+  font-weight: 1000;
+  letter-spacing: -5px;
+  pointer-events: none;
+}
+
+.lesson-checklist {
+  margin-bottom: 22px;
+  padding: 32px;
+  border-radius: 34px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(124, 58, 237, 0.1),
+      transparent 34%
+    ),
+    #ffffff;
+}
+
+.lesson-checklist h2 {
+  margin: 0 0 18px;
+  font-size: 32px;
+  letter-spacing: -0.04em;
+}
+
+.lesson-checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.lesson-checklist-grid div {
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  color: #1e293b;
+  background: linear-gradient(180deg, #ffffff, #f6f3ff);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.lesson-checklist-grid span {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.lesson-nav-btn,
+.lesson-complete-btn {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.lesson-nav-btn:hover,
+.lesson-complete-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.lesson-nav-btn.primary {
+  background: linear-gradient(135deg, #7c3aed, #2563eb, #0ea5e9);
+  box-shadow: 0 16px 32px rgba(124, 58, 237, 0.18);
+}
+
+.lesson-complete-btn {
+  background: linear-gradient(135deg, #d9ff40, #22c55e);
+  box-shadow: 0 14px 28px rgba(34, 197, 94, 0.16);
+}
+
+.lesson-complete-btn.done {
+  background: linear-gradient(135deg, #111827, #312e81);
+}
+
+@media (max-width: 640px) {
+  .lesson-checklist {
+    padding: 24px;
+  }
+
+  .lesson-checklist-grid {
+    grid-template-columns: 1fr;
+  }
+}

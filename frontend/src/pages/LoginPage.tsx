@@ -1,5 +1,6 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Turnstile } from "@marsidev/react-turnstile";
 import api from "../services/api";
 import "./LoginPage.css";
 
@@ -11,8 +12,13 @@ export default function LoginPage() {
     password: "",
   });
 
+  const [captchaToken, setCaptchaToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({
@@ -29,11 +35,20 @@ export default function LoginPage() {
       return;
     }
 
+    if (turnstileSiteKey && !captchaToken) {
+      setError("Подтвердите, что вы не бот.");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
 
-      const response = await api.post("/auth/login", form);
+      const response = await api.post("/auth/login", {
+        email: form.email,
+        password: form.password,
+        turnstileToken: captchaToken,
+      });
 
       const data = response.data;
       const token = data.token || data.accessToken || data.data?.token;
@@ -48,9 +63,15 @@ export default function LoginPage() {
       }
 
       navigate(user?.role === "ADMIN" ? "/admin" : "/courses");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Ошибка входа:", err);
-      setError("Не удалось войти. Проверь email, пароль и backend.");
+
+      const message =
+        err?.response?.data?.message ||
+        "Не удалось войти. Проверь email, пароль и backend.";
+
+      setError(message);
+      setCaptchaToken("");
     } finally {
       setLoading(false);
     }
@@ -70,14 +91,6 @@ export default function LoginPage() {
             Войдите в аккаунт, чтобы продолжить обучение, открыть курсы,
             проходить уроки, получать бонусы и управлять своим прогрессом.
           </p>
-
-          <div className="login-demo">
-            <strong>Подсказка для проверки</strong>
-            <span>
-              Если backend уже настроен, используйте данные созданного
-              пользователя или админа.
-            </span>
-          </div>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -102,15 +115,50 @@ export default function LoginPage() {
 
           <label>
             Пароль
-            <input
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Введите пароль"
-              autoComplete="current-password"
-            />
+            <div className="password-field">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Введите пароль"
+                autoComplete="current-password"
+              />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </label>
+
+          {turnstileSiteKey && (
+            <div className="login-turnstile">
+              <div className="login-turnstile-title">
+                🛡️ Проверка безопасности
+              </div>
+
+              <div className="login-turnstile-box">
+                <Turnstile
+                  siteKey={turnstileSiteKey}
+                  onSuccess={(token: string) => {
+                    setCaptchaToken(token);
+                    setError("");
+                  }}
+                  onExpire={() => setCaptchaToken("")}
+                  onError={() => setCaptchaToken("")}
+                />
+              </div>
+
+              <p className="login-turnstile-note">
+                Мы защищаем аккаунты от спама и автоматических ботов.
+              </p>
+            </div>
+          )}
 
           <button className="login-submit" type="submit" disabled={loading}>
             {loading ? "Входим..." : "Войти"}
