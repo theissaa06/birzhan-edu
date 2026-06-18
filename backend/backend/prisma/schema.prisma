@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int              @id @default(autoincrement())
+  username         String
+  email            String           @unique
+  password         String
+  phone            String?
+  role             String           @default("USER")
+  isPhoneVerified  Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  lessonProgress   LessonProgress[]
+  userBonuses      UserBonus[]
+  supportMessages  SupportMessage[]
+}
+
+model Course {
+  id          Int       @id @default(autoincrement())
+  title       String
+  category    String
+  level       String
+  duration    String
+  description String
+  imageUrl    String?
+  isPublished Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lessons     Lesson[]
+}
+
+model Lesson {
+  id           Int              @id @default(autoincrement())
+  title        String
+  content      String?
+  description  String?
+  videoUrl     String?
+  whatYouLearn String?
+  steps        String?
+  taskText     String?
+  beginnerHelp String?
+  hints        String?
+  orderNumber  Int
+  type         String           @default("VIDEO")
+  isPublished  Boolean          @default(true)
+  courseId     Int
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  progress     LessonProgress[]
+}
+
+model LessonProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  lessonId    Int
+  courseId    Int?
+  started     Boolean   @default(false)
+  completed   Boolean   @default(false)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+}
+
+model Bonus {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String
+  status      String      @default("available")
+  requirement String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userBonuses UserBonus[]
+}
+
+model UserBonus {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  bonusId   Int
+  claimed   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bonus     Bonus    @relation(fields: [bonusId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bonusId])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  name      String
+  text      String
+  rating    Int
+  direction String?
+  createdAt DateTime @default(now())
+}
+
+model MediaArticle {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  category    String
+  type        String
+  imageUrl    String?
+  content     String?
+  createdAt   DateTime @default(now())
+}
+
+model SupportMessage {
+  id        Int      @id @default(autoincrement())
+  text      String
+  from      String
+  userId    Int?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Application {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  type      String
+  message   String?
+  createdAt DateTime @default(now())
+}
