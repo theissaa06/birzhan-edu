@@ -1,15 +1,23 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../services/api";
 import "./LessonPage.css";
 
+type LessonType = "VIDEO" | "TEXT" | "PRACTICE" | "QUIZ";
+
 type Lesson = {
   id: number;
   title: string;
-  content?: string;
-  videoUrl?: string;
+  content?: string | null;
+  description?: string | null;
+  videoUrl?: string | null;
+  whatYouLearn?: string[] | null;
+  steps?: string[] | null;
+  taskText?: string | null;
+  beginnerHelp?: string | null;
+  hints?: string[] | null;
   orderNumber: number;
-  type: "VIDEO" | "TEXT" | "PRACTICE";
+  type: LessonType;
 };
 
 type Course = {
@@ -22,6 +30,49 @@ type Course = {
   lessons: Lesson[];
 };
 
+function getCurrentUserKey() {
+  try {
+    const storedUser =
+      localStorage.getItem("user") || localStorage.getItem("currentUser");
+
+    if (!storedUser) return "guest";
+
+    const user = JSON.parse(storedUser);
+
+    return String(user.id || user.email || user.username || "guest");
+  } catch {
+    return "guest";
+  }
+}
+
+function getUserStorageKey(key: string) {
+  return `${key}:user:${getCurrentUserKey()}`;
+}
+
+function getLessonCompletedKey(lessonId: string | number) {
+  return getUserStorageKey(`lesson-completed-${lessonId}`);
+}
+
+function normalizeList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map(String).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+    } catch {
+      return value
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
 export default function LessonPage() {
   const { courseId, lessonId } = useParams();
 
@@ -29,14 +80,10 @@ export default function LessonPage() {
   const [completed, setCompleted] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
   const [showCourseToast, setShowCourseToast] = useState(false);
+  const [hintIndex, setHintIndex] = useState(0);
+  const [visibleHintCount, setVisibleHintCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (courseId && lessonId) {
-      localStorage.setItem(`course-last-lesson-${courseId}`, lessonId);
-    }
-  }, [courseId, lessonId]);
 
   const currentLesson = useMemo(() => {
     if (!course || !lessonId) return null;
@@ -57,8 +104,34 @@ export default function LessonPage() {
     return sortedLessons.findIndex((lesson) => lesson.id === currentLesson.id);
   }, [sortedLessons, currentLesson]);
 
+  const completedLessonsCount = useMemo(() => {
+    return sortedLessons.filter(
+      (lesson) =>
+        localStorage.getItem(getLessonCompletedKey(lesson.id)) === "true",
+    ).length;
+  }, [sortedLessons, completed]);
+
+  const progressPercent = Math.round(
+    (completedLessonsCount / Math.max(sortedLessons.length, 1)) * 100,
+  );
+
   const nextLesson = currentIndex >= 0 ? sortedLessons[currentIndex + 1] : null;
   const prevLesson = currentIndex > 0 ? sortedLessons[currentIndex - 1] : null;
+
+  const whatYouLearn = normalizeList(currentLesson?.whatYouLearn);
+  const lessonSteps = normalizeList(currentLesson?.steps);
+  const hints = normalizeList(currentLesson?.hints);
+  const currentHint = hints[hintIndex] || "Подсказок для этого урока пока нет.";
+  const embedUrl = convertYouTubeToEmbed(currentLesson?.videoUrl || "");
+
+  useEffect(() => {
+    if (courseId && lessonId) {
+      localStorage.setItem(
+        getUserStorageKey(`course-last-lesson-${courseId}`),
+        lessonId,
+      );
+    }
+  }, [courseId, lessonId]);
 
   useEffect(() => {
     async function loadCourse() {
@@ -68,7 +141,10 @@ export default function LessonPage() {
 
         const response = await api.get(`/courses/${courseId}`);
         const data =
-          response.data.data || response.data.course || response.data;
+          response.data.data?.course ||
+          response.data.data ||
+          response.data.course ||
+          response.data;
 
         setCourse(data);
       } catch (err) {
@@ -85,18 +161,40 @@ export default function LessonPage() {
   }, [courseId]);
 
   useEffect(() => {
+    async function markStarted() {
+      if (!lessonId) return;
+
+      try {
+        await api.post(`/lessons/${lessonId}/start`);
+      } catch {
+        // Гость или старый backend: страница всё равно должна работать.
+      }
+    }
+
+    markStarted();
+  }, [lessonId]);
+
+  useEffect(() => {
     async function loadProgress() {
       try {
-        const res = await api.get(`/users/me`);
-        const progress = res.data.lessonProgress || [];
+        const res = await api.get("/users/me");
+        const progress =
+          res.data.data?.lessonProgress ||
+          res.data.user?.lessonProgress ||
+          res.data.lessonProgress ||
+          [];
 
         const isDone = progress.some(
           (p: any) => p.lessonId === Number(lessonId) && p.completed,
         );
 
         setCompleted(isDone);
-      } catch (e) {
-        console.log("Прогресс не загрузился, используем localStorage");
+
+        if (isDone && lessonId) {
+          localStorage.setItem(getLessonCompletedKey(lessonId), "true");
+        }
+      } catch {
+        // Используем localStorage как fallback.
       }
     }
 
@@ -106,11 +204,26 @@ export default function LessonPage() {
   }, [lessonId]);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`lesson-completed-${lessonId}`);
+    if (!lessonId) return;
+
+    const saved = localStorage.getItem(getLessonCompletedKey(lessonId));
+
     setCompleted(saved === "true");
     setShowCongrats(false);
     setShowCourseToast(false);
+    setHintIndex(0);
+    setVisibleHintCount(1);
   }, [lessonId]);
+
+  function showNextHint() {
+    if (hints.length <= 1) {
+      setVisibleHintCount(1);
+      return;
+    }
+
+    setHintIndex((prev) => (prev + 1) % hints.length);
+    setVisibleHintCount((prev) => Math.min(prev + 1, hints.length));
+  }
 
   async function handleCompleteLesson() {
     if (!lessonId) return;
@@ -121,8 +234,8 @@ export default function LessonPage() {
       console.error("Backend не сохранил урок, сохраняем локально:", err);
     }
 
+    localStorage.setItem(getLessonCompletedKey(lessonId), "true");
     localStorage.setItem(`lesson-completed-${lessonId}`, "true");
-
     setCompleted(true);
     setShowCongrats(true);
   }
@@ -142,11 +255,18 @@ export default function LessonPage() {
     }
 
     course.lessons.forEach((lesson) => {
+      localStorage.setItem(getLessonCompletedKey(lesson.id), "true");
       localStorage.setItem(`lesson-completed-${lesson.id}`, "true");
     });
 
-    localStorage.setItem(`course-completed-${course.id}`, "true");
-    localStorage.setItem(`course-certificate-${course.id}`, "true");
+    localStorage.setItem(
+      getUserStorageKey(`course-completed-${course.id}`),
+      "true",
+    );
+    localStorage.setItem(
+      getUserStorageKey(`course-certificate-${course.id}`),
+      "true",
+    );
 
     const newCertificate = {
       courseId: course.id,
@@ -154,9 +274,14 @@ export default function LessonPage() {
       claimedAt: new Date().toISOString(),
     };
 
-    localStorage.setItem("last-course-bonus", JSON.stringify(newCertificate));
+    localStorage.setItem(
+      getUserStorageKey("last-course-bonus"),
+      JSON.stringify(newCertificate),
+    );
 
-    const savedCertificates = localStorage.getItem("my-certificates");
+    const savedCertificates = localStorage.getItem(
+      getUserStorageKey("my-certificates"),
+    );
 
     let certificates = [];
 
@@ -176,7 +301,10 @@ export default function LessonPage() {
       certificates.push(newCertificate);
     }
 
-    localStorage.setItem("my-certificates", JSON.stringify(certificates));
+    localStorage.setItem(
+      getUserStorageKey("my-certificates"),
+      JSON.stringify(certificates),
+    );
 
     setCompleted(true);
     setShowCongrats(true);
@@ -239,38 +367,15 @@ export default function LessonPage() {
               Урок {currentIndex + 1} из {sortedLessons.length}
             </p>
           </div>
+
           <div className="lesson-progress-box">
             <div className="lesson-progress-head">
               <span>Прогресс курса</span>
-              <strong>
-                {Math.round(
-                  (sortedLessons.filter(
-                    (lesson) =>
-                      localStorage.getItem(`lesson-completed-${lesson.id}`) ===
-                      "true",
-                  ).length /
-                    Math.max(sortedLessons.length, 1)) *
-                    100,
-                )}
-                %
-              </strong>
+              <strong>{progressPercent}%</strong>
             </div>
 
             <div className="lesson-progress-bar">
-              <div
-                style={{
-                  width: `${Math.round(
-                    (sortedLessons.filter(
-                      (lesson) =>
-                        localStorage.getItem(
-                          `lesson-completed-${lesson.id}`,
-                        ) === "true",
-                    ).length /
-                      Math.max(sortedLessons.length, 1)) *
-                      100,
-                  )}%`,
-                }}
-              />
+              <div style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
 
@@ -278,7 +383,7 @@ export default function LessonPage() {
             {sortedLessons.map((lesson, index) => {
               const isActive = lesson.id === currentLesson.id;
               const isDone =
-                localStorage.getItem(`lesson-completed-${lesson.id}`) ===
+                localStorage.getItem(getLessonCompletedKey(lesson.id)) ===
                 "true";
 
               return (
@@ -301,33 +406,96 @@ export default function LessonPage() {
         <section className="lesson-content">
           <div className="lesson-top">
             <p className="lesson-label">
-              {getLessonTypeName(currentLesson.type)}
+              {getLessonTypeName(currentLesson.type)} • Урок {currentIndex + 1}
             </p>
             <h1>{currentLesson.title}</h1>
-            <p>{currentLesson.content || "Описание урока скоро появится."}</p>
+            <p>
+              {currentLesson.description ||
+                currentLesson.content ||
+                "Описание урока скоро появится."}
+            </p>
           </div>
 
           <div className="lesson-video-box">
-            {currentLesson.videoUrl ? (
+            {currentLesson.videoUrl && embedUrl ? (
               <iframe
-                src={convertYouTubeToEmbed(currentLesson.videoUrl)}
+                src={embedUrl}
                 title={currentLesson.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               ></iframe>
+            ) : currentLesson.videoUrl ? (
+              <div className="lesson-video-placeholder lesson-video-link-fallback">
+                <div>▶</div>
+                <h3>Видео доступно по ссылке</h3>
+                <p>Эту ссылку нельзя встроить, но её можно открыть отдельно.</p>
+                <a href={currentLesson.videoUrl} target="_blank" rel="noreferrer">
+                  Открыть видео →
+                </a>
+              </div>
             ) : (
               <div className="lesson-video-placeholder">
                 <div>▶</div>
-                <h3>Видео скоро появится</h3>
-                <p>Здесь будет видеоурок по монтажу.</p>
+                <h3>Видео для этого урока пока не добавлено</h3>
+                <p>Администратор сможет вставить YouTube-ссылку в урок.</p>
               </div>
             )}
           </div>
 
+          <div className="lesson-real-grid">
+            <div className="lesson-learn-card">
+              <h2>Что ты узнаешь</h2>
+              <ul>
+                {(whatYouLearn.length > 0
+                  ? whatYouLearn
+                  : getDefaultLearnList(course.category)
+                ).map((item, index) => (
+                  <li key={`${item}-${index}`}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="lesson-helper-card">
+              <h2>💡 Помощник новичка</h2>
+              <p>
+                {currentLesson.beginnerHelp ||
+                  "Сначала посмотри видео, затем повтори действия у себя в редакторе. Не спеши: цель урока — понять логику и выполнить маленькую практику."}
+              </p>
+
+              <div className="lesson-hint-box">
+                <span>Подсказка</span>
+                <strong>{currentHint}</strong>
+              </div>
+
+              <button type="button" onClick={showNextHint}>
+                Показать подсказку
+              </button>
+            </div>
+          </div>
+
+          <div className="lesson-steps-card">
+            <h2>Пошагово</h2>
+            <div className="lesson-steps-list">
+              {(lessonSteps.length > 0
+                ? lessonSteps
+                : getDefaultSteps(currentLesson.type, course.category)
+              ).map((step, index) => (
+                <div key={`${step}-${index}`}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <p>{step}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="lesson-task">
             <h2>Практическое задание</h2>
-            <p>{getPracticeText(currentLesson.type, course.category)}</p>
+            <p>
+              {currentLesson.taskText ||
+                getPracticeText(currentLesson.type, course.category)}
+            </p>
           </div>
+
           <div className="lesson-checklist">
             <h2>Чек-лист урока</h2>
 
@@ -344,12 +512,12 @@ export default function LessonPage() {
 
               <div>
                 <span>03</span>
-                Сохрани свой результат
+                Выполни практическое задание
               </div>
 
               <div>
                 <span>04</span>
-                Нажми “Завершить урок”
+                Нажми “Я выполнил задание”
               </div>
             </div>
           </div>
@@ -392,7 +560,7 @@ export default function LessonPage() {
               onClick={handleCompleteLesson}
               disabled={completed}
             >
-              {completed ? "🔥 Урок уже пройден" : "Завершить урок"}
+              {completed ? "🔥 Урок уже пройден" : "✅ Я выполнил задание"}
             </button>
 
             {nextLesson ? (
@@ -415,9 +583,10 @@ export default function LessonPage() {
 
           {showCongrats && (
             <div className="lesson-congrats">
-              <h2>🎉 Молодец!</h2>
+              <h2>🎉 Отлично! Урок завершён.</h2>
               <p>
-                Поздравляю тебя с окончанием урока. Продолжай в том же духе!
+                Твой прогресс сохранён. Теперь можешь перейти к следующему
+                уроку или повторить материал.
               </p>
             </div>
           )}
@@ -435,9 +604,49 @@ function getLessonTypeName(type: string) {
       return "📘 Теория";
     case "PRACTICE":
       return "📝 Практика";
+    case "QUIZ":
+      return "🧠 Проверка";
     default:
       return "Урок";
   }
+}
+
+function getDefaultLearnList(category: string) {
+  if (category === "capcut") {
+    return [
+      "как повторить действия из видео",
+      "где искать нужные инструменты",
+      "как выполнить маленькую практику",
+    ];
+  }
+
+  return [
+    "что сделать в этом уроке",
+    "как закрепить материал на практике",
+    "как понять, что урок пройден правильно",
+  ];
+}
+
+function getDefaultSteps(type: string, category: string) {
+  const editor = category === "premiere-pro" ? "Premiere Pro" : "CapCut";
+
+  if (type === "TEXT") {
+    return [
+      "Прочитай материал урока.",
+      "Выдели главную идею.",
+      "Открой редактор и найди похожий инструмент.",
+      "Выполни практическое задание.",
+      "Нажми кнопку завершения урока.",
+    ];
+  }
+
+  return [
+    "Посмотри видео полностью.",
+    `Открой ${editor} на телефоне или ПК.`,
+    "Повтори действия из урока на своём видео.",
+    "Сохрани результат или сделай черновик.",
+    "Нажми “Я выполнил задание”.",
+  ];
 }
 
 function getPracticeText(type: string, category: string) {
@@ -461,7 +670,7 @@ function getPracticeText(type: string, category: string) {
 }
 
 function convertYouTubeToEmbed(url?: string) {
-  if (!url) return "";
+  if (!url) return null;
 
   let videoId = "";
 
@@ -477,7 +686,7 @@ function convertYouTubeToEmbed(url?: string) {
       url.split("youtube.com/embed/")[1]?.split("?")[0]?.split("&")[0] || "";
   }
 
-  if (!videoId) return url;
+  if (!videoId) return null;
 
   return `https://www.youtube.com/embed/${videoId}`;
 }

@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import api from "../services/api";
 import "./CoursesPage.css";
+
 type Lesson = {
   id: number;
   title?: string;
@@ -29,6 +29,33 @@ const categories = [
   { title: "VFX", value: "vfx", icon: "⚡" },
 ];
 
+function getCurrentUserKey() {
+  try {
+    const storedUser =
+      localStorage.getItem("user") || localStorage.getItem("currentUser");
+
+    if (!storedUser) return "guest";
+
+    const user = JSON.parse(storedUser);
+
+    return String(user.id || user.email || user.username || "guest");
+  } catch {
+    return "guest";
+  }
+}
+
+function getUserStorageKey(key: string) {
+  return `${key}:user:${getCurrentUserKey()}`;
+}
+
+function getLessonCompletedKey(lessonId: string | number) {
+  return getUserStorageKey(`lesson-completed-${lessonId}`);
+}
+
+function getCourseLastLessonKey(courseId: string | number) {
+  return getUserStorageKey(`course-last-lesson-${courseId}`);
+}
+
 export default function CoursesPage() {
   const [serverProgress, setServerProgress] = useState<number[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -41,18 +68,21 @@ export default function CoursesPage() {
   useEffect(() => {
     async function loadProgress() {
       try {
+        // /users/me возвращает lessonProgress из БД
         const res = await api.get("/users/me");
-        const progress = res.data.lessonProgress || [];
+        const progress =
+          res.data.data?.lessonProgress ||
+          res.data.user?.lessonProgress ||
+          res.data.lessonProgress ||
+          [];
 
         const completedIds = progress
           .filter((p: any) => p.completed)
-          .map((p: any) => p.lessonId);
+          .map((p: any) => Number(p.lessonId));
 
         setServerProgress(completedIds);
-      } catch (e) {
-        console.log(
-          "Прогресс с сервера не загрузился, используем localStorage",
-        );
+      } catch {
+        setServerProgress([]);
       }
     }
 
@@ -109,6 +139,8 @@ export default function CoursesPage() {
   }, [courses, activeCategory, search]);
 
   function getCourseProgress(course: Course) {
+    progressKey;
+
     const lessons = [...(course.lessons || [])].sort(
       (a, b) => (a.orderNumber || 0) - (b.orderNumber || 0),
     );
@@ -118,20 +150,21 @@ export default function CoursesPage() {
     const completedLessonIds = lessons
       .filter((lesson) => {
         const localDone =
-          localStorage.getItem(`lesson-completed-${lesson.id}`) === "true";
+          localStorage.getItem(getLessonCompletedKey(lesson.id)) === "true";
 
-        const serverDone = serverProgress.includes(lesson.id);
+        const serverDone = serverProgress.includes(Number(lesson.id));
 
         return localDone || serverDone;
       })
       .map((lesson) => lesson.id);
+
     const completed = completedLessonIds.length;
     const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     const firstLesson = lessons[0];
 
     const lastOpenedLessonId = Number(
-      localStorage.getItem(`course-last-lesson-${course.id}`),
+      localStorage.getItem(getCourseLastLessonKey(course.id)),
     );
 
     const lastOpenedLesson = lessons.find(
@@ -194,6 +227,7 @@ export default function CoursesPage() {
           {categories.map((category) => (
             <button
               key={category.value}
+              type="button"
               className={
                 activeCategory === category.value
                   ? "course-category active"
@@ -278,7 +312,7 @@ export default function CoursesPage() {
                         </div>
 
                         <div className="course-card-progress-bar">
-                          <div style={{ width: `${progress.percent}%` }}></div>
+                          <div style={{ width: `${progress.percent}%` }} />
                         </div>
 
                         <p>
@@ -287,8 +321,8 @@ export default function CoursesPage() {
                         </p>
                       </div>
 
-                      <Link
-                        to={
+                      <a
+                        href={
                           progress.completed > 0
                             ? progress.continueUrl
                             : `/courses/${course.id}`
@@ -300,7 +334,7 @@ export default function CoursesPage() {
                           : progress.completed > 0
                             ? "Продолжить →"
                             : "Подробнее →"}
-                      </Link>
+                      </a>
                     </div>
                   </article>
                 );

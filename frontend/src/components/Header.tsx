@@ -1,210 +1,238 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { getUser, logout, isLoggedIn } from "../services/auth";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import "./Header.css";
+
+type CurrentUser = {
+  id?: number;
+  username?: string;
+  email?: string;
+  role?: "USER" | "ADMIN";
+};
 
 export default function Header() {
-  const [freeOpen, setFreeOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
   const navigate = useNavigate();
-  const user = getUser();
-  const loggedIn = isLoggedIn();
+  const headerRef = useRef<HTMLElement | null>(null);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-    window.location.reload();
-  };
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [freeOpen, setFreeOpen] = useState(false);
 
-  const navItems = [
-    ["Каталог", "/courses"],
-    ["Для детей", "/kids"],
-    ["Онлайн-колледж", "/online-college"],
-    ["🤖 AI помощник", "/ai-assistant"],
-    ["🎁 Бонус", "/bonus"],
-    ["О платформе", "/about"],
-    ["Мои сертификаты", "/my-certificates"],
-    ["💎 Premium", "/premium"],
-  ];
+  useEffect(() => {
+    function loadUser() {
+      const storedUser =
+        localStorage.getItem("user") || localStorage.getItem("currentUser");
+
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    }
+
+    loadUser();
+
+    // Обновляем при логине/логауте в другой вкладке или после reload
+    window.addEventListener("storage", loadUser);
+    return () => window.removeEventListener("storage", loadUser);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!headerRef.current?.contains(event.target as Node)) {
+        setFreeOpen(false);
+      }
+    }
+
+    function handleEsc(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setFreeOpen(false);
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, []);
+
+  function closeMenus() {
+    setMenuOpen(false);
+    setFreeOpen(false);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("currentUser");
+    setUser(null);
+    closeMenus();
+    navigate("/login");
+  }
+
+  const profileName = user?.username || user?.email || "Профиль";
 
   return (
-    <header className="be-header">
-      {/* Promo bar */}
-      <div className="be-sale-bar">
-        🎉 Скидка 30% на все курсы до 31 мая 2026! Используй промокод:{" "}
+    <>
+      <div className="top-sale-banner">
+        🔥 Скидка 30% на все курсы до 31 мая 2026! Используй промокод:{" "}
         <strong>BIRZHAN30</strong>
       </div>
 
-      {/* Верхняя строка: logo + auth */}
-      <div className="be-header-top">
-        <Link to="/" className="be-logo">
-          <span className="be-logo-icon">B</span>
-          <span className="be-logo-text">
-            Birzhan-<b>Edu</b>
-          </span>
-        </Link>
-
-        <div className="be-auth">
-          {loggedIn ? (
-            <>
-              {user?.role === "ADMIN" && (
-                <Link to="/admin" className="be-auth-btn be-auth-btn--outline">
-                  Админ
-                </Link>
-              )}
-
-              <Link to="/profile" className="be-user-chip">
-                <span>{(user?.username || user?.email || "U").charAt(0)}</span>
-                {user?.username || user?.email || "Профиль"}
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="be-auth-btn be-auth-btn--outline"
-              >
-                Выйти
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="be-auth-btn be-auth-btn--outline">
-                Войти
-              </Link>
-
-              <Link to="/register" className="be-auth-btn be-auth-btn--fill">
-                Регистрация
-              </Link>
-            </>
-          )}
+      <header className="site-header" ref={headerRef}>
+        <div className="site-header-container">
+          <Link to="/" className="site-logo" onClick={closeMenus}>
+            <span className="site-logo-mark">B</span>
+            <span className="site-logo-text">
+              Birzhan<span>_Edu</span>
+            </span>
+          </Link>
 
           <button
+            className={menuOpen ? "site-burger open" : "site-burger"}
             type="button"
-            className="be-burger"
-            onClick={() => setMenuOpen((prev) => !prev)}
+            onClick={() => {
+              setMenuOpen((prev) => !prev);
+              setFreeOpen(false);
+            }}
             aria-label="Открыть меню"
+            aria-expanded={menuOpen}
           >
-            {menuOpen ? "✕" : "☰"}
+            <span />
+            <span />
+            <span />
           </button>
-        </div>
-      </div>
 
-      {/* Нижняя строка: функции сайта */}
-      <nav className="be-header-nav">
-        <div className="be-header-nav-inner">
-          <Link to="/courses" className="be-nav-link">
-            Каталог
-          </Link>
+          <nav className={menuOpen ? "site-nav open" : "site-nav"}>
+            <NavLink to="/courses" onClick={closeMenus}>
+              Каталог
+            </NavLink>
 
-          <Link to="/kids" className="be-nav-link">
-            Для детей
-          </Link>
+            <NavLink to="/kids" onClick={closeMenus}>
+              Детям
+            </NavLink>
 
-          <Link to="/online-college" className="be-nav-link">
-            Онлайн-колледж
-          </Link>
+            <NavLink to="/online-college" onClick={closeMenus}>
+              Колледж
+            </NavLink>
 
-          <Link to="/ai-assistant" className="be-nav-link be-nav-link--ai">
-            🤖 AI помощник
-          </Link>
+            <div className={`site-dropdown ${freeOpen ? "open" : ""}`}>
+              <button
+                type="button"
+                className="site-dropdown-btn"
+                onClick={() => setFreeOpen((prev) => !prev)}
+                aria-expanded={freeOpen}
+              >
+                Бесплатно <span>▾</span>
+              </button>
 
-          <div
-            className="be-free-dropdown"
-            onMouseEnter={() => setFreeOpen(true)}
-            onMouseLeave={() => setFreeOpen(false)}
-          >
-            <button
-              type="button"
-              className="be-nav-link be-free-btn"
-              onClick={() => setFreeOpen((prev) => !prev)}
-            >
-              Бесплатно <span>▼</span>
-            </button>
+              <div className="site-dropdown-menu">
+                <NavLink to="/free" onClick={closeMenus}>
+                  Бесплатный раздел
+                </NavLink>
 
-            {freeOpen && (
-              <div className="be-free-menu">
-                <Link to="/free" onClick={() => setFreeOpen(false)}>
-                  🎁 Все бесплатное
-                </Link>
-                <Link to="/free/career-test" onClick={() => setFreeOpen(false)}>
-                  🧭 Профориентация
-                </Link>
-                <Link to="/free/webinars" onClick={() => setFreeOpen(false)}>
-                  🎙️ Вебинары
-                </Link>
-                <Link to="/media" onClick={() => setFreeOpen(false)}>
-                  🎬 Медиа
-                </Link>
-                <Link to="/reviews" onClick={() => setFreeOpen(false)}>
-                  ⭐ Отзывы
-                </Link>
+                <NavLink to="/free/career-test" onClick={closeMenus}>
+                  Тест профессии
+                </NavLink>
+
+                <NavLink to="/free/webinars" onClick={closeMenus}>
+                  Вебинары
+                </NavLink>
+
+                <NavLink to="/free/media" onClick={closeMenus}>
+                  Медиа
+                </NavLink>
+
+                <NavLink to="/free/ai" onClick={closeMenus}>
+                  AI помощник
+                </NavLink>
               </div>
+            </div>
+
+            <NavLink to="/support" onClick={closeMenus}>
+              Поддержка
+            </NavLink>
+
+            <NavLink to="/ai" onClick={closeMenus} title="AI помощник">
+              AI
+            </NavLink>
+
+            <NavLink to="/bonus" onClick={closeMenus}>
+              🎁 Бонус
+            </NavLink>
+          </nav>
+
+          <div className="site-actions">
+            <Link
+              to="/certificates"
+              className="site-certificates-link"
+              onClick={closeMenus}
+            >
+              Сертификаты
+            </Link>
+
+            <Link
+              to="/premium"
+              className="site-premium-link"
+              onClick={closeMenus}
+            >
+              💎 Premium
+            </Link>
+
+            {user ? (
+              <>
+                <Link
+                  to="/profile"
+                  className="site-user"
+                  onClick={closeMenus}
+                  title={profileName}
+                >
+                  {profileName}
+                </Link>
+
+                {user.role === "ADMIN" && (
+                  <Link
+                    to="/admin"
+                    className="site-admin-link"
+                    onClick={closeMenus}
+                  >
+                    Админ
+                  </Link>
+                )}
+
+                <button
+                  type="button"
+                  className="site-logout"
+                  onClick={handleLogout}
+                >
+                  Выйти
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="site-login" onClick={closeMenus}>
+                  Войти
+                </Link>
+
+                <Link
+                  to="/register"
+                  className="site-register"
+                  onClick={closeMenus}
+                >
+                  Регистрация
+                </Link>
+              </>
             )}
           </div>
-
-          <Link to="/bonus" className="be-nav-link be-nav-link--bonus">
-            🎁 Бонус
-          </Link>
-
-          <Link to="/about" className="be-nav-link">
-            О платформе
-          </Link>
-
-          <Link to="/my-certificates" className="be-nav-link">
-            Мои сертификаты
-          </Link>
-
-          <Link to="/premium" className="be-nav-link be-nav-link--premium">
-            💎 Premium
-          </Link>
         </div>
-      </nav>
-
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="be-mobile-menu">
-          {navItems.map(([label, path]) => (
-            <Link
-              key={path}
-              to={path}
-              onClick={() => setMenuOpen(false)}
-              className={
-                label.includes("AI")
-                  ? "be-mobile-link be-mobile-link--ai"
-                  : label.includes("Premium")
-                    ? "be-mobile-link be-mobile-link--premium"
-                    : "be-mobile-link"
-              }
-            >
-              {label}
-            </Link>
-          ))}
-
-          <Link
-            to="/free/career-test"
-            onClick={() => setMenuOpen(false)}
-            className="be-mobile-link"
-          >
-            🧭 Профориентация
-          </Link>
-
-          <Link
-            to="/free/webinars"
-            onClick={() => setMenuOpen(false)}
-            className="be-mobile-link"
-          >
-            🎙️ Вебинары
-          </Link>
-
-          <Link
-            to="/media"
-            onClick={() => setMenuOpen(false)}
-            className="be-mobile-link"
-          >
-            🎬 Медиа
-          </Link>
-        </div>
-      )}
-    </header>
+      </header>
+    </>
   );
 }

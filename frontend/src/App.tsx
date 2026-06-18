@@ -24,6 +24,7 @@ import CareerCenterPage from "./pages/CareerCenterPage";
 import FindEmployeePage from "./pages/FindEmployeePage";
 
 import BonusPage from "./pages/BonusPage";
+import PremiumPage from "./pages/PremiumPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -37,6 +38,7 @@ import MyCertificatesPage from "./pages/MyCertificatesPage";
 import PublicCertificatePage from "./pages/PublicCertificatePage";
 
 import NotFoundPage from "./pages/NotFoundPage";
+import "./styles/global.css";
 
 export default function App() {
   return (
@@ -85,6 +87,8 @@ export default function App() {
 
         {/* Бонусы */}
         <Route path="/bonus" element={<BonusPage />} />
+        {/* Premium */}
+        <Route path="/premium" element={<PremiumPage />} />
 
         {/* Аккаунт */}
         <Route path="/login" element={<LoginPage />} />
@@ -95,8 +99,13 @@ export default function App() {
 
         {/* Сертификаты */}
         <Route path="/certificate" element={<CertificatePage />} />
+        <Route path="/certificates" element={<MyCertificatesPage />} />
         <Route path="/my-certificates" element={<MyCertificatesPage />} />
         <Route path="/certificate/public" element={<PublicCertificatePage />} />
+        <Route
+          path="/certificate/public/:certificateId"
+          element={<PublicCertificatePage />}
+        />
 
         {/* 404 всегда самым последним */}
         <Route path="*" element={<NotFoundPage />} />

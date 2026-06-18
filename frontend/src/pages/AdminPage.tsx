@@ -1,5 +1,6 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import ConfirmModal from "../components/ConfirmModal";
 import api from "../services/api";
 import {
   getSupportMessages,
@@ -38,15 +39,22 @@ type AdminUser = {
   phone?: string | null;
   role: "USER" | "ADMIN";
   isPhoneVerified: boolean;
-  password: string;
   createdAt: string;
   updatedAt: string;
+  password?: string;
   lessonProgress?: unknown[];
   userBonuses?: unknown[];
   supportMessages?: unknown[];
 };
 
-const USERS_API = "http://localhost:3003/api/users";
+type ConfirmTarget =
+  | { type: "course"; id: number; title?: string }
+  | { type: "lesson"; id: number; title?: string }
+  | { type: "user"; id: number; title?: string }
+  | { type: "support"; id: number; title?: string }
+  | null;
+
+const USERS_API_BASE = "/users";
 
 const demoApplications = [
   {
@@ -72,8 +80,18 @@ const demoApplications = [
   },
 ];
 
+const categoryOptions = [
+  { label: "CapCut", value: "capcut" },
+  { label: "Premiere Pro", value: "premiere-pro" },
+  { label: "TikTok", value: "tiktok" },
+  { label: "Цветокоррекция", value: "color-correction" },
+  { label: "Звук", value: "sound" },
+  { label: "VFX", value: "vfx" },
+];
+
 export default function AdminPage() {
   const navigate = useNavigate();
+  const supportMessagesRef = useRef<HTMLDivElement | null>(null);
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -81,33 +99,24 @@ export default function AdminPage() {
   const [supportMessagesList, setSupportMessagesList] = useState<
     SupportMessage[]
   >([]);
+
   const [adminReplyText, setAdminReplyText] = useState("");
-
-  const supportMessagesRef = useRef<HTMLDivElement | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [lessonsLoading, setLessonsLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
   const [resetUserId, setResetUserId] = useState<number | null>(null);
   const [resetUserName, setResetUserName] = useState("");
   const [resetPasswordValue, setResetPasswordValue] = useState("");
 
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
-
-  const categories = [
-    { label: "Видеомонтаж", value: "video-editing" },
-    { label: "CapCut", value: "capcut" },
-    { label: "Premiere Pro", value: "premiere-pro" },
-    { label: "Цветокоррекция", value: "color-correction" },
-    { label: "Звук", value: "sound" },
-    { label: "VFX", value: "vfx" },
-    { label: "TikTok контент", value: "tiktok" },
-  ];
 
   const [newCourse, setNewCourse] = useState({
     title: "",
@@ -131,12 +140,23 @@ export default function AdminPage() {
     loadUsers();
     loadSupportMessages();
 
-    const interval = setInterval(() => {
-      loadSupportMessages();
+    const interval = window.setInterval(() => {
+      loadSupportMessages(false);
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function showSuccess(message: string) {
+    setSuccessMessage(message);
+    setError("");
+  }
+
+  function showError(message: string) {
+    setError(message);
+    setSuccessMessage("");
+  }
 
   async function loadCourses() {
     try {
@@ -149,26 +169,33 @@ export default function AdminPage() {
 
       setCourses(coursesData);
 
-      if (coursesData.length > 0 && !selectedCourseId) {
-        const firstCourseId = coursesData[0].id;
-        setSelectedCourseId(firstCourseId);
+      if (coursesData.length > 0) {
+        const currentCourseExists = selectedCourseId
+          ? coursesData.some((course) => course.id === selectedCourseId)
+          : false;
 
-        setNewLesson((prev) => ({
-          ...prev,
-          courseId: String(firstCourseId),
-        }));
+        const nextCourseId = currentCourseExists
+          ? selectedCourseId
+          : coursesData[0].id;
 
-        loadLessons(firstCourseId);
+        if (nextCourseId) {
+          setSelectedCourseId(nextCourseId);
+          setNewLesson((prev) => ({ ...prev, courseId: String(nextCourseId) }));
+          await loadLessons(nextCourseId);
+        }
+      } else {
+        setSelectedCourseId(null);
+        setLessons([]);
       }
     } catch (err) {
       console.error("Ошибка загрузки курсов:", err);
-      setError("Не удалось загрузить курсы. Проверь backend.");
+      showError("Не удалось загрузить курсы. Проверь backend.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function loadLessons(courseId?: number) {
+  async function loadLessons(courseId?: number | null) {
     const id = courseId || selectedCourseId;
 
     if (!id) {
@@ -178,14 +205,12 @@ export default function AdminPage() {
 
     try {
       setLessonsLoading(true);
-
       const response = await api.get(`/lessons?courseId=${id}`);
       const data = response.data.data || response.data.lessons || response.data;
-
       setLessons(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Ошибка загрузки уроков:", err);
-      setError("Не удалось загрузить уроки. Проверь backend.");
+      showError("Не удалось загрузить уроки. Проверь backend.");
     } finally {
       setLessonsLoading(false);
     }
@@ -196,157 +221,59 @@ export default function AdminPage() {
       setUsersLoading(true);
       setError("");
 
-      const response = await fetch(USERS_API);
-
-      if (!response.ok) {
-        throw new Error("Ошибка ответа backend");
-      }
-
-      const result = await response.json();
+      const response = await api.get(USERS_API_BASE);
+      const result = response.data;
       const data = result.data || result.users || result;
-
       setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Ошибка загрузки пользователей:", err);
-      setError("Не удалось загрузить пользователей. Проверь backend.");
+      showError("Не удалось загрузить пользователей. Проверь backend.");
     } finally {
       setUsersLoading(false);
     }
   }
 
-  async function handleChangeUserRole(userId: number, role: "USER" | "ADMIN") {
+  async function loadSupportMessages(showSuccessAfterLoad = false) {
     try {
-      setError("");
+      const data = await getSupportMessages();
+      const safeData = Array.isArray(data) ? data : [];
+      setSupportMessagesList(safeData);
 
-      const response = await fetch(`${USERS_API}/${userId}/role`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ role }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Ошибка изменения роли");
+      if (showSuccessAfterLoad) {
+        showSuccess(`Чат обновлён. Сообщений: ${safeData.length}.`);
       }
 
-      setSuccessMessage(
-        role === "ADMIN"
-          ? "Пользователь получил роль ADMIN."
-          : "Пользователь получил роль USER.",
-      );
-
-      await loadUsers();
+      return safeData;
     } catch (err) {
-      console.error("Ошибка изменения роли:", err);
-      setSuccessMessage("");
-      setError("Не удалось изменить роль пользователя.");
+      console.error("Ошибка загрузки чата:", err);
+      showError("Не удалось загрузить сообщения поддержки.");
+      return [];
     }
   }
-  function handleResetUserPassword(userId: number, username: string) {
-    setResetUserId(userId);
-    setResetUserName(username || "пользователя");
-    setResetPasswordValue("");
+
+  function scrollSupportToBottom() {
+    window.setTimeout(() => {
+      const box = supportMessagesRef.current;
+      if (!box) return;
+      box.scrollTop = box.scrollHeight;
+    }, 80);
   }
 
-  async function confirmResetUserPassword() {
-    if (!resetUserId) return;
+  function handleScrollToLastSupportMessage() {
+    const box = supportMessagesRef.current;
 
-    const newPassword = resetPasswordValue.trim();
-
-    if (newPassword.length < 6) {
-      setError("Новый пароль должен быть минимум 6 символов.");
+    if (!box) {
+      showError("Блок сообщений ещё не загружен.");
       return;
     }
 
-    try {
-      setError("");
-
-      const response = await fetch(
-        `${USERS_API}/${resetUserId}/reset-password`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            newPassword,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Ошибка изменения пароля");
-      }
-
-      const result = await response.json();
-      const savedPassword = result.newPassword || newPassword;
-
-      setSuccessMessage(
-        `Пароль изменён навсегда. Новый пароль: ${savedPassword}`,
-      );
-
-      setResetUserId(null);
-      setResetUserName("");
-      setResetPasswordValue("");
-
-      localStorage.removeItem("token");
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-      localStorage.removeItem("currentUser");
-
-      setTimeout(() => {
-        navigate("/login");
-      }, 600);
-    } catch (err) {
-      console.error("Ошибка изменения пароля:", err);
-      setSuccessMessage("");
-      setError("Не удалось изменить пароль пользователя.");
-    }
+    box.scrollTop = box.scrollHeight;
+    showSuccess("Прокручено к последнему сообщению.");
   }
 
-  async function handleDeleteUser(userId: number) {
-    const isConfirmed = window.confirm(
-      "Ты точно хочешь удалить этого пользователя? Это действие нельзя отменить.",
-    );
-
-    if (!isConfirmed) return;
-
-    try {
-      setError("");
-
-      const response = await fetch(`${USERS_API}/${userId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Ошибка удаления пользователя");
-      }
-
-      setSuccessMessage("Пользователь успешно удалён.");
-
-      await loadUsers();
-    } catch (err) {
-      console.error("Ошибка удаления пользователя:", err);
-      setSuccessMessage("");
-      setError("Не удалось удалить пользователя.");
-    }
-  }
-
-  function shortHash(hash: string) {
-    if (!hash) return "Нет хеша";
-    return `${hash.slice(0, 14)}...${hash.slice(-8)}`;
-  }
-
-  function formatDate(date: string) {
-    if (!date) return "—";
-
-    return new Date(date).toLocaleDateString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  async function handleRefreshSupportChat() {
+    await loadSupportMessages(true);
+    scrollSupportToBottom();
   }
 
   function handleCourseChange(
@@ -354,10 +281,15 @@ export default function AdminPage() {
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >,
   ) {
-    setNewCourse({
-      ...newCourse,
-      [e.target.name]: e.target.value,
-    });
+    setNewCourse({ ...newCourse, [e.target.name]: e.target.value });
+  }
+
+  function handleLessonChange(
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) {
+    setNewLesson({ ...newLesson, [e.target.name]: e.target.value });
   }
 
   function convertYouTubeToEmbed(url: string) {
@@ -377,21 +309,9 @@ export default function AdminPage() {
         url.split("youtube.com/embed/")[1]?.split("?")[0]?.split("&")[0] || "";
     }
 
-    if (!videoId) return url;
-
-    return `https://www.youtube.com/embed/${videoId}`;
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
   }
 
-  function handleLessonChange(
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) {
-    setNewLesson({
-      ...newLesson,
-      [e.target.name]: e.target.value,
-    });
-  }
   function applyLessonTemplate(type: LessonType) {
     if (type === "VIDEO") {
       setNewLesson((prev) => ({
@@ -428,9 +348,15 @@ export default function AdminPage() {
   }
 
   function handleSelectCourse(courseId: number) {
+    if (!courseId || Number.isNaN(courseId)) {
+      setSelectedCourseId(null);
+      setLessons([]);
+      setNewLesson((prev) => ({ ...prev, courseId: "" }));
+      return;
+    }
+
     setSelectedCourseId(courseId);
     setEditingLessonId(null);
-
     setNewLesson({
       title: "",
       content: "",
@@ -439,45 +365,41 @@ export default function AdminPage() {
       type: "VIDEO",
       courseId: String(courseId),
     });
-
     loadLessons(courseId);
   }
 
   async function handleCreateCourse(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!newCourse.title || !newCourse.duration || !newCourse.description) {
-      setError("Заполни название, длительность и описание курса.");
-      setSuccessMessage("");
+    if (
+      !newCourse.title.trim() ||
+      !newCourse.duration.trim() ||
+      !newCourse.description.trim()
+    ) {
+      showError("Заполни название, длительность и описание курса.");
       return;
     }
 
     try {
+      setActionLoading(true);
+
+      const payload = {
+        title: newCourse.title.trim(),
+        category: newCourse.category,
+        level: newCourse.level,
+        duration: newCourse.duration.trim(),
+        description: newCourse.description.trim(),
+      };
+
       if (editingCourseId) {
-        await api.put(`/courses/${editingCourseId}`, {
-          title: newCourse.title,
-          category: newCourse.category,
-          level: newCourse.level,
-          duration: newCourse.duration,
-          description: newCourse.description,
-        });
-
-        setSuccessMessage("Курс успешно обновлён!");
+        await api.put(`/courses/${editingCourseId}`, payload);
+        showSuccess("Курс успешно обновлён!");
       } else {
-        await api.post("/courses", {
-          title: newCourse.title,
-          category: newCourse.category,
-          level: newCourse.level,
-          duration: newCourse.duration,
-          description: newCourse.description,
-        });
-
-        setSuccessMessage("Курс успешно создан!");
+        await api.post("/courses", payload);
+        showSuccess("Курс успешно создан!");
       }
 
-      setError("");
       setEditingCourseId(null);
-
       setNewCourse({
         title: "",
         category: "capcut",
@@ -486,15 +408,16 @@ export default function AdminPage() {
         description: "",
       });
 
-      loadCourses();
-    } catch (error) {
-      console.error("Ошибка сохранения курса:", error);
-      setSuccessMessage("");
-      setError(
+      await loadCourses();
+    } catch (err) {
+      console.error("Ошибка сохранения курса:", err);
+      showError(
         editingCourseId
-          ? "Не удалось обновить курс. Проверь backend."
-          : "Не удалось создать курс. Проверь backend.",
+          ? "Не удалось обновить курс."
+          : "Не удалось создать курс.",
       );
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -502,7 +425,6 @@ export default function AdminPage() {
     setEditingCourseId(course.id);
     setError("");
     setSuccessMessage("");
-
     setNewCourse({
       title: course.title || "",
       category: course.category || "capcut",
@@ -510,18 +432,13 @@ export default function AdminPage() {
       duration: course.duration || "",
       description: course.description || "",
     });
-
-    window.scrollTo({
-      top: 520,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 520, behavior: "smooth" });
   }
 
   function handleCancelEditCourse() {
     setEditingCourseId(null);
     setError("");
     setSuccessMessage("");
-
     setNewCourse({
       title: "",
       category: "capcut",
@@ -531,49 +448,45 @@ export default function AdminPage() {
     });
   }
 
-  async function handleDeleteCourse(courseId: number) {
-    const isConfirmed = window.confirm(
-      "Ты точно хочешь удалить этот курс? Вместе с ним удалятся все уроки курса.",
-    );
-
-    if (!isConfirmed) return;
-
+  async function performDeleteCourse(courseId: number) {
     try {
+      setActionLoading(true);
       await api.delete(`/courses/${courseId}`);
 
-      setSuccessMessage("Курс успешно удалён!");
-      setError("");
-
-      if (editingCourseId === courseId) {
-        handleCancelEditCourse();
-      }
-
+      if (editingCourseId === courseId) handleCancelEditCourse();
       if (selectedCourseId === courseId) {
         setSelectedCourseId(null);
         setLessons([]);
       }
 
-      loadCourses();
-    } catch (error) {
-      console.error("Ошибка удаления курса:", error);
-      setSuccessMessage("");
-      setError("Не удалось удалить курс. Проверь backend.");
+      showSuccess("Курс успешно удалён!");
+      await loadCourses();
+    } catch (err) {
+      console.error("Ошибка удаления курса:", err);
+      showError("Не удалось удалить курс. Проверь backend.");
+    } finally {
+      setActionLoading(false);
     }
   }
 
   async function handleSaveLesson(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!newLesson.title || !newLesson.orderNumber || !newLesson.courseId) {
-      setError("Заполни название урока, номер урока и выбери курс.");
-      setSuccessMessage("");
+    if (
+      !newLesson.title.trim() ||
+      !newLesson.orderNumber ||
+      !newLesson.courseId
+    ) {
+      showError("Заполни название урока, номер урока и выбери курс.");
       return;
     }
 
     try {
+      setActionLoading(true);
+
       const payload = {
-        title: newLesson.title,
-        content: newLesson.content,
+        title: newLesson.title.trim(),
+        content: newLesson.content.trim(),
         videoUrl: convertYouTubeToEmbed(newLesson.videoUrl),
         orderNumber: Number(newLesson.orderNumber),
         type: newLesson.type,
@@ -582,15 +495,13 @@ export default function AdminPage() {
 
       if (editingLessonId) {
         await api.put(`/lessons/${editingLessonId}`, payload);
-        setSuccessMessage("Урок успешно обновлён!");
+        showSuccess("Урок успешно обновлён!");
       } else {
         await api.post("/lessons", payload);
-        setSuccessMessage("Урок успешно создан!");
+        showSuccess("Урок успешно создан!");
       }
 
-      setError("");
       setEditingLessonId(null);
-
       setNewLesson({
         title: "",
         content: "",
@@ -600,16 +511,17 @@ export default function AdminPage() {
         courseId: newLesson.courseId,
       });
 
-      loadLessons(Number(newLesson.courseId));
-      loadCourses();
-    } catch (error) {
-      console.error("Ошибка сохранения урока:", error);
-      setSuccessMessage("");
-      setError(
+      await loadLessons(Number(newLesson.courseId));
+      await loadCourses();
+    } catch (err) {
+      console.error("Ошибка сохранения урока:", err);
+      showError(
         editingLessonId
-          ? "Не удалось обновить урок. Проверь backend."
-          : "Не удалось создать урок. Проверь backend.",
+          ? "Не удалось обновить урок."
+          : "Не удалось создать урок.",
       );
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -617,7 +529,6 @@ export default function AdminPage() {
     setEditingLessonId(lesson.id);
     setError("");
     setSuccessMessage("");
-
     setNewLesson({
       title: lesson.title || "",
       content: lesson.content || "",
@@ -626,7 +537,6 @@ export default function AdminPage() {
       type: lesson.type || "VIDEO",
       courseId: String(lesson.courseId),
     });
-
     setSelectedCourseId(lesson.courseId);
   }
 
@@ -634,7 +544,6 @@ export default function AdminPage() {
     setEditingLessonId(null);
     setError("");
     setSuccessMessage("");
-
     setNewLesson({
       title: "",
       content: "",
@@ -645,132 +554,228 @@ export default function AdminPage() {
     });
   }
 
-  async function handleDeleteLesson(lessonId: number) {
-    const isConfirmed = window.confirm("Ты точно хочешь удалить этот урок?");
-
-    if (!isConfirmed) return;
-
+  async function performDeleteLesson(lessonId: number) {
     try {
+      setActionLoading(true);
       await api.delete(`/lessons/${lessonId}`);
 
-      setSuccessMessage("Урок успешно удалён!");
-      setError("");
+      if (editingLessonId === lessonId) handleCancelEditLesson();
+      if (selectedCourseId) await loadLessons(selectedCourseId);
+      await loadCourses();
 
-      if (editingLessonId === lessonId) {
-        handleCancelEditLesson();
-      }
-
-      if (selectedCourseId) {
-        loadLessons(selectedCourseId);
-      }
-
-      loadCourses();
-    } catch (error) {
-      console.error("Ошибка удаления урока:", error);
-      setSuccessMessage("");
-      setError("Не удалось удалить урок. Проверь backend.");
+      showSuccess("Урок успешно удалён!");
+    } catch (err) {
+      console.error("Ошибка удаления урока:", err);
+      showError("Не удалось удалить урок. Проверь backend.");
+    } finally {
+      setActionLoading(false);
     }
   }
 
-  const selectedCourse = courses.find(
-    (course) => course.id === selectedCourseId,
-  );
-  function scrollSupportToBottom() {
-    setTimeout(() => {
-      const box = supportMessagesRef.current;
+  async function handleChangeUserRole(userId: number, role: "USER" | "ADMIN") {
+    try {
+      setActionLoading(true);
+      setError("");
 
-      if (!box) return;
+      await api.patch(`${USERS_API_BASE}/${userId}/role`, { role });
 
-      box.scrollTop = box.scrollHeight;
-    }, 80);
+      showSuccess(
+        role === "ADMIN"
+          ? "Пользователь получил роль ADMIN."
+          : "Пользователь получил роль USER.",
+      );
+      await loadUsers();
+    } catch (err) {
+      console.error("Ошибка изменения роли:", err);
+      showError("Не удалось изменить роль пользователя.");
+    } finally {
+      setActionLoading(false);
+    }
   }
 
-  async function loadSupportMessages() {
+  function handleResetUserPassword(userId: number, username: string) {
+    setResetUserId(userId);
+    setResetUserName(username || "пользователя");
+    setResetPasswordValue("");
+  }
+
+  async function confirmResetUserPassword() {
+    if (!resetUserId) return;
+
+    const newPassword = resetPasswordValue.trim();
+    if (newPassword.length < 6) {
+      showError("Новый пароль должен быть минимум 6 символов.");
+      return;
+    }
+
     try {
-      const data = await getSupportMessages();
-      const safeData = Array.isArray(data) ? data : [];
+      setActionLoading(true);
+      setError("");
 
-      setSupportMessagesList(safeData);
+      const result = await api.patch(`${USERS_API_BASE}/${resetUserId}/reset-password`, { newPassword });
+      const savedPassword = result.data.newPassword || newPassword;
 
-      return safeData;
+      setResetUserId(null);
+      setResetUserName("");
+      setResetPasswordValue("");
+      showSuccess(`Пароль изменён. Новый пароль: ${savedPassword}`);
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("currentUser");
+
+      window.setTimeout(() => navigate("/login"), 700);
     } catch (err) {
-      console.error("Ошибка загрузки чата:", err);
-      setError("Не удалось загрузить сообщения поддержки.");
-      return [];
+      console.error("Ошибка изменения пароля:", err);
+      showError("Не удалось изменить пароль пользователя.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function performDeleteUser(userId: number) {
+    try {
+      setActionLoading(true);
+      setError("");
+
+      await api.delete(`${USERS_API_BASE}/${userId}`);
+
+      showSuccess("Пользователь успешно удалён.");
+      await loadUsers();
+    } catch (err) {
+      console.error("Ошибка удаления пользователя:", err);
+      showError("Не удалось удалить пользователя.");
+    } finally {
+      setActionLoading(false);
     }
   }
 
   async function handleAdminReply() {
     const text = adminReplyText.trim();
-
     if (!text) {
-      setError("Напиши текст ответа перед отправкой.");
+      showError("Напиши текст ответа перед отправкой.");
       return;
     }
 
     try {
+      setActionLoading(true);
       setError("");
 
-      const newMessage = await sendSupportMessage({
-        text,
-        from: "admin",
-      });
-
+      const newMessage = await sendSupportMessage({ text, from: "admin" });
       setSupportMessagesList((prev) => [...prev, newMessage]);
       setAdminReplyText("");
-      setSuccessMessage("Ответ отправлен пользователю.");
-
+      showSuccess("Ответ отправлен пользователю.");
       scrollSupportToBottom();
     } catch (err) {
       console.error("Ошибка отправки ответа:", err);
-      setSuccessMessage("");
-      setError("Не удалось отправить ответ. Проверь backend поддержки.");
+      showError("Не удалось отправить ответ. Проверь backend поддержки.");
+    } finally {
+      setActionLoading(false);
     }
   }
 
-  async function handleDeleteSupportMessage(messageId: number) {
-    const isConfirmed = window.confirm("Удалить это сообщение из поддержки?");
-
-    if (!isConfirmed) return;
-
+  async function performDeleteSupportMessage(messageId: number) {
     try {
+      setActionLoading(true);
       setError("");
-
       await deleteSupportMessage(messageId);
-
       setSupportMessagesList((prev) =>
         prev.filter((message) => message.id !== messageId),
       );
-
-      setSuccessMessage("Сообщение поддержки удалено.");
+      showSuccess("Сообщение поддержки удалено.");
     } catch (err) {
       console.error("Ошибка удаления сообщения:", err);
-      setSuccessMessage("");
-      setError("Не удалось удалить сообщение поддержки.");
+      showError("Не удалось удалить сообщение поддержки.");
+    } finally {
+      setActionLoading(false);
     }
   }
 
-  async function handleRefreshSupportChat() {
-    setError("");
+  async function handleConfirmAction() {
+    if (!confirmTarget) return;
 
-    const data = await loadSupportMessages();
+    const target = confirmTarget;
+    setConfirmTarget(null);
 
-    setSuccessMessage(`Чат обновлён. Сообщений: ${data.length}.`);
-
-    scrollSupportToBottom();
+    if (target.type === "course") await performDeleteCourse(target.id);
+    if (target.type === "lesson") await performDeleteLesson(target.id);
+    if (target.type === "user") await performDeleteUser(target.id);
+    if (target.type === "support") await performDeleteSupportMessage(target.id);
   }
 
-  function handleScrollToLastSupportMessage() {
-    const box = supportMessagesRef.current;
+  function handleApplicationReply(app: (typeof demoApplications)[number]) {
+    setAdminReplyText(
+      `Здравствуйте, ${app.name}! Спасибо за заявку по теме “${app.type}”. Мы получили сообщение: “${app.message}”.`,
+    );
+    showSuccess(
+      `Черновик ответа для ${app.name} подготовлен в блоке поддержки.`,
+    );
+    window.setTimeout(() => {
+      supportMessagesRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 100);
+  }
 
-    if (!box) {
-      setError("Блок сообщений ещё не загружен.");
-      return;
+  function shortHash(hash: string) {
+    if (!hash) return "Нет хеша";
+    return `${hash.slice(0, 14)}...${hash.slice(-8)}`;
+  }
+
+  function formatDate(date: string) {
+    if (!date) return "—";
+    return new Date(date).toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
+
+  const selectedCourse = courses.find(
+    (course) => course.id === selectedCourseId,
+  );
+  const latestSupportMessages = supportMessagesList.slice(-12);
+
+  const confirmText = (() => {
+    if (!confirmTarget)
+      return {
+        title: "Подтвердить действие",
+        text: "Вы уверены?",
+        button: "Подтвердить",
+      };
+
+    if (confirmTarget.type === "course") {
+      return {
+        title: "Удалить курс?",
+        text: `Курс “${confirmTarget.title || "без названия"}” и его уроки будут удалены. Действие нельзя отменить.`,
+        button: "Удалить курс",
+      };
     }
 
-    box.scrollTop = box.scrollHeight;
-    setSuccessMessage("Прокручено к последнему сообщению.");
-  }
+    if (confirmTarget.type === "lesson") {
+      return {
+        title: "Удалить урок?",
+        text: `Урок “${confirmTarget.title || "без названия"}” будет удалён из курса.`,
+        button: "Удалить урок",
+      };
+    }
+
+    if (confirmTarget.type === "user") {
+      return {
+        title: "Удалить пользователя?",
+        text: `Пользователь “${confirmTarget.title || "без имени"}” будет удалён из базы.`,
+        button: "Удалить пользователя",
+      };
+    }
+
+    return {
+      title: "Удалить сообщение?",
+      text: "Сообщение поддержки будет удалено. Действие нельзя отменить.",
+      button: "Удалить сообщение",
+    };
+  })();
+
   return (
     <main className="admin-page">
       <section className="admin-hero">
@@ -810,7 +815,6 @@ export default function AdminPage() {
           <strong>{courses.length}</strong>
           <span>курсов в базе</span>
         </div>
-
         <div>
           <strong>
             {courses.reduce(
@@ -820,31 +824,26 @@ export default function AdminPage() {
           </strong>
           <span>уроков</span>
         </div>
-
         <div>
           <strong>{users.length}</strong>
           <span>пользователей</span>
         </div>
-
         <div>
           <strong>{demoApplications.length}</strong>
           <span>заявок</span>
         </div>
-
         <div className="admin-stat-support">
           {supportMessagesList.length > 0 && (
             <span className="admin-notification-dot">
               {supportMessagesList.length}
             </span>
           )}
-
           <strong>{supportMessagesList.length}</strong>
           <span>сообщений поддержки</span>
         </div>
       </section>
 
       {error && <div className="admin-error">{error}</div>}
-
       {successMessage && (
         <div className="admin-success">
           <span>✅</span>
@@ -863,8 +862,12 @@ export default function AdminPage() {
                 <p className="admin-label">Курсы</p>
                 <h2>Список курсов из backend</h2>
               </div>
-
-              <button className="admin-small-btn" onClick={loadCourses}>
+              <button
+                className="admin-small-btn"
+                type="button"
+                onClick={loadCourses}
+                disabled={loading || actionLoading}
+              >
                 Обновить
               </button>
             </div>
@@ -882,7 +885,6 @@ export default function AdminPage() {
                         <span>{course.category}</span>
                         <h3>{course.title}</h3>
                         <p>{course.description || "Описание отсутствует."}</p>
-
                         <div className="admin-course-meta">
                           <em>{course.level}</em>
                           <em>{course.duration}</em>
@@ -892,25 +894,29 @@ export default function AdminPage() {
 
                       <div className="admin-course-actions">
                         <Link to={`/courses/${course.id}`}>Открыть</Link>
-
                         <button
                           type="button"
                           onClick={() => handleSelectCourse(course.id)}
                         >
                           Уроки
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleEditCourse(course)}
                         >
                           Редактировать
                         </button>
-
                         <button
                           type="button"
                           className="danger"
-                          onClick={() => handleDeleteCourse(course.id)}
+                          onClick={() =>
+                            setConfirmTarget({
+                              type: "course",
+                              id: course.id,
+                              title: course.title,
+                            })
+                          }
+                          disabled={actionLoading}
                         >
                           Удалить
                         </button>
@@ -932,11 +938,12 @@ export default function AdminPage() {
                     : "Выбери курс"}
                 </h2>
               </div>
-
               {selectedCourseId && (
                 <button
                   className="admin-small-btn"
+                  type="button"
                   onClick={() => loadLessons(selectedCourseId)}
+                  disabled={lessonsLoading}
                 >
                   Обновить уроки
                 </button>
@@ -949,7 +956,6 @@ export default function AdminPage() {
                 уроков.
               </p>
             )}
-
             {selectedCourseId && lessonsLoading && (
               <p className="admin-muted">Загружаем уроки...</p>
             )}
@@ -965,13 +971,10 @@ export default function AdminPage() {
                         <span>
                           Урок #{lesson.orderNumber} · {lesson.type}
                         </span>
-
                         <h3>{lesson.title}</h3>
-
                         <p>
                           {lesson.content || "Текст урока пока не добавлен."}
                         </p>
-
                         {lesson.videoUrl && (
                           <div className="admin-course-meta">
                             <em>Видео добавлено</em>
@@ -986,11 +989,17 @@ export default function AdminPage() {
                         >
                           Редактировать
                         </button>
-
                         <button
                           type="button"
                           className="danger"
-                          onClick={() => handleDeleteLesson(lesson.id)}
+                          onClick={() =>
+                            setConfirmTarget({
+                              type: "lesson",
+                              id: lesson.id,
+                              title: lesson.title,
+                            })
+                          }
+                          disabled={actionLoading}
                         >
                           Удалить
                         </button>
@@ -1008,8 +1017,12 @@ export default function AdminPage() {
                 <p className="admin-label">Пользователи</p>
                 <h2>Пользователи из базы данных</h2>
               </div>
-
-              <button className="admin-small-btn" onClick={loadUsers}>
+              <button
+                className="admin-small-btn"
+                type="button"
+                onClick={loadUsers}
+                disabled={usersLoading}
+              >
                 Обновить
               </button>
             </div>
@@ -1029,7 +1042,6 @@ export default function AdminPage() {
                         <div className="admin-user-avatar">
                           {user.username?.charAt(0)?.toUpperCase() || "U"}
                         </div>
-
                         <div>
                           <div className="admin-user-title">
                             <h3>{user.username || "Без имени"}</h3>
@@ -1043,9 +1055,7 @@ export default function AdminPage() {
                               {user.role}
                             </span>
                           </div>
-
                           <p>{user.email}</p>
-
                           <div className="admin-user-info">
                             <span>📞 {user.phone || "Телефон не указан"}</span>
                             <span>📅 {formatDate(user.createdAt)}</span>
@@ -1059,10 +1069,9 @@ export default function AdminPage() {
                               💬 Поддержка: {user.supportMessages?.length || 0}
                             </span>
                           </div>
-
                           <div className="admin-password-box">
                             <strong>Хеш пароля:</strong>
-                            <code>{shortHash(user.password)}</code>
+                            <code>{shortHash(user.password || "")}</code>
                             <small>
                               Настоящий пароль не хранится. Можно только
                               изменить пароль на новый постоянный.
@@ -1078,6 +1087,7 @@ export default function AdminPage() {
                             onClick={() =>
                               handleChangeUserRole(user.id, "USER")
                             }
+                            disabled={actionLoading}
                           >
                             Сделать USER
                           </button>
@@ -1087,11 +1097,11 @@ export default function AdminPage() {
                             onClick={() =>
                               handleChangeUserRole(user.id, "ADMIN")
                             }
+                            disabled={actionLoading}
                           >
                             Сделать ADMIN
                           </button>
                         )}
-
                         <button
                           type="button"
                           onClick={() =>
@@ -1100,11 +1110,17 @@ export default function AdminPage() {
                         >
                           Изменить пароль
                         </button>
-
                         <button
                           type="button"
                           className="danger"
-                          onClick={() => handleDeleteUser(user.id)}
+                          onClick={() =>
+                            setConfirmTarget({
+                              type: "user",
+                              id: user.id,
+                              title: user.username || user.email,
+                            })
+                          }
+                          disabled={actionLoading}
                         >
                           Удалить
                         </button>
@@ -1131,12 +1147,14 @@ export default function AdminPage() {
                     <strong>{app.name}</strong>
                     <span>{app.email}</span>
                   </div>
-
                   <em>{app.type}</em>
-
                   <p>{app.message}</p>
-
-                  <button type="button">Ответить</button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplicationReply(app)}
+                  >
+                    Ответить
+                  </button>
                 </article>
               ))}
             </div>
@@ -1148,7 +1166,6 @@ export default function AdminPage() {
             <p className="admin-label">
               {editingCourseId ? "Редактировать курс" : "Создать курс"}
             </p>
-
             <h2>
               {editingCourseId ? "Изменение курса" : "Быстрое добавление"}
             </h2>
@@ -1163,28 +1180,6 @@ export default function AdminPage() {
                   placeholder="Например: CapCut PRO"
                 />
               </label>
-              <div className="admin-lesson-templates">
-                <button
-                  type="button"
-                  onClick={() => applyLessonTemplate("VIDEO")}
-                >
-                  🎥 Видеоурок
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => applyLessonTemplate("TEXT")}
-                >
-                  📘 Теория
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => applyLessonTemplate("PRACTICE")}
-                >
-                  📝 Практика
-                </button>
-              </div>
 
               <label>
                 Категория
@@ -1193,12 +1188,11 @@ export default function AdminPage() {
                   value={newCourse.category}
                   onChange={handleCourseChange}
                 >
-                  <option value="capcut">CapCut</option>
-                  <option value="premiere-pro">Premiere Pro</option>
-                  <option value="tiktok">TikTok</option>
-                  <option value="color-correction">Цветокоррекция</option>
-                  <option value="sound">Звук</option>
-                  <option value="vfx">VFX</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -1236,7 +1230,11 @@ export default function AdminPage() {
                 />
               </label>
 
-              <button className="admin-btn admin-btn--primary" type="submit">
+              <button
+                className="admin-btn admin-btn--primary"
+                type="submit"
+                disabled={actionLoading}
+              >
                 {editingCourseId ? "Сохранить изменения" : "Создать курс"}
               </button>
 
@@ -1256,14 +1254,30 @@ export default function AdminPage() {
             <p className="admin-label">
               {editingLessonId ? "Редактировать урок" : "Создать урок"}
             </p>
-
             <h2>{editingLessonId ? "Изменение урока" : "Добавление урока"}</h2>
+
+            <div className="admin-lesson-templates">
+              <button
+                type="button"
+                onClick={() => applyLessonTemplate("VIDEO")}
+              >
+                🎥 Видеоурок
+              </button>
+              <button type="button" onClick={() => applyLessonTemplate("TEXT")}>
+                📘 Теория
+              </button>
+              <button
+                type="button"
+                onClick={() => applyLessonTemplate("PRACTICE")}
+              >
+                📝 Практика
+              </button>
+            </div>
 
             <form className="admin-form" onSubmit={handleSaveLesson}>
               {selectedCourse ? (
                 <div className="admin-selected-course">
                   <div className="admin-selected-course-icon">🎬</div>
-
                   <div>
                     <span>Выбранный курс</span>
                     <strong>{selectedCourse.title}</strong>
@@ -1276,7 +1290,6 @@ export default function AdminPage() {
               ) : (
                 <div className="admin-selected-course admin-selected-course--empty">
                   <div className="admin-selected-course-icon">⚠️</div>
-
                   <div>
                     <span>Курс не выбран</span>
                     <strong>Сначала выбери курс</strong>
@@ -1284,15 +1297,13 @@ export default function AdminPage() {
                   </div>
                 </div>
               )}
+
               <label>
                 Курс
                 <select
                   name="courseId"
                   value={newLesson.courseId}
-                  onChange={(e) => {
-                    handleLessonChange(e);
-                    handleSelectCourse(Number(e.target.value));
-                  }}
+                  onChange={(e) => handleSelectCourse(Number(e.target.value))}
                 >
                   <option value="">Выбери курс</option>
                   {courses.map((course) => (
@@ -1344,7 +1355,7 @@ export default function AdminPage() {
                   name="videoUrl"
                   value={newLesson.videoUrl}
                   onChange={handleLessonChange}
-                  placeholder="Вставь ссылку YouTube: https://youtu.be/... или https://youtube.com/watch?v=..."
+                  placeholder="YouTube: https://youtu.be/..."
                 />
               </label>
 
@@ -1356,7 +1367,6 @@ export default function AdminPage() {
                       Ссылка автоматически преобразуется в embed-формат
                     </small>
                   </div>
-
                   <div className="admin-video-frame">
                     <iframe
                       src={convertYouTubeToEmbed(newLesson.videoUrl)}
@@ -1378,7 +1388,11 @@ export default function AdminPage() {
                 />
               </label>
 
-              <button className="admin-btn admin-btn--primary" type="submit">
+              <button
+                className="admin-btn admin-btn--primary"
+                type="submit"
+                disabled={actionLoading}
+              >
                 {editingLessonId ? "Сохранить урок" : "Создать урок"}
               </button>
 
@@ -1393,37 +1407,30 @@ export default function AdminPage() {
               )}
             </form>
           </section>
+
           <section className="admin-panel admin-support">
             <div className="admin-support-title-row">
               <div>
                 <p className="admin-label">Техподдержка</p>
                 <h2>Сообщения</h2>
               </div>
-
               <span className="admin-support-badge">
                 {supportMessagesList.length} сообщений
               </span>
             </div>
 
-            {supportMessagesList.length > 0 ? (
-              <div className="admin-support-notice">
-                💬 Есть активные сообщения от пользователей. Можно ответить
-                сразу здесь.
-              </div>
-            ) : (
-              <div className="admin-support-notice">
-                💬 Новых сообщений пока нет. Нажми “Обновить чат”, чтобы
-                проверить.
-              </div>
-            )}
+            <div className="admin-support-notice">
+              {supportMessagesList.length > 0
+                ? "💬 Есть активные сообщения от пользователей. Последние 12 сообщений показаны ниже."
+                : "💬 Новых сообщений пока нет. Нажми “Обновить чат”, чтобы проверить."}
+            </div>
 
             <div className="admin-support-tools">
               <button type="button" onClick={handleRefreshSupportChat}>
                 🔄 Обновить чат
               </button>
-
               <button type="button" onClick={handleScrollToLastSupportMessage}>
-                ↓ К последнему сообщению
+                ↓ К последнему
               </button>
             </div>
 
@@ -1438,7 +1445,7 @@ export default function AdminPage() {
                   </p>
                 </div>
               ) : (
-                supportMessagesList.map((message: SupportMessage) => (
+                latestSupportMessages.map((message) => (
                   <div
                     key={message.id}
                     className={
@@ -1456,25 +1463,22 @@ export default function AdminPage() {
                     >
                       {message.from === "admin" ? "A" : "U"}
                     </div>
-
                     <div className="admin-message-bubble">
                       <span>
                         {message.from === "admin" ? "Админ" : "Пользователь"} ·{" "}
                         {new Date(message.createdAt).toLocaleTimeString(
                           "ru-RU",
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
+                          { hour: "2-digit", minute: "2-digit" },
                         )}
                       </span>
-
                       <p>{message.text}</p>
-
                       <button
                         type="button"
                         className="admin-message-delete"
-                        onClick={() => handleDeleteSupportMessage(message.id)}
+                        onClick={() =>
+                          setConfirmTarget({ type: "support", id: message.id })
+                        }
+                        disabled={actionLoading}
                       >
                         удалить
                       </button>
@@ -1496,12 +1500,14 @@ export default function AdminPage() {
                 }}
                 placeholder="Напиши ответ пользователю..."
               />
-
               <div className="admin-reply-actions">
-                <button type="button" onClick={handleAdminReply}>
+                <button
+                  type="button"
+                  onClick={handleAdminReply}
+                  disabled={actionLoading}
+                >
                   Отправить ответ
                 </button>
-
                 <button type="button" onClick={handleRefreshSupportChat}>
                   Обновить чат
                 </button>
@@ -1512,7 +1518,6 @@ export default function AdminPage() {
           <section className="admin-panel admin-quick">
             <p className="admin-label">Быстрые действия</p>
             <h2>Навигация</h2>
-
             <Link to="/bonus">🎁 Бонусы</Link>
             <Link to="/students">👨‍🎓 Студенты</Link>
             <Link to="/reviews">⭐ Отзывы</Link>
@@ -1521,18 +1526,26 @@ export default function AdminPage() {
         </aside>
       </section>
 
+      <ConfirmModal
+        open={Boolean(confirmTarget)}
+        title={confirmText.title}
+        text={confirmText.text}
+        confirmText={confirmText.button}
+        cancelText="Отмена"
+        danger
+        onCancel={() => setConfirmTarget(null)}
+        onConfirm={handleConfirmAction}
+      />
+
       {resetUserId && (
         <div className="admin-modal-backdrop">
           <div className="admin-modal">
             <div className="admin-modal-icon">🔐</div>
-
             <h2>Изменить пароль?</h2>
-
             <p>
               Введи новый пароль для <strong>{resetUserName}</strong>. Он будет
               установлен навсегда:
             </p>
-
             <input
               className="admin-new-password-input"
               type="text"
@@ -1541,27 +1554,26 @@ export default function AdminPage() {
               placeholder="Например: qwerty123"
               autoFocus
             />
-
             <span>
               Пользователь сможет входить по этому паролю, пока администратор
               снова не изменит его.
             </span>
-
             <div className="admin-modal-actions">
               <button
                 type="button"
                 className="admin-modal-primary"
                 onClick={confirmResetUserPassword}
+                disabled={actionLoading}
               >
                 Да, изменить пароль
               </button>
-
               <button
                 type="button"
                 className="admin-modal-light"
                 onClick={() => {
                   setResetUserId(null);
                   setResetUserName("");
+                  setResetPasswordValue("");
                 }}
               >
                 Отмена

@@ -1,193 +1,282 @@
-﻿import { Link } from "react-router-dom";
+﻿/* =========================================
+   Birzhan_edu — MediaPage 2026
+   Файл: frontend/src/pages/MediaPage.jsx
+   Тема платформы: видеомонтаж / эдитинг
+   Стили подключаются из ./MediaPage.css (без изменений)
+   ========================================= */
+
+import { useState } from "react";
 import "./MediaPage.css";
 
-const categories = [
-  "Все",
-  "CapCut",
-  "Premiere Pro",
-  "TikTok",
-  "Цветокоррекция",
-  "Карьера",
-];
+const CATEGORIES = ["Все", "Видеомонтаж", "Карьера", "Софт и инструменты", "Истории выпускников"];
 
-const articles = [
+const FEATURED_ARTICLE = {
+  icon: "🎬",
+  title: "Как наши выпускники получают первые заказы на монтаж без портфолио",
+  text:
+    "Поговорили с пятью выпускниками курса по видеомонтажу Birzhan_edu, которые нашли первых клиентов за 1–3 месяца после обучения. Делимся тем, что сработало: от тестового монтажа до общения с заказчиком.",
+  author: "Алина Бекова",
+  date: "12 июня 2026",
+  readTime: "7 мин",
+};
+
+const ARTICLES = [
   {
+    id: 1,
     icon: "✂️",
-    category: "CapCut",
-    title: "Как начать монтаж в CapCut с нуля",
-    text: "Разбираем первые шаги: создание проекта, импорт видео, нарезка, музыка, текст и экспорт.",
-    readTime: "5 минут",
-    tag: "Новичкам",
+    category: "Видеомонтаж",
+    title: "10 переходов, которые делают монтаж динамичным (и не выглядят дешёво)",
+    excerpt:
+      "Разбираем приёмы, которые держат внимание зрителя, и объясняем, когда переход работает, а когда мешает.",
+    date: "15 июня",
+    readTime: "5 мин",
+    views: "2.1K",
   },
   {
-    icon: "🎞️",
-    category: "Premiere Pro",
-    title: "Premiere Pro: что нужно знать новичку",
-    text: "Интерфейс, таймлайн, инструменты, базовая нарезка и правильный экспорт первого ролика.",
-    readTime: "7 минут",
-    tag: "Гайд",
+    id: 2,
+    icon: "🖥️",
+    category: "Софт и инструменты",
+    title: "DaVinci Resolve vs Premiere Pro: что выбрать новичку в 2026 году",
+    excerpt:
+      "Сравниваем два главных монтажных редактора по цене, возможностям цветокоррекции и порогу входа.",
+    date: "10 июня",
+    readTime: "6 мин",
+    views: "3.4K",
   },
   {
-    icon: "📱",
-    category: "TikTok",
-    title: "Как делать TikTok-эдиты под бит",
-    text: "Хук, ритм, быстрые склейки, zoom, shake, flash и удержание внимания зрителя.",
-    readTime: "6 минут",
-    tag: "Практика",
-  },
-  {
-    icon: "🎨",
-    category: "Цветокоррекция",
-    title: "Базовая цветокоррекция для красивой картинки",
-    text: "Контраст, насыщенность, температура, свет, тени и cinematic-настроение видео.",
-    readTime: "4 минуты",
-    tag: "Стиль",
-  },
-  {
+    id: 3,
     icon: "💼",
     category: "Карьера",
-    title: "Как собрать первое портфолио монтажёра",
-    text: "Что добавить в портфолио, как оформить работы и как показать клиенту свой уровень.",
-    readTime: "8 минут",
-    tag: "Карьера",
+    title: "Портфолио монтажёра: что показать, если заказов ещё не было",
+    excerpt:
+      "Как собрать три-четыре сильных ролика для портфолио, не имея ни одного реального проекта.",
+    date: "6 июня",
+    readTime: "4 мин",
+    views: "1.8K",
   },
   {
-    icon: "🤖",
-    category: "AI",
-    title: "AI-инструменты для видеомонтажа",
-    text: "Как использовать ИИ для сценариев, идей, описаний, хуков и контент-плана.",
-    readTime: "5 минут",
-    tag: "2026",
+    id: 4,
+    icon: "🌟",
+    category: "Истории выпускников",
+    title: "От монтажа влогов на телефоне до своей студии: путь Алии",
+    excerpt:
+      "Алия начала монтировать ролики для себя, а через год собрала команду из трёх человек. Что изменилось по пути.",
+    date: "2 июня",
+    readTime: "8 мин",
+    views: "4.7K",
+  },
+  {
+    id: 5,
+    icon: "🎵",
+    category: "Видеомонтаж",
+    title: "Звук решает половину монтажа: как подобрать музыку и шумы",
+    excerpt:
+      "Разбираем, почему ролик с плохим звуком теряет зрителя быстрее, чем с плохой картинкой — и как это исправить.",
+    date: "28 мая",
+    readTime: "6 мин",
+    views: "2.9K",
+  },
+  {
+    id: 6,
+    icon: "🎯",
+    category: "Карьера",
+    title: "Сколько брать за монтаж: ценник для новичка и для опытного специалиста",
+    excerpt:
+      "Честный разговор о расценках на монтаж в 2026 году — от роликов для соцсетей до клипов и рекламы.",
+    date: "24 мая",
+    readTime: "7 мин",
+    views: "3.1K",
   },
 ];
 
-const popular = [
-  "Топ-5 ошибок новичков в монтаже",
-  "Как выбрать музыку для эдита",
-  "Что такое beat sync",
-  "Как сделать красивый zoom-переход",
+const POPULAR_ARTICLES = [
+  "DaVinci Resolve vs Premiere Pro: что выбрать новичку",
+  "Портфолио монтажёра: что показать без реальных заказов",
+  "10 переходов, которые делают монтаж динамичным",
+  "Сколько брать за монтаж: ценник для новичка",
+  "Как монтировать Reels и Shorts, которые смотрят до конца",
+];
+
+const CATEGORY_STATS = [
+  { name: "Видеомонтаж", icon: "✂️", count: 28 },
+  { name: "Карьера", icon: "💼", count: 16 },
+  { name: "Софт и инструменты", icon: "🖥️", count: 14 },
+  { name: "Истории выпускников", icon: "🌟", count: 11 },
 ];
 
 export default function MediaPage() {
+  const [activeCategory, setActiveCategory] = useState("Все");
+  const [search, setSearch] = useState("");
+
+  const query = search.trim().toLowerCase();
+
+  const filteredArticles = ARTICLES.filter((article) => {
+    const matchesCategory = activeCategory === "Все" || article.category === activeCategory;
+    const matchesQuery =
+      query === "" || `${article.title} ${article.excerpt}`.toLowerCase().includes(query);
+    return matchesCategory && matchesQuery;
+  });
+
   return (
-    <main className="media-page">
-      <section className="media-hero">
-        <div className="media-hero__content">
-          <p className="media-label">Медиа Birzhan-Edu</p>
-
-          <h1>
-            Гайды, новости и статьи про <span>видеомонтаж</span>
-          </h1>
-
-          <p>
-            Читайте полезные материалы о CapCut, Premiere Pro, TikTok-эдитах,
-            цветокоррекции, звуке, AI-инструментах и карьере в digital.
-          </p>
-
-          <div className="media-actions">
-            <Link to="/courses" className="media-btn media-btn--primary">
-              Смотреть курсы
-            </Link>
-
-            <Link to="/free" className="media-btn media-btn--light">
-              Бесплатные материалы
-            </Link>
-          </div>
-        </div>
-
-        <div className="media-hero__visual">
-          <div className="media-main-icon">📰</div>
-          <div className="media-float media-float--one">Гайды</div>
-          <div className="media-float media-float--two">Новости</div>
-          <div className="media-float media-float--three">Практика</div>
-        </div>
-      </section>
-
-      <section className="media-categories-section">
-        <div className="media-categories">
-          {categories.map((category, index) => (
-            <button
-              className={
-                index === 0 ? "media-category active" : "media-category"
-              }
-              key={category}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="media-content">
-        <div className="media-main">
-          <div className="media-section-head">
-            <p className="media-label">Свежие материалы</p>
-            <h2>Полезные статьи для роста</h2>
-            <p>
-              Материалы помогают закрепить уроки, разобраться в инструментах и
-              быстрее перейти к практике.
+    <div className="media-page">
+      <div className="media-container">
+        {/* Hero */}
+        <section className="media-hero">
+          <div className="media-hero__content">
+            <span className="media-kicker">Медиа Birzhan_edu</span>
+            <h1 className="media-title">
+              Монтируй так, чтобы <span>смотрели до конца</span>
+            </h1>
+            <p className="media-subtitle">
+              Статьи, разборы и истории от выпускников и преподавателей Birzhan_edu — о монтаже,
+              софте и работе, которая держит внимание зрителя.
             </p>
           </div>
+          <div className="media-hero__visual">
+            <div className="media-float media-float--one">✂️ 540+ разборов</div>
+            <div className="media-main-icon">🎬</div>
+            <div className="media-float media-float--two">🧑‍🎓 13 200 учеников</div>
+            <div className="media-float media-float--three">🗓 Новый разбор по средам</div>
+          </div>
+        </section>
 
-          <div className="media-grid">
-            {articles.map((article) => (
-              <article className="media-card" key={article.title}>
-                <div className="media-card__top">
-                  <div className="media-card-icon">{article.icon}</div>
-                  <span>{article.tag}</span>
-                </div>
-
-                <p className="media-card-category">{article.category}</p>
-                <h3>{article.title}</h3>
-                <p>{article.text}</p>
-
-                <div className="media-card__bottom">
-                  <span>⏱ {article.readTime}</span>
-                  <Link to="/courses">Читать →</Link>
-                </div>
-              </article>
+        {/* Toolbar */}
+        <div className="media-toolbar">
+          <div className="media-filters">
+            {CATEGORIES.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={`media-filter${activeCategory === category ? " active" : ""}`}
+                onClick={() => setActiveCategory(category)}
+              >
+                {category}
+              </button>
             ))}
           </div>
+          <div className="media-search">
+            <input
+              type="text"
+              className="media-search-input"
+              placeholder="Найдите статью по теме, слову или автору"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
         </div>
 
-        <aside className="media-sidebar">
-          <div className="media-sidebar-card">
-            <p className="media-label media-label--dark">Популярное</p>
-            <h3>Что читают чаще всего</h3>
-
-            <div className="media-popular-list">
-              {popular.map((item, index) => (
-                <Link to="/courses" key={item}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  {item}
-                </Link>
-              ))}
+        {/* Featured article */}
+        <section className="media-featured">
+          <div className="media-featured-content">
+            <span className="media-featured-badge">Сейчас читают</span>
+            <h2 className="media-featured-title">{FEATURED_ARTICLE.title}</h2>
+            <p className="media-featured-text">{FEATURED_ARTICLE.text}</p>
+            <div className="media-featured-meta">
+              <span>✍️ {FEATURED_ARTICLE.author}</span>
+              <span>📅 {FEATURED_ARTICLE.date}</span>
+              <span>⏱ {FEATURED_ARTICLE.readTime}</span>
+            </div>
+            <div className="media-featured-action">
+              <a href="#" className="media-btn media-btn--primary">
+                Читать историю →
+              </a>
             </div>
           </div>
+          <div className="media-featured-cover">{FEATURED_ARTICLE.icon}</div>
+        </section>
 
-          <div className="media-sidebar-card media-sidebar-card--bonus">
-            <h3>Получите бонусы 2026</h3>
-            <p>
-              Presets, LUT, чек-листы, AI-паки и шаблоны для первых проектов.
-            </p>
+        {/* Main layout: articles + sidebar */}
+        <div className="media-layout">
+          <div className="media-main">
+            <div className="media-section-head">
+              <h2>Свежие материалы</h2>
+              <p className="media-section-text">
+                Подборка статей для тех, кто учится монтажу, ищет первые заказы или растёт в
+                профессии.
+              </p>
+            </div>
 
-            <Link to="/bonus" className="media-btn media-btn--primary">
-              Забрать бонус
-            </Link>
+            {filteredArticles.length === 0 ? (
+              <div className="media-empty">
+                Пока нет статей по этому запросу. Попробуйте другую категорию или другое слово в
+                поиске.
+              </div>
+            ) : (
+              <div className="media-grid">
+                {filteredArticles.map((article) => (
+                  <article key={article.id} className="media-card">
+                    <div className="media-card-cover">{article.icon}</div>
+                    <div className="media-card-body">
+                      <span className="media-card-category">{article.category}</span>
+                      <h3 className="media-card-title">{article.title}</h3>
+                      <p className="media-card-text">{article.excerpt}</p>
+                      <div className="media-card-meta">
+                        <span>📅 {article.date}</span>
+                        <span>⏱ {article.readTime}</span>
+                        <span>👁 {article.views}</span>
+                      </div>
+                      <div className="media-card-action">
+                        <a href="#" className="media-link">
+                          Читать статью →
+                        </a>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
-        </aside>
-      </section>
 
-      <section className="media-final">
-        <h2>Хотите не только читать, но и практиковаться?</h2>
-        <p>
-          Переходите к курсам, смотрите уроки и создавайте свои первые работы.
-        </p>
+          <aside className="media-sidebar">
+            <div className="media-sidebar-card">
+              <h3 className="media-sidebar-title">🔥 Популярное</h3>
+              <div className="media-popular-list">
+                {POPULAR_ARTICLES.map((title, index) => (
+                  <a key={title} href="#" className="media-popular-item">
+                    <span className="media-popular-number">{index + 1}</span>
+                    <span>{title}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
 
-        <Link to="/courses" className="media-btn media-btn--primary">
-          Перейти к обучению →
-        </Link>
-      </section>
-    </main>
+            <div className="media-sidebar-card">
+              <h3 className="media-sidebar-title">Категории</h3>
+              <div className="media-category-list">
+                {CATEGORY_STATS.map((category) => (
+                  <a
+                    key={category.name}
+                    href="#"
+                    className="media-category-item"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setActiveCategory(category.name);
+                    }}
+                  >
+                    <span className="media-category-icon">{category.icon}</span>
+                    <span>{category.name}</span>
+                    <span style={{ marginLeft: "auto", color: "#64748b" }}>
+                      {category.count}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* Final CTA */}
+        <section className="media-final">
+          <h2>Получайте новые разборы по почте</h2>
+          <p>
+            Раз в неделю — самое полезное из медиа Birzhan_edu: разборы монтажа, обзоры
+            инструментов и истории выпускников. Без спама.
+          </p>
+          <a href="#" className="media-btn media-btn--primary">
+            Подписаться на рассылку
+          </a>
+        </section>
+      </div>
+    </div>
   );
 }

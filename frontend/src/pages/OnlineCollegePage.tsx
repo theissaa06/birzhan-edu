@@ -5,22 +5,22 @@ export default function OnlineCollegePage() {
   const directions = [
     {
       title: "Видеомонтаж",
-      text: "Научитесь монтировать видео для TikTok, Reels, YouTube и коммерческих проектов.",
+      text: "Монтаж для TikTok, Reels, YouTube Shorts, рекламы и портфолио.",
       icon: "🎬",
     },
     {
       title: "CapCut и Premiere Pro",
-      text: "Освойте популярные программы для монтажа с нуля до уверенного уровня.",
+      text: "Популярные инструменты монтажа: от первого видео до уверенного уровня.",
       icon: "✂️",
     },
     {
       title: "Дизайн и контент",
-      text: "Создавайте визуальный стиль, обложки, баннеры и digital-контент.",
+      text: "Обложки, визуальный стиль, оформление роликов и digital-контент.",
       icon: "🎨",
     },
     {
       title: "Карьера в digital",
-      text: "Соберите портфолио, получите практику и подготовьтесь к первым заказам.",
+      text: "Портфолио, первые заказы, фриланс и подготовка к работе с клиентами.",
       icon: "🚀",
     },
   ];
@@ -33,6 +33,29 @@ export default function OnlineCollegePage() {
     "Помощь с карьерой и первыми заказами",
   ];
 
+  const stages = [
+    {
+      step: "01",
+      title: "Смотри уроки",
+      text: "Изучай материал в удобном темпе и возвращайся к урокам в любое время.",
+    },
+    {
+      step: "02",
+      title: "Делай практику",
+      text: "Повторяй действия в редакторе и закрепляй навык на реальных заданиях.",
+    },
+    {
+      step: "03",
+      title: "Собирай портфолио",
+      text: "Каждая работа может стать частью будущего портфолио для клиентов.",
+    },
+    {
+      step: "04",
+      title: "Выходи в digital",
+      text: "Понимай, куда двигаться дальше: фриланс, контент, монтаж или дизайн.",
+    },
+  ];
+
   return (
     <main className="online-college-page">
       <section className="college-hero">
@@ -40,12 +63,11 @@ export default function OnlineCollegePage() {
           <p className="college-label">Онлайн-колледж 2026</p>
 
           <h1>
-            Получи профессию в digital <br />
-            не выходя из дома
+            Получи профессию в <span>digital</span> не выходя из дома
           </h1>
 
           <p className="college-hero__text">
-            Birzhan-Edu Online College — это современное онлайн-обучение
+            Birzhan-Edu Online College — современное онлайн-обучение
             видеомонтажу, дизайну, контенту и digital-профессиям после 9-го или
             11-го класса.
           </p>
@@ -62,19 +84,23 @@ export default function OnlineCollegePage() {
         </div>
 
         <div className="college-hero__card">
-          <div className="college-card-glow"></div>
+          <div className="college-card-badge">2026</div>
+          <div className="college-main-icon">🎓</div>
+
           <h3>Старт обучения</h3>
-          <p>2026 год</p>
+          <p>Онлайн-формат, практика и портфолио</p>
 
           <div className="college-mini-stats">
             <div>
               <strong>40+</strong>
               <span>курсов</span>
             </div>
+
             <div>
-              <strong>15 000+</strong>
+              <strong>15K+</strong>
               <span>студентов</span>
             </div>
+
             <div>
               <strong>87%</strong>
               <span>нашли клиентов</span>
@@ -83,12 +109,35 @@ export default function OnlineCollegePage() {
         </div>
       </section>
 
+      <section className="college-stats">
+        <div>
+          <strong>9–11</strong>
+          <span>классы</span>
+        </div>
+
+        <div>
+          <strong>100%</strong>
+          <span>онлайн</span>
+        </div>
+
+        <div>
+          <strong>4</strong>
+          <span>направления</span>
+        </div>
+
+        <div>
+          <strong>PRO</strong>
+          <span>портфолио</span>
+        </div>
+      </section>
+
       <section className="college-section">
         <div className="college-section__header">
+          <p className="college-label">Формат обучения</p>
           <h2>Обучение после 9-го и 11-го класса</h2>
           <p>
             Учитесь в удобном темпе, смотрите уроки, выполняйте практику и
-            постепенно собирайте портфолио.
+            постепенно собирайте портфолио для digital-профессии.
           </p>
         </div>
 
@@ -113,6 +162,7 @@ export default function OnlineCollegePage() {
 
       <section className="college-section">
         <div className="college-section__header">
+          <p className="college-label">Направления</p>
           <h2>Выбери направление обучения</h2>
           <p>
             Направления сделаны для новичков: можно начать без опыта и
@@ -132,9 +182,30 @@ export default function OnlineCollegePage() {
         </div>
       </section>
 
+      <section className="college-section">
+        <div className="college-section__header">
+          <p className="college-label">Путь студента</p>
+          <h2>Как проходит обучение</h2>
+          <p>
+            От первого урока до портфолио: студент проходит понятный путь и
+            видит свой прогресс.
+          </p>
+        </div>
+
+        <div className="college-stages">
+          {stages.map((stage) => (
+            <article className="college-stage-card" key={stage.step}>
+              <span>{stage.step}</span>
+              <h3>{stage.title}</h3>
+              <p>{stage.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="college-career">
         <div>
-          <p className="college-label">Карьерный трек</p>
+          <p className="college-label college-label--dark">Карьерный трек</p>
           <h2>После обучения студент понимает, как двигаться дальше</h2>
           <p>
             Онлайн-колледж помогает не только изучить инструменты, но и
@@ -150,6 +221,7 @@ export default function OnlineCollegePage() {
 
       <section className="college-section">
         <div className="college-section__header">
+          <p className="college-label">FAQ</p>
           <h2>Часто задаваемые вопросы</h2>
         </div>
 

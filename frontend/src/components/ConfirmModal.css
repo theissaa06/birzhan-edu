@@ -1,0 +1,155 @@
+/* =========================================================
+   Birzhan_edu — Confirm Modal 2026
+   Красивое подтверждение вместо window.confirm()
+   ========================================================= */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: confirmFade 0.18s ease;
+}
+
+.confirm-modal {
+  width: min(420px, 100%);
+  padding: 26px;
+  border-radius: 28px;
+  color: #f8fafc;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(56, 189, 248, 0.18),
+      transparent 38%
+    ),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: confirmPop 0.2s ease;
+}
+
+.confirm-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #06121c;
+  font-size: 24px;
+  font-weight: 950;
+  background: linear-gradient(135deg, #5eead4, #38bdf8);
+  box-shadow: 0 16px 36px rgba(56, 189, 248, 0.28);
+}
+
+.confirm-icon.danger {
+  color: #fff;
+  background: linear-gradient(135deg, #fb7185, #ef4444);
+  box-shadow: 0 16px 36px rgba(239, 68, 68, 0.26);
+}
+
+.confirm-modal h3 {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  font-weight: 950;
+}
+
+.confirm-modal p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.65;
+  font-weight: 650;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.confirm-cancel,
+.confirm-submit {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.confirm-cancel {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.confirm-submit {
+  color: #06121c;
+  background: linear-gradient(135deg, #5eead4, #38bdf8);
+  border-color: rgba(94, 234, 212, 0.34);
+  box-shadow: 0 14px 34px rgba(56, 189, 248, 0.24);
+}
+
+.confirm-submit.danger {
+  color: #ffffff;
+  background: linear-gradient(135deg, #fb7185, #ef4444);
+  border-color: rgba(251, 113, 133, 0.36);
+  box-shadow: 0 14px 34px rgba(239, 68, 68, 0.24);
+}
+
+.confirm-cancel:hover,
+.confirm-submit:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes confirmFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes confirmPop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 520px) {
+  .confirm-modal {
+    padding: 22px;
+    border-radius: 24px;
+  }
+
+  .confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-cancel,
+  .confirm-submit {
+    width: 100%;
+  }
+}

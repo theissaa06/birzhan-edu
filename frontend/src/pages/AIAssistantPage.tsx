@@ -86,10 +86,7 @@ export default function AIAssistantPage() {
         return;
       }
 
-      const finalAnswer =
-        response.demo || response.source === "demo"
-          ? `${aiAnswer}\n\n⚠️ AI временно работает в резервном режиме.`
-          : aiAnswer;
+      const finalAnswer = aiAnswer;
 
       setMessages((prev) => [
         ...prev,

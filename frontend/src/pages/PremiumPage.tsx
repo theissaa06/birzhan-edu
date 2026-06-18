@@ -3,10 +3,14 @@ import { Link } from "react-router-dom";
 import "./PremiumPage.css";
 
 type PremiumStatus = {
+  userId: number;
+  username?: string;
+  email?: string;
+  role?: string;
   isPremium: boolean;
-  plan: string | null;
-  startedAt: string | null;
-  expiresAt: string | null;
+  premiumPlan: string | null;
+  premiumStarted: string | null;
+  premiumUntil: string | null;
 };
 
 declare global {
@@ -16,7 +20,9 @@ declare global {
 }
 
 const USER_ID = 1;
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003/api";
+
+const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003";
+const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
 
 const PAYMENT_REGION = import.meta.env.VITE_PAYMENT_REGION || "KZ";
 
@@ -33,6 +39,69 @@ const PAYMENT_WIDGET_SRC =
     ? "https://widget.cloudpayments.ru/bundles/cloudpayments.js"
     : "https://widget.tiptoppay.kz/bundles/widget.js";
 
+function savePremiumToLocalStorage(data?: PremiumStatus | null) {
+  localStorage.setItem("premium", "true");
+  localStorage.setItem("isPremium", "true");
+  localStorage.setItem("premiumPlan", data?.premiumPlan || "Premium PRO");
+
+  if (data?.premiumUntil) {
+    localStorage.setItem("premiumUntil", data.premiumUntil);
+  }
+
+  const savedUser = localStorage.getItem("user");
+
+  if (savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...user,
+          isPremium: true,
+          premiumPlan: data?.premiumPlan || "Premium PRO",
+          premiumUntil: data?.premiumUntil || null,
+        }),
+      );
+    } catch {
+      // Если user сломан — просто не трогаем.
+    }
+  }
+}
+
+function removePremiumFromLocalStorage() {
+  localStorage.setItem("premium", "false");
+  localStorage.setItem("isPremium", "false");
+  localStorage.removeItem("premiumPlan");
+  localStorage.removeItem("premiumUntil");
+
+  const savedUser = localStorage.getItem("user");
+
+  if (savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...user,
+          isPremium: false,
+          premiumPlan: null,
+          premiumUntil: null,
+        }),
+      );
+    } catch {
+      // Если user сломан — просто не трогаем.
+    }
+  }
+}
+
+function isRealPremiumStatus(data?: PremiumStatus | null) {
+  if (!data?.isPremium) return false;
+  if (data.premiumPlan === "admin-demo") return false;
+  return true;
+}
+
 export default function PremiumPage() {
   const [premium, setPremium] = useState<PremiumStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +110,7 @@ export default function PremiumPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const isPremiumActive = Boolean(premium?.isPremium);
+  const isPremiumActive = isRealPremiumStatus(premium);
 
   const paymentDescription = useMemo(() => {
     return `Premium PRO Pack — Birzhan-Edu Platform (${PAYMENT_REGION})`;
@@ -52,26 +121,31 @@ export default function PremiumPage() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/premium/status?userId=${USER_ID}`,
-      );
+      const response = await fetch(`${API_URL}/api/premium/status/${USER_ID}`);
       const data = await response.json();
 
-      if (!data.success) {
+      if (!response.ok || !data.success || !data.data) {
         throw new Error(data.message || "Не удалось получить Premium-статус");
       }
 
       setPremium(data.data);
+
+      if (!isRealPremiumStatus(data.data)) {
+        removePremiumFromLocalStorage();
+      } else {
+        savePremiumToLocalStorage(data.data);
+      }
     } catch (err) {
       console.error("Ошибка Premium status:", err);
       setError("Не удалось загрузить Premium-статус. Проверь backend.");
+      removePremiumFromLocalStorage();
     } finally {
       setLoading(false);
     }
   }
 
   async function activatePremiumAfterPayment(transactionId?: string) {
-    const response = await fetch(`${API_URL}/premium/activate-test`, {
+    const response = await fetch(`${API_URL}/api/premium/activate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -85,11 +159,12 @@ export default function PremiumPage() {
 
     const data = await response.json();
 
-    if (!data.success) {
+    if (!response.ok || !data.success || !data.data) {
       throw new Error(data.message || "Не удалось активировать Premium");
     }
 
     setPremium(data.data);
+    savePremiumToLocalStorage(data.data);
     setSuccessMessage("Premium PRO успешно оплачен и активирован!");
   }
 
@@ -99,24 +174,19 @@ export default function PremiumPage() {
       setError("");
       setSuccessMessage("");
 
-      const response = await fetch(`${API_URL}/premium/cancel`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: USER_ID,
-        }),
+      setPremium({
+        userId: premium?.userId || USER_ID,
+        username: premium?.username || "Demo User",
+        email: premium?.email || "demo@birzhan-edu.kz",
+        role: premium?.role || "USER",
+        isPremium: false,
+        premiumPlan: null,
+        premiumStarted: null,
+        premiumUntil: null,
       });
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || "Не удалось отключить Premium");
-      }
-
-      setPremium(data.data);
-      setSuccessMessage("Premium отключён.");
+      removePremiumFromLocalStorage();
+      setSuccessMessage("Premium отключён для демонстрации.");
     } catch (err) {
       console.error("Ошибка отключения Premium:", err);
       setError("Не удалось отключить Premium.");
@@ -281,14 +351,14 @@ export default function PremiumPage() {
               <h3>🎉 Premium PRO активен</h3>
 
               <p>
-                План: <strong>{premium?.plan}</strong>
+                План: <strong>{premium?.premiumPlan || "Premium PRO"}</strong>
               </p>
 
               <p>
                 Действует до:{" "}
                 <strong>
-                  {premium?.expiresAt
-                    ? new Date(premium.expiresAt).toLocaleDateString("ru-RU")
+                  {premium?.premiumUntil
+                    ? new Date(premium.premiumUntil).toLocaleDateString("ru-RU")
                     : "не указано"}
                 </strong>
               </p>
@@ -322,9 +392,14 @@ export default function PremiumPage() {
             <span>Статус аккаунта</span>
 
             <h2>{isPremiumActive ? "Premium PRO активен" : "Free аккаунт"}</h2>
-
-            <div className="premium-progress">
-              <div style={{ width: isPremiumActive ? "100%" : "35%" }}></div>
+            <div
+              className={`premium-progress ${
+                isPremiumActive
+                  ? "premium-progress--active"
+                  : "premium-progress--free"
+              }`}
+            >
+              <div />
             </div>
 
             <p>

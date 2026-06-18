@@ -1,317 +1,620 @@
-/* ═══════════════════════════════════════════════════════
-   Footer — Birzhan-Edu 2026
-   ═══════════════════════════════════════════════════════ */
+/* =========================================
+   Birzhan_edu — Footer 2026
+   Файл: frontend/src/components/Footer.css
+   ========================================= */
 
-.footer {
+.footer,
+.site-footer {
   position: relative;
+  z-index: 5;
   margin-top: 80px;
-  padding: 60px 0 28px;
-  color: var(--text);
-  overflow: hidden;
-
-  /* Glass + premium radial фон */
+  padding: 58px 22px 28px;
+  color: #cbd5e1;
   background:
     radial-gradient(
-      ellipse 55% 50% at 0% 0%,
-      rgba(124, 58, 237, 0.08) 0%,
-      transparent 60%
+      circle at 10% 0%,
+      rgba(56, 189, 248, 0.12),
+      transparent 32%
     ),
     radial-gradient(
-      ellipse 45% 40% at 100% 100%,
-      rgba(14, 165, 233, 0.07) 0%,
-      transparent 55%
+      circle at 90% 20%,
+      rgba(167, 139, 250, 0.12),
+      transparent 34%
     ),
-    rgba(255, 255, 255, 0.76);
-
-  backdrop-filter: blur(22px) saturate(1.5);
-  -webkit-backdrop-filter: blur(22px) saturate(1.5);
-  border-top: 1px solid rgba(124, 58, 237, 0.1);
-  box-shadow: 0 -8px 40px rgba(15, 23, 42, 0.04);
+    rgba(2, 6, 23, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.11);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  overflow: hidden;
 }
 
-/* Декоративная верхняя линия */
-.footer::before {
+.footer::before,
+.site-footer::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    #7c3aed 30%,
-    #2563eb 60%,
-    #0ea5e9 80%,
-    transparent 100%
-  );
-  opacity: 0.55;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 54px 54px;
+  opacity: 0.28;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
 }
 
-/* ── Контейнер ───────────────────────────────────────── */
-.footer-container {
-  width: min(1240px, calc(100% - 32px));
+.footer-container,
+.footer-inner {
+  position: relative;
+  z-index: 2;
+  width: min(1180px, 100%);
   margin: 0 auto;
 }
 
-/* ── Сетка колонок ───────────────────────────────────── */
-.footer-content {
+/* Верхняя часть футера */
+.footer-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr;
-  gap: 48px;
-  align-items: start;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 42px;
+  align-items: flex-start;
 }
 
-/* ── Бренд ───────────────────────────────────────────── */
+/* Бренд */
 .footer-brand {
-  max-width: 340px;
+  max-width: 360px;
 }
 
 .footer-logo {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.045em;
   text-decoration: none;
 }
 
-.footer-logo-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 20px;
-  font-weight: 900;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
-  box-shadow: 0 10px 26px rgba(124, 58, 237, 0.3);
-  transition:
-    transform var(--transition),
-    box-shadow var(--transition);
-}
-
-.footer-logo:hover .footer-logo-icon {
-  transform: scale(1.06) rotate(-3deg);
-  box-shadow: 0 14px 32px rgba(124, 58, 237, 0.4);
-}
-
-.footer-logo span {
-  font-size: 20px;
-  font-weight: 950;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #0f172a 40%, #7c3aed 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.footer-description {
-  margin: 0 0 24px;
-  color: var(--text-soft);
-  font-size: 14.5px;
-  line-height: 1.78;
-  font-weight: 500;
-}
-
-/* ── Соцсети ─────────────────────────────────────────── */
-.footer-socials {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.footer-social {
+.footer-logo img {
   width: 42px;
   height: 42px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary-2);
-  text-decoration: none;
-  font-size: 11.5px;
-  font-weight: 900;
-  letter-spacing: 0.01em;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1.5px solid rgba(124, 58, 237, 0.16);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
-  transition:
-    transform var(--transition-spring),
-    background var(--transition),
-    color var(--transition),
-    border-color var(--transition),
-    box-shadow var(--transition);
+  object-fit: contain;
+  filter: drop-shadow(0 10px 26px rgba(56, 189, 248, 0.25));
 }
 
-.footer-social:hover {
-  transform: translateY(-3px) scale(1.06);
-  color: #fff;
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
-  border-color: transparent;
-  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.28);
+.footer-logo span,
+.footer-logo-text {
+  background: linear-gradient(135deg, #5eead4, #38bdf8, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-/* ── Колонки ─────────────────────────────────────────── */
-.footer-column {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+.footer-description,
+.footer-brand p {
+  margin: 0;
+  max-width: 330px;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.75;
 }
 
-.footer-column h4 {
+/* Колонки */
+.footer-column,
+.footer-col {
+  min-width: 0;
+}
+
+.footer-title,
+.footer-col h4 {
   margin: 0 0 18px;
-  color: var(--text);
-  font-size: 15px;
+  color: #f8fafc;
+  font-size: 13px;
   font-weight: 900;
-  letter-spacing: -0.01em;
-  position: relative;
-  padding-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
-/* Подчёркивание заголовка колонки */
-.footer-column h4::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 28px;
-  height: 2.5px;
-  border-radius: 99px;
-  background: linear-gradient(90deg, #7c3aed, #2563eb);
-}
-
-/* ── Ссылки ──────────────────────────────────────────── */
-.footer-links,
-.footer-links-secondary {
+.footer-links {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
 }
 
-.footer-links a,
-.footer-links-secondary a {
-  display: inline-block;
-  color: var(--text-soft);
+.footer-link,
+.footer-col a,
+.footer-links a {
+  width: fit-content;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
   text-decoration: none;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.5;
   transition:
-    color var(--transition),
-    transform var(--transition);
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.footer-links a:hover,
-.footer-links-secondary a:hover {
-  color: var(--primary-2);
+.footer-link:hover,
+.footer-col a:hover,
+.footer-links a:hover {
+  color: #f8fafc;
   transform: translateX(3px);
 }
 
-/* ── Контакты ────────────────────────────────────────── */
-.footer-contact-list {
+/* Контакты */
+.footer-contact {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  margin-bottom: 20px;
+  gap: 11px;
 }
 
-.footer-contact-list p {
-  margin: 0;
-  color: var(--text-soft);
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.55;
-  transition: color var(--transition);
-}
-
-.footer-contact-list p:hover {
-  color: var(--primary-2);
-}
-
-/* ── Нижняя строка ───────────────────────────────────── */
-.footer-bottom {
-  margin-top: 48px;
-  padding-top: 22px;
-  border-top: 1px solid rgba(124, 58, 237, 0.09);
+.footer-contact-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
+.footer-contact-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #67e8f9;
+  background: rgba(56, 189, 248, 0.11);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+/* Соцсети */
+.footer-socials,
+.social-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.footer-social,
+.social-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  font-size: 16px;
+  transition: 0.2s ease;
+}
+
+.footer-social:hover,
+.social-btn:hover {
+  color: #ffffff;
+  transform: translateY(-3px);
+  background: rgba(56, 189, 248, 0.13);
+  border-color: rgba(56, 189, 248, 0.32);
+  box-shadow: 0 14px 36px rgba(56, 189, 248, 0.18);
+}
+
+/* Нижняя линия */
+.footer-bottom {
+  position: relative;
+  z-index: 2;
+  width: min(1180px, 100%);
+  margin: 42px auto 0;
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-copy,
 .footer-bottom p {
   margin: 0;
-  color: var(--text-muted);
+  color: #64748b;
   font-size: 13px;
-  font-weight: 600;
+  line-height: 1.5;
 }
 
 .footer-bottom-links {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
   flex-wrap: wrap;
 }
 
-.footer-bottom a {
-  color: var(--text-muted);
-  text-decoration: none;
+.footer-bottom-links a {
+  color: #64748b;
   font-size: 13px;
-  font-weight: 600;
-  transition: color var(--transition);
+  font-weight: 650;
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
-.footer-bottom a:hover {
-  color: var(--primary-2);
+.footer-bottom-links a:hover {
+  color: #cbd5e1;
 }
 
-/* ═══════════════════════════════════════════════════════
+/* Маленький premium/status badge в footer */
+.footer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  margin-top: 18px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+}
+
+.footer-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #5eead4;
+  box-shadow: 0 0 16px rgba(94, 234, 212, 0.7);
+}
+
+/* Если Footer.tsx простой и там только p/a */
+.footer a {
+  transition: 0.2s ease;
+}
+
+.footer strong,
+.site-footer strong {
+  color: #f8fafc;
+}
+
+/* =========================================
    Responsive
-   ═══════════════════════════════════════════════════════ */
+   ========================================= */
 
-@media (max-width: 1024px) {
-  .footer-content {
+@media (max-width: 980px) {
+  .footer-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 32px;
+    gap: 34px;
   }
 
   .footer-brand {
+    max-width: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .footer,
+  .site-footer {
+    margin-top: 56px;
+    padding: 44px 18px 24px;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .footer-logo {
+    font-size: 22px;
+  }
+
+  .footer-logo img {
+    width: 38px;
+    height: 38px;
+  }
+
+  .footer-description,
+  .footer-brand p {
     max-width: 100%;
+    font-size: 14px;
+  }
+
+  .footer-bottom {
+    margin-top: 32px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .footer-bottom-links {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .footer-social,
+  .social-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+
+  .footer-title,
+  .footer-col h4 {
+    font-size: 12px;
+  }
+}
+/* =========================================================
+   Footer final polish — нормальный footer Birzhan-Edu
+   Не меняет общий стиль и градиенты сайта
+   ========================================================= */
+
+.site-footer,
+.footer {
+  width: 100%;
+  margin-top: 90px;
+  padding: 64px 22px 28px;
+  color: #cbd5e1;
+  background: transparent;
+}
+
+.footer-container,
+.site-footer-container {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+/* Основная сетка footer */
+.footer-main,
+.footer-content,
+.site-footer-main {
+  display: grid;
+  grid-template-columns: 1.35fr repeat(3, minmax(0, 1fr));
+  gap: 44px;
+  align-items: start;
+  padding: 34px;
+  border-radius: 32px;
+  background:
+    radial-gradient(
+      circle at 20% 0%,
+      rgba(56, 189, 248, 0.11),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 100% 20%,
+      rgba(167, 139, 250, 0.12),
+      transparent 34%
+    ),
+    rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Бренд */
+.footer-brand,
+.site-footer-brand {
+  min-width: 0;
+}
+
+.footer-logo,
+.site-footer-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: -0.035em;
+  text-decoration: none;
+}
+
+.footer-logo::before,
+.site-footer-logo::before {
+  content: "B";
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #06121c;
+  font-size: 15px;
+  font-weight: 950;
+  background: linear-gradient(135deg, #5eead4, #38bdf8, #a78bfa);
+  box-shadow: 0 14px 34px rgba(56, 189, 248, 0.24);
+}
+
+.footer-brand p,
+.site-footer-brand p,
+.footer-description {
+  max-width: 420px;
+  margin: 0 0 18px;
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Соц кнопки */
+.footer-socials,
+.site-footer-socials,
+.footer-social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.footer-socials a,
+.site-footer-socials a,
+.footer-social a {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 950;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  transition: 0.2s ease;
+}
+
+.footer-socials a:hover,
+.site-footer-socials a:hover,
+.footer-social a:hover {
+  transform: translateY(-2px);
+  color: #06121c;
+  background: linear-gradient(135deg, #5eead4, #38bdf8);
+}
+
+/* Колонки */
+.footer-column,
+.site-footer-column,
+.footer-links {
+  min-width: 0;
+}
+
+.footer-column h3,
+.footer-column h4,
+.site-footer-column h3,
+.site-footer-column h4,
+.footer-links h3,
+.footer-links h4 {
+  margin: 0 0 14px;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+
+.footer-column ul,
+.site-footer-column ul,
+.footer-links ul {
+  display: grid;
+  gap: 9px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footer-column a,
+.site-footer-column a,
+.footer-links a,
+.footer-column span,
+.site-footer-column span,
+.footer-links span,
+.footer-column p,
+.site-footer-column p,
+.footer-links p {
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.55;
+  text-decoration: none;
+  transition: 0.2s ease;
+}
+
+.footer-column a:hover,
+.site-footer-column a:hover,
+.footer-links a:hover {
+  color: #7dd3fc;
+}
+
+/* Контакты */
+.footer-contact,
+.site-footer-contact {
+  display: grid;
+  gap: 9px;
+}
+
+.footer-contact p,
+.site-footer-contact p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Нижняя линия */
+.footer-bottom,
+.site-footer-bottom {
+  width: min(1180px, 100%);
+  margin: 22px auto 0;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 750;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-bottom a,
+.site-footer-bottom a {
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.footer-bottom a:hover,
+.site-footer-bottom a:hover {
+  color: #7dd3fc;
+}
+
+/* Если footer сейчас без нужных внутренних классов */
+.site-footer > div,
+.footer > div {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Адаптация */
+@media (max-width: 980px) {
+  .footer-main,
+  .footer-content,
+  .site-footer-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+    padding: 28px;
+  }
+
+  .footer-brand,
+  .site-footer-brand {
     grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 640px) {
+  .site-footer,
   .footer {
-    margin-top: 48px;
-    padding: 42px 0 24px;
+    margin-top: 64px;
+    padding: 46px 14px 24px;
   }
 
-  .footer-container {
-    width: min(1240px, calc(100% - 24px));
-  }
-
-  .footer-content {
+  .footer-main,
+  .footer-content,
+  .site-footer-main {
     grid-template-columns: 1fr;
-    gap: 26px;
+    padding: 22px;
+    border-radius: 24px;
   }
 
-  .footer-brand {
-    grid-column: auto;
-  }
-
-  .footer-bottom {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .footer-bottom-links {
+  .footer-bottom,
+  .site-footer-bottom {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;

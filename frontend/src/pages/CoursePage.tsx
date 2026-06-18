@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../services/api";
+import { getUserStorageKey } from "../utils/userStorage";
 import "./CoursePage.css";
 
 type Lesson = {
@@ -266,6 +267,7 @@ export default function CoursePage() {
                   );
 
                   const savedCertificates =
+                    localStorage.getItem(getUserStorageKey("my-certificates")) ||
                     localStorage.getItem("my-certificates");
 
                   let certificates = [];
@@ -287,7 +289,7 @@ export default function CoursePage() {
                   }
 
                   localStorage.setItem(
-                    "my-certificates",
+                    getUserStorageKey("my-certificates"),
                     JSON.stringify(certificates),
                   );
 

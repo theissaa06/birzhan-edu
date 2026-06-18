@@ -1,19 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getSupportMessages,
   sendSupportMessage,
   SupportMessage,
 } from "../services/support";
+import "./FloatingActionButton.css";
 
 export default function FloatingActionButton() {
   const [open, setOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   async function loadMessages() {
-    const data = await getSupportMessages();
-    setMessages(data);
+    try {
+      const data = await getSupportMessages();
+      setMessages(data);
+    } catch (error) {
+      console.error("Ошибка загрузки сообщений поддержки:", error);
+    }
   }
 
   useEffect(() => {
@@ -26,43 +32,73 @@ export default function FloatingActionButton() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [messages, chatOpen]);
+
   async function handleSend() {
     if (!text.trim()) return;
 
-    const newMessage = await sendSupportMessage({
-      text,
-      from: "user",
-    });
+    try {
+      const newMessage = await sendSupportMessage({
+        text,
+        from: "user",
+      });
 
-    setMessages((prev) => [...prev, newMessage]);
-    setText("");
+      setMessages((prev) => [...prev, newMessage]);
+      setText("");
+    } catch (error) {
+      console.error("Ошибка отправки сообщения поддержки:", error);
+    }
   }
 
   return (
     <>
       {chatOpen && (
-        <div style={styles.chat}>
-          <div style={styles.header}>
-            <strong>Техподдержка</strong>
-            <button type="button" onClick={() => setChatOpen(false)}>
+        <div className="support-chat-window">
+          <div className="support-chat-header">
+            <div>
+              <strong>Техподдержка</strong>
+              <span>Обычно отвечаем во время работы платформы</span>
+            </div>
+
+            <button
+              type="button"
+              className="support-chat-close"
+              onClick={() => setChatOpen(false)}
+              aria-label="Закрыть чат"
+            >
               ×
             </button>
           </div>
 
-          <div style={styles.body}>
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                style={
-                  m.from === "admin" ? styles.adminMessage : styles.userMessage
-                }
-              >
-                <p style={styles.messageText}>{m.text}</p>
+          <div className="support-chat-body" ref={bodyRef}>
+            {messages.length === 0 ? (
+              <div className="support-chat-empty">
+                <div>💬</div>
+                <strong>Напишите нам</strong>
+                <p>Задайте вопрос по курсам, урокам, бонусам или аккаунту.</p>
               </div>
-            ))}
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={
+                    m.from === "admin"
+                      ? "support-message support-message--admin"
+                      : "support-message support-message--user"
+                  }
+                >
+                  <span>{m.from === "admin" ? "Админ" : "Вы"}</span>
+                  <p>{m.text}</p>
+                </div>
+              ))
+            )}
           </div>
 
-          <div style={styles.footer}>
+          <div className="support-chat-footer">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -73,13 +109,14 @@ export default function FloatingActionButton() {
                 }
               }}
               placeholder="Сообщение..."
-              style={styles.textarea}
             />
 
             <button
               type="button"
-              style={styles.sendButton}
+              className="support-chat-send"
               onClick={handleSend}
+              disabled={!text.trim()}
+              aria-label="Отправить сообщение"
             >
               →
             </button>
@@ -87,122 +124,28 @@ export default function FloatingActionButton() {
         </div>
       )}
 
-      <div style={styles.fabContainer}>
+      <div className="support-fab-container">
         {open && (
           <button
             type="button"
-            style={styles.fab}
+            className="support-fab support-fab--chat"
             onClick={() => setChatOpen(true)}
+            aria-label="Открыть чат поддержки"
           >
             💬
+            {messages.length > 0 && <span className="support-fab-dot" />}
           </button>
         )}
 
-        <button type="button" style={styles.fab} onClick={() => setOpen(!open)}>
+        <button
+          type="button"
+          className="support-fab"
+          onClick={() => setOpen(!open)}
+          aria-label="Открыть меню поддержки"
+        >
           {open ? "×" : "+"}
         </button>
       </div>
     </>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  fabContainer: {
-    position: "fixed",
-    bottom: 20,
-    right: 20,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    zIndex: 9999,
-  },
-  fab: {
-    width: 54,
-    height: 54,
-    borderRadius: "50%",
-    border: "none",
-    background: "#7c3aed",
-    color: "#fff",
-    fontSize: 20,
-    cursor: "pointer",
-    boxShadow: "0 12px 30px rgba(124, 58, 237, 0.35)",
-  },
-  chat: {
-    position: "fixed",
-    bottom: 20,
-    right: 90,
-    width: 320,
-    height: 430,
-    background: "#fff",
-    borderRadius: 18,
-    boxShadow: "0 18px 50px rgba(15, 23, 42, 0.22)",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    zIndex: 9999,
-  },
-  header: {
-    padding: 14,
-    borderBottom: "1px solid #eee",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontWeight: 800,
-  },
-  body: {
-    flex: 1,
-    padding: 12,
-    overflowY: "auto",
-    background: "#f8f7ff",
-  },
-  footer: {
-    display: "flex",
-    borderTop: "1px solid #eee",
-    padding: 10,
-    gap: 8,
-    alignItems: "center",
-  },
-  textarea: {
-    flex: 1,
-    borderRadius: 10,
-    border: "1px solid #ddd",
-    padding: 10,
-    resize: "none",
-    outline: "none",
-    minHeight: 40,
-    maxHeight: 100,
-    fontSize: 14,
-    fontFamily: "inherit",
-  },
-  sendButton: {
-    width: 42,
-    height: 42,
-    borderRadius: "50%",
-    border: "none",
-    background: "#7c3aed",
-    color: "#fff",
-    fontSize: 18,
-    cursor: "pointer",
-  },
-  messageText: {
-    margin: 0,
-    whiteSpace: "pre-wrap",
-  },
-  userMessage: {
-    background: "#e5e7eb",
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 8,
-    color: "#111827",
-    maxWidth: "85%",
-  },
-  adminMessage: {
-    background: "#dbeafe",
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 8,
-    color: "#111827",
-    maxWidth: "85%",
-    marginLeft: "auto",
-  },
-};

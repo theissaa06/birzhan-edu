@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../services/api";
 import "./ProfilePage.css";
 
 type User = {
@@ -7,6 +9,17 @@ type User = {
   name?: string;
   email?: string;
   role?: string;
+  isPremium?: boolean;
+  premiumPlan?: string | null;
+  premiumUntil?: string | null;
+};
+
+type LessonProgress = {
+  id: number;
+  lessonId: number;
+  courseId?: number | null;
+  completed: boolean;
+  started: boolean;
 };
 
 type Certificate = {
@@ -15,41 +28,19 @@ type Certificate = {
   claimedAt: string;
 };
 
-const progressItems = [
-  {
-    title: "CapCut с нуля до PRO",
-    progress: Number(localStorage.getItem("lesson-completed-1") === "true")
-      ? 100
-      : 72,
-    lessons: "4 из 6 уроков",
-    icon: "✂️",
-  },
-  {
-    title: "TikTok Edit",
-    progress: 45,
-    lessons: "2 из 5 уроков",
-    icon: "📱",
-  },
-  {
-    title: "Premiere Pro",
-    progress: 18,
-    lessons: "1 из 8 уроков",
-    icon: "🎞️",
-  },
-];
+type CourseProgress = {
+  id: number;
+  title: string;
+  icon: string;
+  totalLessons: number;
+  completedLessons: number;
+  percent: number;
+};
 
-const bonuses = [
-  "AI-пак для монтажа 2026",
-  "CapCut Presets Pack",
-  "Чек-лист TikTok-эдита",
-  "Шаблон портфолио",
-];
-
-function readCertificates(): Certificate[] {
-  const saved = localStorage.getItem("my-certificates");
-
+function readCertificates(userId?: number | string): Certificate[] {
+  const key = userId ? `my-certificates:user:${userId}` : "my-certificates";
+  const saved = localStorage.getItem(key) || localStorage.getItem("my-certificates");
   if (!saved) return [];
-
   try {
     const parsed = JSON.parse(saved);
     return Array.isArray(parsed) ? parsed : [];
@@ -58,34 +49,129 @@ function readCertificates(): Certificate[] {
   }
 }
 
+const COURSE_ICONS: Record<string, string> = {
+  capcut: "✂️",
+  "premiere-pro": "🎞️",
+  tiktok: "📱",
+  "color-correction": "🎨",
+  sound: "🔊",
+  vfx: "⚡",
+};
+
 export default function ProfilePage() {
   const navigate = useNavigate();
 
   const savedUser = localStorage.getItem("user");
   const user: User | null = savedUser ? JSON.parse(savedUser) : null;
 
-  const certificates = readCertificates();
+  const [serverUser, setServerUser] = useState<User | null>(null);
+  const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
+  const [courses, setCourses] = useState<CourseProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const certificates = readCertificates(user?.id);
+
   const isPremium =
     localStorage.getItem("premium") === "true" ||
-    localStorage.getItem("isPremium") === "true";
+    localStorage.getItem("isPremium") === "true" ||
+    user?.isPremium === true ||
+    user?.premiumPlan === "Premium PRO";
 
-  const activeCourses = progressItems.filter((item) => item.progress > 0);
-  const completedCourses = progressItems.filter((item) => item.progress >= 100);
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
 
-  const totalProgress = Math.round(
-    progressItems.reduce((sum, item) => sum + item.progress, 0) /
-      progressItems.length,
-  );
+        // Загружаем профиль с прогрессом из БД
+        const meRes = await api.get("/users/me");
+        const meData = meRes.data.data || meRes.data.user || meRes.data;
+        if (meData) {
+          setServerUser(meData);
+          const progress: LessonProgress[] = meData.lessonProgress || [];
+          setLessonProgress(progress);
 
-  const completedLessons = progressItems.reduce((sum, item) => {
-    const match = item.lessons.match(/^(\d+)/);
-    return sum + Number(match?.[1] || 0);
-  }, 0);
+          // Обновляем localStorage
+          const updatedUser = { ...user, ...meData };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+
+        // Загружаем курсы для отображения прогресса
+        const coursesRes = await api.get("/courses");
+        const coursesData = coursesRes.data.data || coursesRes.data.courses || coursesRes.data;
+
+        if (Array.isArray(coursesData)) {
+          const progressMap: Record<number, { completed: number; total: number }> = {};
+
+          // Считаем прогресс по курсам из lessonProgress
+          const prog: LessonProgress[] = meRes.data.data?.lessonProgress || [];
+          prog.forEach((p) => {
+            if (p.courseId) {
+              if (!progressMap[p.courseId]) progressMap[p.courseId] = { completed: 0, total: 0 };
+              if (p.completed) progressMap[p.courseId].completed++;
+            }
+          });
+
+          const courseList: CourseProgress[] = coursesData.slice(0, 4).map((c: any) => {
+            const lessons = c.lessons || [];
+            const total = lessons.length;
+            const completed = progressMap[c.id]?.completed || 0;
+            return {
+              id: c.id,
+              title: c.title,
+              icon: COURSE_ICONS[c.category] || "🎬",
+              totalLessons: total,
+              completedLessons: completed,
+              percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+            };
+          });
+
+          setCourses(courseList);
+        }
+      } catch (err) {
+        console.error("Ошибка загрузки профиля:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (user) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const displayUser = serverUser || user;
+
+  const completedLessons = lessonProgress.filter((p) => p.completed).length;
+  const activeCourses = courses.filter((c) => c.completedLessons > 0).length;
+  const completedCourses = courses.filter((c) => c.percent >= 100).length;
+  const totalPercent =
+    courses.length > 0
+      ? Math.round(courses.reduce((s, c) => s + c.percent, 0) / courses.length)
+      : 0;
 
   function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("currentUser");
     navigate("/login");
+  }
+
+  if (!user) {
+    return (
+      <main className="profile-page">
+        <section className="profile-not-logged">
+          <div className="profile-not-logged-icon">🔐</div>
+          <h1>Войдите в аккаунт</h1>
+          <p>Чтобы видеть профиль, прогресс и сертификаты — нужно войти.</p>
+          <div className="profile-not-logged-actions">
+            <Link to="/login" className="profile-btn profile-btn--primary">Войти</Link>
+            <Link to="/register" className="profile-btn profile-btn--light">Регистрация</Link>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -96,7 +182,7 @@ export default function ProfilePage() {
 
           <h1>
             Добро пожаловать,{" "}
-            <span>{user?.username || user?.name || "студент"}</span>
+            <span>{displayUser?.username || displayUser?.name || "студент"}</span>
           </h1>
 
           <p>
@@ -109,10 +195,7 @@ export default function ProfilePage() {
               Продолжить обучение
             </Link>
 
-            <Link
-              to="/my-certificates"
-              className="profile-btn profile-btn--light"
-            >
+            <Link to="/my-certificates" className="profile-btn profile-btn--light">
               Мои сертификаты
             </Link>
 
@@ -124,33 +207,33 @@ export default function ProfilePage() {
 
         <div className="profile-card">
           <div className="profile-avatar">
-            {(user?.username || user?.name || "U").slice(0, 1).toUpperCase()}
+            {(displayUser?.username || displayUser?.name || "U").slice(0, 1).toUpperCase()}
           </div>
 
-          <strong>{user?.username || user?.name || "Пользователь"}</strong>
-          <span>{user?.email || "email не указан"}</span>
-          <em>{isPremium ? "PREMIUM PRO" : user?.role || "USER"}</em>
+          <strong>{displayUser?.username || displayUser?.name || "Пользователь"}</strong>
+          <span>{displayUser?.email || "email не указан"}</span>
+          <em>{isPremium ? "PREMIUM PRO" : displayUser?.role || "USER"}</em>
         </div>
       </section>
 
       <section className="profile-stats">
         <div>
-          <strong>{activeCourses.length}</strong>
+          <strong>{loading ? "..." : activeCourses}</strong>
           <span>активных курса</span>
         </div>
 
         <div>
-          <strong>{completedLessons}</strong>
+          <strong>{loading ? "..." : completedLessons}</strong>
           <span>пройденных уроков</span>
         </div>
 
         <div>
-          <strong>{bonuses.length}</strong>
-          <span>полученных бонусов</span>
+          <strong>{certificates.length}</strong>
+          <span>сертификатов</span>
         </div>
 
         <div>
-          <strong>{totalProgress}%</strong>
+          <strong>{loading ? "..." : `${totalPercent}%`}</strong>
           <span>общий прогресс</span>
         </div>
       </section>
@@ -166,13 +249,13 @@ export default function ProfilePage() {
             <div className="profile-overview-grid">
               <div>
                 <span>🚀</span>
-                <strong>{activeCourses.length}</strong>
+                <strong>{loading ? "..." : activeCourses}</strong>
                 <p>курсов начато</p>
               </div>
 
               <div>
                 <span>✅</span>
-                <strong>{completedCourses.length}</strong>
+                <strong>{loading ? "..." : completedCourses}</strong>
                 <p>курсов завершено</p>
               </div>
 
@@ -196,29 +279,42 @@ export default function ProfilePage() {
               <h2>Мои курсы</h2>
             </div>
 
-            <div className="profile-course-list">
-              {progressItems.map((item) => (
-                <article className="profile-course-card" key={item.title}>
-                  <div className="profile-course-icon">{item.icon}</div>
+            {loading ? (
+              <p className="profile-loading">Загружаем прогресс из базы данных...</p>
+            ) : courses.length === 0 ? (
+              <div className="profile-empty-courses">
+                <span>🎬</span>
+                <strong>Курсов пока нет</strong>
+                <p>Начните обучение, чтобы видеть прогресс здесь.</p>
+                <Link to="/courses" className="profile-btn profile-btn--primary">
+                  Выбрать курс
+                </Link>
+              </div>
+            ) : (
+              <div className="profile-course-list">
+                {courses.map((item) => (
+                  <article className="profile-course-card" key={item.id}>
+                    <div className="profile-course-icon">{item.icon}</div>
 
-                  <div>
-                    <h3>{item.title}</h3>
-                    <p>{item.lessons}</p>
+                    <div>
+                      <h3>{item.title}</h3>
+                      <p>{item.completedLessons} из {item.totalLessons} уроков</p>
 
-                    <div className="profile-progress">
-                      <div>
-                        <span style={{ width: `${item.progress}%` }}></span>
+                      <div className="profile-progress">
+                        <div>
+                          <span style={{ width: `${item.percent}%` }}></span>
+                        </div>
+                        <strong>{item.percent}%</strong>
                       </div>
-                      <strong>{item.progress}%</strong>
                     </div>
-                  </div>
 
-                  <Link to="/courses">
-                    {item.progress > 0 ? "Продолжить" : "Открыть"}
-                  </Link>
-                </article>
-              ))}
-            </div>
+                    <Link to={`/courses/${item.id}`}>
+                      {item.percent > 0 ? "Продолжить" : "Открыть"}
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="profile-panel">
@@ -236,10 +332,7 @@ export default function ProfilePage() {
                   Birzhan-Edu.
                 </p>
 
-                <Link
-                  to="/courses"
-                  className="profile-btn profile-btn--primary"
-                >
+                <Link to="/courses" className="profile-btn profile-btn--primary">
                   Перейти к курсам
                 </Link>
               </div>
@@ -257,32 +350,13 @@ export default function ProfilePage() {
                       <strong>{certificate.courseTitle}</strong>
                       <p>
                         Получен:{" "}
-                        {new Date(certificate.claimedAt).toLocaleDateString(
-                          "ru-RU",
-                        )}
+                        {new Date(certificate.claimedAt).toLocaleDateString("ru-RU")}
                       </p>
                     </div>
                   </Link>
                 ))}
               </div>
             )}
-          </section>
-
-          <section className="profile-panel">
-            <div className="profile-panel-head">
-              <p className="profile-label">Бонусы</p>
-              <h2>Мои материалы</h2>
-            </div>
-
-            <div className="profile-bonus-grid">
-              {bonuses.map((bonus) => (
-                <div className="profile-bonus-card" key={bonus}>
-                  <span>🎁</span>
-                  <strong>{bonus}</strong>
-                  <p>Доступно в личном кабинете</p>
-                </div>
-              ))}
-            </div>
           </section>
         </div>
 
@@ -309,17 +383,17 @@ export default function ProfilePage() {
             <div className="profile-info-list">
               <div>
                 <span>Имя</span>
-                <strong>{user?.username || user?.name || "Не указано"}</strong>
+                <strong>{displayUser?.username || displayUser?.name || "Не указано"}</strong>
               </div>
 
               <div>
                 <span>Email</span>
-                <strong>{user?.email || "Не указано"}</strong>
+                <strong>{displayUser?.email || "Не указано"}</strong>
               </div>
 
               <div>
                 <span>Роль</span>
-                <strong>{user?.role || "USER"}</strong>
+                <strong>{displayUser?.role || "USER"}</strong>
               </div>
 
               <div>
@@ -341,7 +415,7 @@ export default function ProfilePage() {
             <Link to="/support">💬 Поддержка</Link>
           </section>
 
-          {user?.role === "ADMIN" && (
+          {displayUser?.role === "ADMIN" && (
             <section className="profile-panel profile-admin-box">
               <p className="profile-label">Admin</p>
               <h2>Управление</h2>

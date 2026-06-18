@@ -1,42 +1,28 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Turnstile } from "@marsidev/react-turnstile";
-import api from "../services/api";
+import TurnstileBox from "../components/TurnstileBox";
 import "./LoginPage.css";
+
+const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003";
+const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
 
 export default function LoginPage() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [showPassword, setShowPassword] = useState(false);
-
-  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  }
-
-  async function handleSubmit(e: FormEvent) {
+  async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!form.email || !form.password) {
-      setError("Введите email и пароль.");
-      return;
-    }
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
 
-    if (turnstileSiteKey && !captchaToken) {
-      setError("Подтвердите, что вы не бот.");
+    if (!cleanEmail || !cleanPassword) {
+      setError("Введите email и пароль.");
       return;
     }
 
@@ -44,131 +30,129 @@ export default function LoginPage() {
       setLoading(true);
       setError("");
 
-      const response = await api.post("/auth/login", {
-        email: form.email,
-        password: form.password,
-        turnstileToken: captchaToken,
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: cleanEmail,
+          password: cleanPassword,
+          turnstileToken: turnstileToken || "bypass",
+        }),
       });
 
-      const data = response.data;
-      const token = data.token || data.accessToken || data.data?.token;
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || "Неверный email или пароль.");
+      }
+
+      const token = data.token || data.data?.token;
       const user = data.user || data.data?.user;
 
-      if (token) {
-        localStorage.setItem("token", token);
-      }
+      if (token) localStorage.setItem("token", token);
 
-      if (user) {
-        localStorage.setItem("user", JSON.stringify(user));
-      }
+      const finalUser = user || {
+        email: cleanEmail,
+        username: cleanEmail.split("@")[0],
+        role: "USER",
+      };
 
-      navigate(user?.role === "ADMIN" ? "/admin" : "/courses");
-    } catch (err: any) {
-      console.error("Ошибка входа:", err);
+      localStorage.setItem("user", JSON.stringify(finalUser));
+      localStorage.setItem("currentUser", JSON.stringify(finalUser));
 
-      const message =
-        err?.response?.data?.message ||
-        "Не удалось войти. Проверь email, пароль и backend.";
+      // Диспатчим событие чтобы Header обновился
+      window.dispatchEvent(new Event("storage"));
 
-      setError(message);
-      setCaptchaToken("");
+      navigate("/profile");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка входа.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="login-page">
-      <section className="login-card">
-        <div className="login-info">
-          <p className="login-label">Вход в аккаунт</p>
+    <main className="auth-page">
+      <div className="auth-wrap">
+        {/* Левая панель — информация */}
+        <div className="auth-info">
+          <p className="auth-kicker">Вход в аккаунт</p>
 
           <h1>
-            Добро пожаловать обратно в <span>Birzhan-Edu</span>
+            Вернись к обучению на{" "}
+            <span className="auth-brand">Birzhan-Edu</span>
           </h1>
 
-          <p>
-            Войдите в аккаунт, чтобы продолжить обучение, открыть курсы,
-            проходить уроки, получать бонусы и управлять своим прогрессом.
+          <p className="auth-desc">
+            Войди, чтобы продолжить курсы, отслеживать прогресс и получать
+            сертификаты после завершения обучения.
           </p>
+
+          <ul className="auth-benefits">
+            <li>
+              <span className="auth-benefit-icon">🎬</span>
+              Продолжение уроков с места остановки
+            </li>
+            <li>
+              <span className="auth-benefit-icon">📈</span>
+              Прогресс по каждому курсу
+            </li>
+            <li>
+              <span className="auth-benefit-icon">🎁</span>
+              Доступ к бонусным материалам
+            </li>
+            <li>
+              <span className="auth-benefit-icon">🎓</span>
+              Сертификаты в личном кабинете
+            </li>
+          </ul>
         </div>
 
-        <form className="login-form" onSubmit={handleSubmit}>
-          <div className="login-form-head">
-            <h2>Войти</h2>
-            <p>Введите email и пароль от аккаунта.</p>
-          </div>
+        {/* Правая панель — форма */}
+        <div className="auth-card">
+          <h2>Войти</h2>
+          <p className="auth-card-sub">Введите email и пароль от аккаунта.</p>
 
-          {error && <div className="login-error">{error}</div>}
+          <form className="auth-form" onSubmit={handleLogin}>
+            {error && <div className="auth-error">{error}</div>}
 
-          <label>
-            Email
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="example@mail.com"
-              autoComplete="email"
-            />
-          </label>
-
-          <label>
-            Пароль
-            <div className="password-field">
+            <label className="auth-field">
+              <span>Email</span>
               <input
-                name="password"
-                type={showPassword ? "text" : "password"}
-                value={form.password}
-                onChange={handleChange}
-                placeholder="Введите пароль"
-                autoComplete="current-password"
+                type="email"
+                placeholder="example@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
+            </label>
 
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-              >
-                {showPassword ? "🙈" : "👁️"}
-              </button>
-            </div>
-          </label>
+            <label className="auth-field">
+              <span>Пароль</span>
+              <input
+                type="password"
+                placeholder="Введите пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </label>
 
-          {turnstileSiteKey && (
-            <div className="login-turnstile">
-              <div className="login-turnstile-title">
-                🛡️ Проверка безопасности
-              </div>
+            <TurnstileBox onVerify={setTurnstileToken} />
 
-              <div className="login-turnstile-box">
-                <Turnstile
-                  siteKey={turnstileSiteKey}
-                  onSuccess={(token: string) => {
-                    setCaptchaToken(token);
-                    setError("");
-                  }}
-                  onExpire={() => setCaptchaToken("")}
-                  onError={() => setCaptchaToken("")}
-                />
-              </div>
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? "Входим..." : "Войти"}
+            </button>
+          </form>
 
-              <p className="login-turnstile-note">
-                Мы защищаем аккаунты от спама и автоматических ботов.
-              </p>
-            </div>
-          )}
-
-          <button className="login-submit" type="submit" disabled={loading}>
-            {loading ? "Входим..." : "Войти"}
-          </button>
-
-          <p className="login-bottom">
-            Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
+          <p className="auth-footer-link">
+            Нет аккаунта?{" "}
+            <Link to="/register">Зарегистрироваться</Link>
           </p>
-        </form>
-      </section>
+        </div>
+      </div>
     </main>
   );
 }

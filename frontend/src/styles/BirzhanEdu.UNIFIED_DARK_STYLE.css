@@ -1,0 +1,652 @@
+/* =========================================================
+   Birzhan-Edu — Unified Dark Style 2026
+   Файл можно подключить один раз после всех page css.
+   Цель: привести Free / Webinars / Media / CareerTest / About
+   и похожие страницы к одному тёмному стилю без правки TSX.
+   ========================================================= */
+
+/* Корневые страницы, которые сейчас выбиваются из общего стиля */
+.free-page,
+.webinars-page,
+.media-page,
+.career-test-page,
+.about-page,
+.students-page,
+.reviews-page,
+.jobs-page,
+.career-center-page,
+.find-employee-page {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  padding: 74px 22px 96px !important;
+  overflow-x: hidden !important;
+  color: #f8fafc !important;
+  background:
+    radial-gradient(
+      circle at 18% 8%,
+      rgba(56, 189, 248, 0.14),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 82% 12%,
+      rgba(124, 58, 237, 0.17),
+      transparent 34%
+    ),
+    linear-gradient(180deg, #081225 0%, #101632 48%, #101433 100%) !important;
+}
+
+.free-page *,
+.webinars-page *,
+.media-page *,
+.career-test-page *,
+.about-page *,
+.students-page *,
+.reviews-page *,
+.jobs-page *,
+.career-center-page *,
+.find-employee-page * {
+  box-sizing: border-box !important;
+}
+
+/* Единая ширина страниц */
+.free-page > section,
+.webinars-page > section,
+.media-page > section,
+.career-test-page > section,
+.about-page > section,
+.students-page > section,
+.reviews-page > section,
+.jobs-page > section,
+.career-center-page > section,
+.find-employee-page > section {
+  width: min(1180px, calc(100% - 40px)) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Убираем светлый фон, если он был в старых страницах */
+.free-page,
+.webinars-page,
+.media-page,
+.career-test-page,
+.about-page,
+.students-page,
+.reviews-page,
+.jobs-page,
+.career-center-page,
+.find-employee-page,
+.free-page section,
+.webinars-page section,
+.media-page section,
+.career-test-page section,
+.about-page section,
+.students-page section,
+.reviews-page section,
+.jobs-page section,
+.career-center-page section,
+.find-employee-page section {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* HERO на всех страницах */
+.free-hero,
+.webinars-hero,
+.media-hero,
+.career-test-hero,
+.about-hero,
+.students-hero,
+.reviews-hero,
+.jobs-hero,
+.career-center-hero,
+.find-employee-hero,
+[class$="-hero"] {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.04fr) minmax(300px, 0.8fr) !important;
+  align-items: center !important;
+  gap: 42px !important;
+  min-height: auto !important;
+  margin: 0 auto 46px !important;
+  padding: 38px !important;
+  border-radius: 34px !important;
+  overflow: hidden !important;
+  color: #f8fafc !important;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(56, 189, 248, 0.16),
+      transparent 38%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.045)
+    ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34) !important;
+  backdrop-filter: blur(22px) !important;
+  -webkit-backdrop-filter: blur(22px) !important;
+}
+
+/* Если hero на странице должен быть одной колонкой, всё равно центрируем красиво */
+.free-hero > div,
+.webinars-hero > div,
+.media-hero > div,
+.career-test-hero > div,
+.about-hero > div,
+.students-hero > div,
+.reviews-hero > div,
+.jobs-hero > div,
+.career-center-hero > div,
+.find-employee-hero > div,
+[class$="-hero"] > div {
+  min-width: 0 !important;
+}
+
+/* Заголовки */
+.free-page h1,
+.webinars-page h1,
+.media-page h1,
+.career-test-page h1,
+.about-page h1,
+.students-page h1,
+.reviews-page h1,
+.jobs-page h1,
+.career-center-page h1,
+.find-employee-page h1,
+.free-page h2,
+.webinars-page h2,
+.media-page h2,
+.career-test-page h2,
+.about-page h2,
+.students-page h2,
+.reviews-page h2,
+.jobs-page h2,
+.career-center-page h2,
+.find-employee-page h2 {
+  max-width: 760px !important;
+  margin: 0 0 14px !important;
+  color: #f8fafc !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.055em !important;
+  font-weight: 950 !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+.free-page h1,
+.webinars-page h1,
+.media-page h1,
+.career-test-page h1,
+.about-page h1,
+.students-page h1,
+.reviews-page h1,
+.jobs-page h1,
+.career-center-page h1,
+.find-employee-page h1 {
+  font-size: clamp(42px, 5vw, 72px) !important;
+}
+
+.free-page h2,
+.webinars-page h2,
+.media-page h2,
+.career-test-page h2,
+.about-page h2,
+.students-page h2,
+.reviews-page h2,
+.jobs-page h2,
+.career-center-page h2,
+.find-employee-page h2 {
+  font-size: clamp(28px, 3.5vw, 48px) !important;
+}
+
+.free-page h1 span,
+.webinars-page h1 span,
+.media-page h1 span,
+.career-test-page h1 span,
+.about-page h1 span,
+.students-page h1 span,
+.reviews-page h1 span,
+.jobs-page h1 span,
+.career-center-page h1 span,
+.find-employee-page h1 span {
+  background: linear-gradient(135deg, #5eead4, #38bdf8, #a78bfa) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+
+/* Обычный текст */
+.free-page p,
+.webinars-page p,
+.media-page p,
+.career-test-page p,
+.about-page p,
+.students-page p,
+.reviews-page p,
+.jobs-page p,
+.career-center-page p,
+.find-employee-page p,
+.free-page li,
+.webinars-page li,
+.media-page li,
+.career-test-page li,
+.about-page li,
+.students-page li,
+.reviews-page li,
+.jobs-page li,
+.career-center-page li,
+.find-employee-page li {
+  color: #cbd5e1 !important;
+  font-size: 15px !important;
+  line-height: 1.68 !important;
+}
+
+/* Метки / бейджи */
+.free-label,
+.webinars-label,
+.media-label,
+.career-test-label,
+.about-label,
+.students-label,
+.reviews-label,
+.jobs-label,
+.career-label,
+.section-label,
+[class$="-label"],
+[class$="-badge"],
+[class$="-kicker"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  min-height: 30px !important;
+  margin: 0 0 14px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  color: #7dd3fc !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  background: rgba(56, 189, 248, 0.1) !important;
+  border: 1px solid rgba(56, 189, 248, 0.24) !important;
+}
+
+/* Сетки карточек */
+.free-grid,
+.webinars-grid,
+.media-grid,
+.career-test-grid,
+.about-grid,
+.students-grid,
+.reviews-grid,
+.jobs-grid,
+.career-grid,
+.materials-grid,
+.articles-grid,
+.cards-grid,
+[class$="-grid"] {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+}
+
+/* Карточки */
+.free-card,
+.webinar-card,
+.media-card,
+.career-test-card,
+.about-card,
+.student-card,
+.review-card,
+.job-card,
+.career-card,
+.material-card,
+.article-card,
+[class$="-card"] {
+  position: relative !important;
+  min-width: 0 !important;
+  min-height: 160px !important;
+  padding: 22px !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  color: #f8fafc !important;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(56, 189, 248, 0.12),
+      transparent 38%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.085),
+      rgba(255, 255, 255, 0.04)
+    ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+
+.free-card:hover,
+.webinar-card:hover,
+.media-card:hover,
+.career-test-card:hover,
+.about-card:hover,
+.student-card:hover,
+.review-card:hover,
+.job-card:hover,
+.career-card:hover,
+.material-card:hover,
+.article-card:hover,
+[class$="-card"]:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 26px 74px rgba(0, 0, 0, 0.32) !important;
+}
+
+/* Заголовки внутри карточек */
+.free-card h3,
+.webinar-card h3,
+.media-card h3,
+.career-test-card h3,
+.about-card h3,
+.student-card h3,
+.review-card h3,
+.job-card h3,
+.career-card h3,
+.material-card h3,
+.article-card h3,
+[class$="-card"] h3 {
+  margin: 0 0 10px !important;
+  color: #ffffff !important;
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.035em !important;
+}
+
+/* Секции */
+.free-section,
+.webinars-section,
+.media-section,
+.career-test-section,
+.about-section,
+.students-section,
+.reviews-section,
+.jobs-section,
+.career-section,
+[class$="-section"] {
+  margin-top: 0 !important;
+  margin-bottom: 46px !important;
+}
+
+/* Тёмные информационные блоки */
+.free-dark,
+.webinars-dark,
+.media-dark,
+.career-test-dark,
+.about-dark,
+.students-dark,
+.reviews-dark,
+.jobs-dark,
+.career-dark,
+[class$="-dark"] {
+  padding: 34px !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(94, 234, 212, 0.15),
+      transparent 42%
+    ),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.84), rgba(30, 41, 59, 0.62)) !important;
+  border: 1px solid rgba(94, 234, 212, 0.18) !important;
+  box-shadow: 0 24px 76px rgba(0, 0, 0, 0.28) !important;
+}
+
+/* Forms / inputs */
+.free-page input,
+.free-page textarea,
+.free-page select,
+.webinars-page input,
+.webinars-page textarea,
+.webinars-page select,
+.media-page input,
+.media-page textarea,
+.media-page select,
+.career-test-page input,
+.career-test-page textarea,
+.career-test-page select,
+.about-page input,
+.about-page textarea,
+.about-page select,
+.students-page input,
+.students-page textarea,
+.students-page select,
+.reviews-page input,
+.reviews-page textarea,
+.reviews-page select,
+.jobs-page input,
+.jobs-page textarea,
+.jobs-page select,
+.career-center-page input,
+.career-center-page textarea,
+.career-center-page select,
+.find-employee-page input,
+.find-employee-page textarea,
+.find-employee-page select {
+  min-height: 44px !important;
+  padding: 0 14px !important;
+  border-radius: 14px !important;
+  color: #f8fafc !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  outline: none !important;
+}
+
+.free-page textarea,
+.webinars-page textarea,
+.media-page textarea,
+.career-test-page textarea,
+.about-page textarea,
+.students-page textarea,
+.reviews-page textarea,
+.jobs-page textarea,
+.career-center-page textarea,
+.find-employee-page textarea {
+  min-height: 110px !important;
+  padding: 14px !important;
+  resize: vertical !important;
+}
+
+/* Buttons and links as buttons */
+.free-page button,
+.free-page a[class*="btn"],
+.webinars-page button,
+.webinars-page a[class*="btn"],
+.media-page button,
+.media-page a[class*="btn"],
+.career-test-page button,
+.career-test-page a[class*="btn"],
+.about-page button,
+.about-page a[class*="btn"],
+.students-page button,
+.students-page a[class*="btn"],
+.reviews-page button,
+.reviews-page a[class*="btn"],
+.jobs-page button,
+.jobs-page a[class*="btn"],
+.career-center-page button,
+.career-center-page a[class*="btn"],
+.find-employee-page button,
+.find-employee-page a[class*="btn"] {
+  min-height: 42px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 0 16px !important;
+  border-radius: 14px !important;
+  color: #06121c !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  text-decoration: none !important;
+  border: 1px solid rgba(94, 234, 212, 0.34) !important;
+  background: linear-gradient(135deg, #5eead4, #38bdf8) !important;
+  box-shadow: 0 14px 34px rgba(56, 189, 248, 0.22) !important;
+  cursor: pointer !important;
+}
+
+/* Details FAQ */
+.free-page details,
+.webinars-page details,
+.media-page details,
+.career-test-page details,
+.about-page details,
+.students-page details,
+.reviews-page details,
+.jobs-page details,
+.career-center-page details,
+.find-employee-page details {
+  padding: 18px !important;
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  border: 1px solid rgba(255, 255, 255, 0.105) !important;
+}
+
+.free-page summary,
+.webinars-page summary,
+.media-page summary,
+.career-test-page summary,
+.about-page summary,
+.students-page summary,
+.reviews-page summary,
+.jobs-page summary,
+.career-center-page summary,
+.find-employee-page summary {
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+  cursor: pointer !important;
+}
+
+/* Чтоб старые таблицы/длинные блоки не растягивали экран */
+.free-page table,
+.webinars-page table,
+.media-page table,
+.career-test-page table,
+.about-page table,
+.students-page table,
+.reviews-page table,
+.jobs-page table,
+.career-center-page table,
+.find-employee-page table {
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+
+/* Адаптация */
+@media (max-width: 1050px) {
+  .free-hero,
+  .webinars-hero,
+  .media-hero,
+  .career-test-hero,
+  .about-hero,
+  .students-hero,
+  .reviews-hero,
+  .jobs-hero,
+  .career-center-hero,
+  .find-employee-hero,
+  [class$="-hero"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .free-grid,
+  .webinars-grid,
+  .media-grid,
+  .career-test-grid,
+  .about-grid,
+  .students-grid,
+  .reviews-grid,
+  .jobs-grid,
+  .career-grid,
+  .materials-grid,
+  .articles-grid,
+  .cards-grid,
+  [class$="-grid"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .free-page,
+  .webinars-page,
+  .media-page,
+  .career-test-page,
+  .about-page,
+  .students-page,
+  .reviews-page,
+  .jobs-page,
+  .career-center-page,
+  .find-employee-page {
+    padding: 52px 14px 76px !important;
+  }
+
+  .free-page > section,
+  .webinars-page > section,
+  .media-page > section,
+  .career-test-page > section,
+  .about-page > section,
+  .students-page > section,
+  .reviews-page > section,
+  .jobs-page > section,
+  .career-center-page > section,
+  .find-employee-page > section {
+    width: 100% !important;
+  }
+
+  .free-hero,
+  .webinars-hero,
+  .media-hero,
+  .career-test-hero,
+  .about-hero,
+  .students-hero,
+  .reviews-hero,
+  .jobs-hero,
+  .career-center-hero,
+  .find-employee-hero,
+  [class$="-hero"] {
+    padding: 24px !important;
+    border-radius: 26px !important;
+  }
+
+  .free-page h1,
+  .webinars-page h1,
+  .media-page h1,
+  .career-test-page h1,
+  .about-page h1,
+  .students-page h1,
+  .reviews-page h1,
+  .jobs-page h1,
+  .career-center-page h1,
+  .find-employee-page h1 {
+    font-size: 38px !important;
+  }
+
+  .free-grid,
+  .webinars-grid,
+  .media-grid,
+  .career-test-grid,
+  .about-grid,
+  .students-grid,
+  .reviews-grid,
+  .jobs-grid,
+  .career-grid,
+  .materials-grid,
+  .articles-grid,
+  .cards-grid,
+  [class$="-grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}

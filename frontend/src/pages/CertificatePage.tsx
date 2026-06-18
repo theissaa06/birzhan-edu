@@ -1,54 +1,146 @@
 import { Link } from "react-router-dom";
 import "./CertificatePage.css";
 
-type CourseBonus = {
+type CourseCertificate = {
   courseId: number;
   courseTitle: string;
   claimedAt: string;
 };
 
-export default function CertificatePage() {
-  const savedBonus = localStorage.getItem("last-course-bonus");
+function getCurrentUserName() {
+  try {
+    const storedUser =
+      localStorage.getItem("user") || localStorage.getItem("currentUser");
 
-  let certificate: CourseBonus | null = null;
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      return user.username || user.name || user.email || "Islam";
+    }
+  } catch {
+    // fallback ниже
+  }
 
-  if (savedBonus) {
+  return localStorage.getItem("user-name") || "Islam";
+}
+
+function readCertificateFromStorage(): CourseCertificate | null {
+  const savedLastCertificate = localStorage.getItem("last-course-bonus");
+
+  if (savedLastCertificate) {
     try {
-      certificate = JSON.parse(savedBonus);
+      const parsed = JSON.parse(savedLastCertificate);
+
+      if (parsed?.courseId && parsed?.courseTitle && parsed?.claimedAt) {
+        return parsed;
+      }
     } catch {
-      certificate = null;
+      // пробуем список сертификатов ниже
     }
   }
 
-  const studentName = localStorage.getItem("user-name") || "Islam";
+  const savedCertificates = localStorage.getItem("my-certificates");
+
+  if (savedCertificates) {
+    try {
+      const parsed = JSON.parse(savedCertificates);
+
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const certificates = parsed.filter(
+          (item) => item?.courseId && item?.courseTitle && item?.claimedAt,
+        );
+
+        if (certificates.length > 0) {
+          const lastCertificate = certificates[certificates.length - 1];
+
+          localStorage.setItem(
+            "last-course-bonus",
+            JSON.stringify(lastCertificate),
+          );
+
+          return lastCertificate;
+        }
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function createDemoCertificate() {
+  const demoCertificate: CourseCertificate = {
+    courseId: 1,
+    courseTitle: "Premiere Pro для начинающих",
+    claimedAt: new Date().toISOString(),
+  };
+
+  localStorage.setItem("last-course-bonus", JSON.stringify(demoCertificate));
+  localStorage.setItem("my-certificates", JSON.stringify([demoCertificate]));
+
+  window.location.reload();
+}
+
+export default function CertificatePage() {
+  const certificate = readCertificateFromStorage();
+  const studentName = getCurrentUserName();
+
   const date = certificate?.claimedAt
     ? new Date(certificate.claimedAt).toLocaleDateString("ru-RU")
     : new Date().toLocaleDateString("ru-RU");
-
-  if (!certificate) {
-    return (
-      <main className="certificate-page">
-        <section className="certificate-empty">
-          <h1>Сертификат пока недоступен</h1>
-          <p>
-            Заверши курс на 100%, получи бонус, и здесь появится твой
-            сертификат.
-          </p>
-
-          <Link to="/courses">Перейти к курсам →</Link>
-        </section>
-      </main>
-    );
-  }
 
   function handlePrint() {
     window.print();
   }
 
+  if (!certificate) {
+    return (
+      <main className="certificate-page">
+        <section className="certificate-empty">
+          <div className="certificate-empty-badge">Сертификат</div>
+
+          <h1>Сертификат пока недоступен</h1>
+
+          <p>
+            Заверши курс на 100%, нажми “Получить сертификат”, и здесь появится
+            официальный сертификат Birzhan-Edu Platform. Для проверки на показе
+            можно временно создать тестовый сертификат.
+          </p>
+
+          <div className="certificate-empty-actions">
+            <Link
+              to="/courses"
+              className="certificate-btn certificate-btn--primary"
+            >
+              Перейти к курсам →
+            </Link>
+
+            <Link
+              to="/bonus"
+              className="certificate-btn certificate-btn--ghost"
+            >
+              Проверить бонусы
+            </Link>
+
+            <button
+              type="button"
+              className="certificate-btn certificate-btn--ghost"
+              onClick={createDemoCertificate}
+            >
+              Создать тестовый сертификат
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="certificate-page">
       <section className="certificate-actions">
-        <Link to="/courses">← Назад к курсам</Link>
+        <Link to="/courses" className="certificate-back">
+          ← Назад к курсам
+        </Link>
 
         <button type="button" onClick={handlePrint}>
           🖨 Скачать / распечатать
@@ -56,8 +148,11 @@ export default function CertificatePage() {
       </section>
 
       <section className="certificate-card">
+        <div className="certificate-watermark">BIRZHAN-EDU</div>
+
         <div className="certificate-top">
           <div className="certificate-logo">B</div>
+
           <div>
             <span>Birzhan-Edu Platform</span>
             <p>International Video Editing Education</p>
@@ -103,8 +198,6 @@ export default function CertificatePage() {
             <strong>Birzhan-Edu</strong>
           </div>
         </div>
-
-        <div className="certificate-watermark">BIRZHAN-EDU</div>
       </section>
     </main>
   );

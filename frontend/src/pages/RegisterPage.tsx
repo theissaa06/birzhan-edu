@@ -1,55 +1,37 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Turnstile } from "@marsidev/react-turnstile";
-import api from "../services/api";
+import TurnstileBox from "../components/TurnstileBox";
 import "./RegisterPage.css";
+
+const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003";
+const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  }
-
-  async function handleSubmit(e: FormEvent) {
+  async function handleRegister(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
-      setError("Заполните все поля.");
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanUsername || !cleanEmail || !cleanPassword) {
+      setError("Заполни имя, email и пароль.");
       return;
     }
 
-    if (form.password.length < 6) {
+    if (cleanPassword.length < 6) {
       setError("Пароль должен быть минимум 6 символов.");
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError("Пароли не совпадают.");
-      return;
-    }
-
-    if (turnstileSiteKey && !captchaToken) {
-      setError("Подтвердите, что вы не бот.");
       return;
     }
 
@@ -57,180 +39,154 @@ export default function RegisterPage() {
       setLoading(true);
       setError("");
 
-      const response = await api.post("/auth/register", {
-        name: form.name,
-        username: form.name,
-        email: form.email,
-        password: form.password,
-        turnstileToken: captchaToken,
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: cleanUsername,
+          name: cleanUsername,
+          email: cleanEmail,
+          phone: cleanPhone || undefined,
+          password: cleanPassword,
+          turnstileToken: turnstileToken || "bypass",
+        }),
       });
 
-      const data = response.data;
-      const token = data.token || data.accessToken || data.data?.token;
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || "Не удалось зарегистрироваться.");
+      }
+
+      const token = data.token || data.data?.token;
       const user = data.user || data.data?.user;
 
-      if (token) {
-        localStorage.setItem("token", token);
-      }
+      if (token) localStorage.setItem("token", token);
 
-      if (user) {
-        localStorage.setItem("user", JSON.stringify(user));
-      }
+      const finalUser = user || {
+        username: cleanUsername,
+        email: cleanEmail,
+        role: "USER",
+      };
 
-      navigate("/courses");
-    } catch (err: any) {
-      console.error("Ошибка регистрации:", err);
+      localStorage.setItem("user", JSON.stringify(finalUser));
+      localStorage.setItem("currentUser", JSON.stringify(finalUser));
 
-      const message =
-        err?.response?.data?.message ||
-        "Не удалось зарегистрироваться. Проверь backend или email.";
+      // Диспатчим событие чтобы Header обновился
+      window.dispatchEvent(new Event("storage"));
 
-      setError(message);
-      setCaptchaToken("");
+      navigate("/profile");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка регистрации.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="register-page">
-      <section className="register-card">
-        <div className="register-info">
-          <p className="register-label">Создание аккаунта</p>
+    <main className="auth-page">
+      <div className="auth-wrap">
+        {/* Левая панель — информация */}
+        <div className="auth-info">
+          <p className="auth-kicker">Создание аккаунта</p>
 
           <h1>
-            Начните обучение на <span>Birzhan-Edu</span>
+            Начни обучение на{" "}
+            <span className="auth-brand">Birzhan-Edu</span>
           </h1>
 
-          <p>
-            Создайте аккаунт, чтобы открыть курсы, проходить уроки, сохранять
-            прогресс, получать бонусы и пользоваться возможностями платформы.
+          <p className="auth-desc">
+            Зарегистрируйся, чтобы сохранять прогресс, получать бонусы и
+            открывать сертификаты после завершения курса.
           </p>
 
-          <div className="register-benefits">
-            <div>
-              <span>✓</span>
-              Доступ к каталогу курсов
-            </div>
-            <div>
-              <span>✓</span>
-              Уроки и практические задания
-            </div>
-            <div>
-              <span>✓</span>
-              Бонусы, вебинары и карьерные материалы
-            </div>
-          </div>
+          <ul className="auth-benefits">
+            <li>
+              <span className="auth-benefit-icon">🎬</span>
+              Доступ к курсам по монтажу
+            </li>
+            <li>
+              <span className="auth-benefit-icon">📈</span>
+              Сохранение прогресса обучения
+            </li>
+            <li>
+              <span className="auth-benefit-icon">🎁</span>
+              Бонусы после прохождения курса
+            </li>
+            <li>
+              <span className="auth-benefit-icon">🎓</span>
+              Сертификаты в личном кабинете
+            </li>
+          </ul>
         </div>
 
-        <form className="register-form" onSubmit={handleSubmit}>
-          <div className="register-form-head">
-            <h2>Регистрация</h2>
-            <p>Заполните данные для создания аккаунта.</p>
-          </div>
+        {/* Правая панель — форма */}
+        <div className="auth-card">
+          <h2>Регистрация</h2>
+          <p className="auth-card-sub">Создай аккаунт ученика платформы.</p>
 
-          {error && <div className="register-error">{error}</div>}
+          <form className="auth-form" onSubmit={handleRegister}>
+            {error && <div className="auth-error">{error}</div>}
 
-          <label>
-            Имя
-            <input
-              name="name"
-              type="text"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Ваше имя"
-              autoComplete="name"
-            />
-          </label>
-
-          <label>
-            Email
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="example@mail.com"
-              autoComplete="email"
-            />
-          </label>
-
-          <label>
-            Пароль
-            <div className="password-field">
+            <label className="auth-field">
+              <span>Имя пользователя</span>
               <input
-                name="password"
-                type={showPassword ? "text" : "password"}
-                value={form.password}
-                onChange={handleChange}
+                type="text"
+                placeholder="Например: Islam"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                required
+              />
+            </label>
+
+            <label className="auth-field">
+              <span>Email</span>
+              <input
+                type="email"
+                placeholder="example@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </label>
+
+            <label className="auth-field">
+              <span>Телефон <em className="auth-optional">(необязательно)</em></span>
+              <input
+                type="tel"
+                placeholder="+7 777 000 00 00"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                autoComplete="tel"
+              />
+            </label>
+
+            <label className="auth-field">
+              <span>Пароль</span>
+              <input
+                type="password"
                 placeholder="Минимум 6 символов"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
+                required
               />
+            </label>
 
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-              >
-                {showPassword ? "🙈" : "👁️"}
-              </button>
-            </div>
-          </label>
+            <TurnstileBox onVerify={setTurnstileToken} />
 
-          <label>
-            Повторите пароль
-            <div className="password-field">
-              <input
-                name="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                value={form.confirmPassword}
-                onChange={handleChange}
-                placeholder="Повторите пароль"
-                autoComplete="new-password"
-              />
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? "Создаём аккаунт..." : "Зарегистрироваться"}
+            </button>
+          </form>
 
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
-                aria-label={
-                  showConfirmPassword ? "Скрыть пароль" : "Показать пароль"
-                }
-              >
-                {showConfirmPassword ? "🙈" : "👁️"}
-              </button>
-            </div>
-          </label>
-
-          {turnstileSiteKey && (
-            <div className="register-turnstile">
-              <Turnstile
-                siteKey={turnstileSiteKey}
-                onSuccess={(token: string) => {
-                  setCaptchaToken(token);
-                  setError("");
-                }}
-                onExpire={() => setCaptchaToken("")}
-                onError={() => setCaptchaToken("")}
-              />
-
-              <div className="register-turnstile-note">
-                <strong>Защита аккаунта</strong>
-                Регистрация защищена от автоматических ботов и спама.
-              </div>
-            </div>
-          )}
-
-          <button className="register-submit" type="submit" disabled={loading}>
-            {loading ? "Создаём аккаунт..." : "Зарегистрироваться"}
-          </button>
-
-          <p className="register-bottom">
+          <p className="auth-footer-link">
             Уже есть аккаунт? <Link to="/login">Войти</Link>
           </p>
-        </form>
-      </section>
+        </div>
+      </div>
     </main>
   );
 }
