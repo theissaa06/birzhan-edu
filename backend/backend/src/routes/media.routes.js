@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const prisma = require("../config/prisma");
+const { authMiddleware, adminMiddleware } = require("../middleware/auth.middleware");
 
 router.get("/", async (req, res) => {
   try {
@@ -12,7 +13,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const article = await prisma.mediaArticle.create({ data: req.body });
     res.status(201).json({ success: true, article });

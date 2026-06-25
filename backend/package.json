@@ -4,8 +4,8 @@
   "description": "Birzhan-Edu Platform Backend",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "dev": "cd backend && nodemon src/server.js",
+    "start": "cd backend && node src/server.js"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

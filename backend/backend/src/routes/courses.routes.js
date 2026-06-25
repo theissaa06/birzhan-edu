@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const prisma = require("../config/prisma");
+const { authMiddleware, adminMiddleware } = require("../middleware/auth.middleware");
 
 router.get("/", async (req, res) => {
   try {
@@ -25,7 +26,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { title, category, level, duration, description, imageUrl } =
       req.body;
@@ -244,7 +245,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const id = Number(req.params.id);
 
@@ -307,7 +308,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const id = Number(req.params.id);
 

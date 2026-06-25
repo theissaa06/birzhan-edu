@@ -13,6 +13,19 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
+function serializeListField(value) {
+  if (Array.isArray(value)) {
+    const items = value.map((item) => String(item).trim()).filter(Boolean);
+    return items.length ? JSON.stringify(items) : null;
+  }
+
+  if (typeof value === "string") {
+    return value.trim() || null;
+  }
+
+  return null;
+}
+
 function normalizeLessonData(body) {
   const data = {};
 
@@ -20,11 +33,11 @@ function normalizeLessonData(body) {
   if (body.content !== undefined) data.content = body.content ? String(body.content).trim() : null;
   if (body.description !== undefined) data.description = body.description ? String(body.description).trim() : null;
   if (body.videoUrl !== undefined) data.videoUrl = body.videoUrl ? String(body.videoUrl).trim() : null;
-  if (body.whatYouLearn !== undefined) data.whatYouLearn = Array.isArray(body.whatYouLearn) ? body.whatYouLearn : null;
-  if (body.steps !== undefined) data.steps = Array.isArray(body.steps) ? body.steps : null;
+  if (body.whatYouLearn !== undefined) data.whatYouLearn = serializeListField(body.whatYouLearn);
+  if (body.steps !== undefined) data.steps = serializeListField(body.steps);
   if (body.taskText !== undefined) data.taskText = body.taskText ? String(body.taskText).trim() : null;
   if (body.beginnerHelp !== undefined) data.beginnerHelp = body.beginnerHelp ? String(body.beginnerHelp).trim() : null;
-  if (body.hints !== undefined) data.hints = Array.isArray(body.hints) ? body.hints : null;
+  if (body.hints !== undefined) data.hints = serializeListField(body.hints);
   if (body.orderNumber !== undefined) data.orderNumber = Number(body.orderNumber);
   if (body.type !== undefined) data.type = body.type || "VIDEO";
   if (body.isPublished !== undefined) data.isPublished = Boolean(body.isPublished);

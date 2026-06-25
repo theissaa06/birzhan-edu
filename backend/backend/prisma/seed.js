@@ -1,5 +1,16 @@
 const prisma = require("../src/config/prisma");
 
+function normalizeLessonPayload(lesson) {
+  return {
+    ...lesson,
+    whatYouLearn: Array.isArray(lesson.whatYouLearn)
+      ? JSON.stringify(lesson.whatYouLearn)
+      : lesson.whatYouLearn,
+    steps: Array.isArray(lesson.steps) ? JSON.stringify(lesson.steps) : lesson.steps,
+    hints: Array.isArray(lesson.hints) ? JSON.stringify(lesson.hints) : lesson.hints,
+  };
+}
+
 async function main() {
   await prisma.lessonProgress.deleteMany();
   await prisma.lesson.deleteMany();
@@ -74,7 +85,7 @@ async function main() {
             orderNumber: 2,
             type: "PRACTICE",
           },
-        ],
+        ].map(normalizeLessonPayload),
       },
     },
   });
@@ -106,7 +117,7 @@ async function main() {
             orderNumber: 2,
             type: "PRACTICE",
           },
-        ],
+        ].map(normalizeLessonPayload),
       },
     },
   });
@@ -137,7 +148,7 @@ async function main() {
             orderNumber: 2,
             type: "PRACTICE",
           },
-        ],
+        ].map(normalizeLessonPayload),
       },
     },
   });

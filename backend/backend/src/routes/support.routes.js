@@ -1,7 +1,13 @@
 const router = require("express").Router();
 const prisma = require("../config/prisma");
+const { authMiddleware, adminMiddleware } = require("../middleware/auth.middleware");
 
-router.get("/", async (req, res) => {
+function requireAdminForAdminMessage(req, res, next) {
+  if (req.body?.from !== "admin") return next();
+  return authMiddleware(req, res, () => adminMiddleware(req, res, next));
+}
+
+router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const messages = await prisma.supportMessage.findMany({
       orderBy: { createdAt: "asc" },
@@ -26,7 +32,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdminForAdminMessage, async (req, res) => {
   try {
     const { text, from, userId } = req.body;
 
@@ -34,6 +40,13 @@ router.post("/", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Текст и отправитель обязательны",
+      });
+    }
+
+    if (!["user", "admin"].includes(from)) {
+      return res.status(400).json({
+        success: false,
+        message: "Некорректный отправитель сообщения",
       });
     }
 
@@ -67,7 +80,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const id = Number(req.params.id);
 

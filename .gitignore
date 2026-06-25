@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.vscode/
 .env
 .env.local
 .env.*.local
@@ -13,3 +14,13 @@ backend/node_modules/
 backend/dist/
 backend/.env
 backend/.env.local
+backend/backend/node_modules/
+backend/backend/dist/
+backend/backend/.env
+backend/backend/.env.local
+backend/backend/prisma/**/*.db-journal
+
+backend_backup_before_lessons/
+frontend_backup_before_lessons/
+lessons-ready-temp/
+*.zip

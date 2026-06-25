@@ -82,6 +82,8 @@ export default function LessonPage() {
   const [showCourseToast, setShowCourseToast] = useState(false);
   const [hintIndex, setHintIndex] = useState(0);
   const [visibleHintCount, setVisibleHintCount] = useState(1);
+  const [showHelper, setShowHelper] = useState(true);
+  const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -207,8 +209,10 @@ export default function LessonPage() {
     if (!lessonId) return;
 
     const saved = localStorage.getItem(getLessonCompletedKey(lessonId));
+    const savedLesson = localStorage.getItem(`saved-lesson-${lessonId}`);
 
     setCompleted(saved === "true");
+    setIsSaved(savedLesson === "true");
     setShowCongrats(false);
     setShowCourseToast(false);
     setHintIndex(0);
@@ -216,13 +220,30 @@ export default function LessonPage() {
   }, [lessonId]);
 
   function showNextHint() {
-    if (hints.length <= 1) {
-      setVisibleHintCount(1);
+    if (hints.length === 0) {
+      setHintIndex(0);
+      return;
+    }
+
+    if (hints.length === 1) {
       return;
     }
 
     setHintIndex((prev) => (prev + 1) % hints.length);
     setVisibleHintCount((prev) => Math.min(prev + 1, hints.length));
+  }
+
+  function toggleSaveLesson() {
+    if (!lessonId) return;
+
+    const newSavedState = !isSaved;
+    setIsSaved(newSavedState);
+
+    if (newSavedState) {
+      localStorage.setItem(`saved-lesson-${lessonId}`, "true");
+    } else {
+      localStorage.removeItem(`saved-lesson-${lessonId}`);
+    }
   }
 
   async function handleCompleteLesson() {
@@ -414,6 +435,27 @@ export default function LessonPage() {
                 currentLesson.content ||
                 "Описание урока скоро появится."}
             </p>
+            <button
+              type="button"
+              className={`lesson-save-btn ${isSaved ? 'saved' : ''}`}
+              onClick={toggleSaveLesson}
+            >
+              {isSaved ? '⭐ Сохранён' : '☆ Сохранить урок'}
+            </button>
+          </div>
+
+          <div className="lesson-instruction-box">
+            <div className="lesson-instruction-icon">📌</div>
+            <div className="lesson-instruction-content">
+              <h3>Как пройти урок</h3>
+              <ol>
+                <li>🎬 Сначала посмотри видео полностью</li>
+                <li>📝 Прочитай раздел "Что ты узнаешь"</li>
+                <li>👆 Следуй инструкциям в разделе "Пошагово"</li>
+                <li>✅ Выполни практическое задание</li>
+                <li>🔥 Нажми кнопку "Я выполнил задание"</li>
+              </ol>
+            </div>
           </div>
 
           <div className="lesson-video-box">
@@ -455,22 +497,49 @@ export default function LessonPage() {
               </ul>
             </div>
 
-            <div className="lesson-helper-card">
-              <h2>💡 Помощник новичка</h2>
-              <p>
-                {currentLesson.beginnerHelp ||
-                  "Сначала посмотри видео, затем повтори действия у себя в редакторе. Не спеши: цель урока — понять логику и выполнить маленькую практику."}
-              </p>
+            {showHelper && (
+              <div className="lesson-helper-card">
+                <div className="lesson-helper-header">
+                  <h2>💡 Помощник новичка</h2>
+                  <button
+                    type="button"
+                    className="lesson-helper-close"
+                    onClick={() => setShowHelper(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p>
+                  {currentLesson.beginnerHelp ||
+                    "Сначала посмотри видео, затем повтори действия у себя в редакторе. Не спеши: цель урока — понять логику и выполнить маленькую практику."}
+                </p>
 
-              <div className="lesson-hint-box">
-                <span>Подсказка</span>
-                <strong>{currentHint}</strong>
+                <div className="lesson-hint-box">
+                  <span>Подсказка</span>
+                  <strong>
+                    {hints.length > 0
+                      ? currentHint
+                      : "Следуй инструкциям в разделе 'Пошагово' ниже"}
+                  </strong>
+                </div>
+
+                {hints.length > 1 && (
+                  <button type="button" onClick={showNextHint}>
+                    Показать следующую подсказку ({hintIndex + 1}/{hints.length})
+                  </button>
+                )}
               </div>
+            )}
 
-              <button type="button" onClick={showNextHint}>
-                Показать подсказку
+            {!showHelper && (
+              <button
+                type="button"
+                className="lesson-helper-toggle"
+                onClick={() => setShowHelper(true)}
+              >
+                💡 Показать помощника новичка
               </button>
-            </div>
+            )}
           </div>
 
           <div className="lesson-steps-card">
@@ -643,7 +712,7 @@ function getDefaultSteps(type: string, category: string) {
   return [
     "Посмотри видео полностью.",
     `Открой ${editor} на телефоне или ПК.`,
-    "Повтори действия из урока на своём видео.",
+    "Повтори действия из урока на данном видео.",
     "Сохрани результат или сделай черновик.",
     "Нажми “Я выполнил задание”.",
   ];
