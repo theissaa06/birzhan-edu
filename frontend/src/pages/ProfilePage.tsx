@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { getMySubmissions, type AssignmentSubmission } from "../services/submissions";
 import "./ProfilePage.css";
 
 type User = {
@@ -67,6 +68,7 @@ export default function ProfilePage() {
   const [serverUser, setServerUser] = useState<User | null>(null);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
   const [courses, setCourses] = useState<CourseProgress[]>([]);
+  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
   const [loading, setLoading] = useState(true);
 
   const certificates = readCertificates(user?.id);
@@ -127,10 +129,19 @@ export default function ProfilePage() {
 
           setCourses(courseList);
         }
+
       } catch (err) {
         console.error("Ошибка загрузки профиля:", err);
       } finally {
         setLoading(false);
+      }
+
+      try {
+        const submissionList = await getMySubmissions();
+        setSubmissions(submissionList);
+      } catch (err) {
+        console.error("Ошибка загрузки практических работ:", err);
+        setSubmissions([]);
       }
     }
 
@@ -329,7 +340,7 @@ export default function ProfilePage() {
                 <strong>Сертификатов пока нет</strong>
                 <p>
                   Завершите курс на 100%, чтобы получить первый сертификат
-                  Birzhan-Edu.
+                  Frame School.
                 </p>
 
                 <Link to="/courses" className="profile-btn profile-btn--primary">
@@ -354,6 +365,47 @@ export default function ProfilePage() {
                       </p>
                     </div>
                   </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="profile-panel">
+            <div className="profile-panel-head">
+              <p className="profile-label">Портфолио</p>
+              <h2>Мои практические работы</h2>
+            </div>
+
+            {loading ? (
+              <p className="profile-loading">Загружаем работы...</p>
+            ) : submissions.length === 0 ? (
+              <div className="profile-empty-certificates">
+                <span>📁</span>
+                <strong>Работ пока нет</strong>
+                <p>
+                  Откройте урок, выполните практическое задание и отправьте
+                  ссылку или видео на проверку.
+                </p>
+                <Link to="/courses" className="profile-btn profile-btn--primary">
+                  Перейти к урокам
+                </Link>
+              </div>
+            ) : (
+              <div className="profile-submission-list">
+                {submissions.slice(0, 6).map((submission) => (
+                  <article className="profile-submission-card" key={submission.id}>
+                    <div>
+                      <span>{submission.status}</span>
+                      <strong>{submission.lesson?.title || "Практическая работа"}</strong>
+                      <p>
+                        {submission.lesson?.course?.title || "Frame School"} ·{" "}
+                        {new Date(submission.createdAt).toLocaleDateString("ru-RU")}
+                      </p>
+                    </div>
+                    <a href={submission.url} target="_blank" rel="noreferrer">
+                      Открыть
+                    </a>
+                  </article>
                 ))}
               </div>
             )}

@@ -82,16 +82,16 @@ export default function Header() {
   return (
     <>
       <div className="top-sale-banner">
-        🔥 Скидка 30% на все курсы до 31 мая 2026! Используй промокод:{" "}
-        <strong>BIRZHAN30</strong>
+        Стартовый доступ к курсам по монтажу: промокод{" "}
+        <strong>FRAME30</strong>
       </div>
 
       <header className="site-header" ref={headerRef}>
         <div className="site-header-container">
           <Link to="/" className="site-logo" onClick={closeMenus}>
-            <span className="site-logo-mark">B</span>
+            <span className="site-logo-mark">F</span>
             <span className="site-logo-text">
-              Birzhan<span>_Edu</span>
+              Frame<span>School</span>
             </span>
           </Link>
 
@@ -165,7 +165,7 @@ export default function Header() {
             </NavLink>
 
             <NavLink to="/bonus" onClick={closeMenus}>
-              🎁 Бонус
+              Бонус
             </NavLink>
           </nav>
 
@@ -183,7 +183,7 @@ export default function Header() {
               className="site-premium-link"
               onClick={closeMenus}
             >
-              💎 Premium
+              Premium
             </Link>
 
             {user ? (

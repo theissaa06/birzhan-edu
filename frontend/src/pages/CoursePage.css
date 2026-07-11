@@ -636,3 +636,171 @@
     width: 100%;
   }
 }
+
+/* Final course polish: centered course view and lesson cards */
+.course-hero {
+  max-width: 1180px;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+
+.course-hero-content {
+  width: min(820px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.course-back,
+.course-label {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.course-hero h1,
+.course-description {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.course-meta {
+  justify-content: center;
+}
+
+.course-meta div {
+  justify-content: center;
+  min-width: 136px;
+}
+
+.course-progress-card {
+  width: min(760px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.course-progress-head {
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.course-complete-card {
+  flex-direction: column;
+  text-align: center;
+}
+
+.course-start-btn,
+.course-certificate-btn,
+.course-complete-btn {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.course-visual {
+  width: min(430px, 100%);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.course-icon {
+  position: static;
+}
+
+.course-visual-card {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.course-lessons-section {
+  text-align: center;
+}
+
+.course-section-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.course-section-head > p:not(.course-label) {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.lesson-filter-tabs {
+  justify-content: center;
+}
+
+.course-lessons-list {
+  justify-items: center;
+}
+
+.lesson-row {
+  width: min(980px, 100%);
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  justify-items: center;
+  text-align: center;
+}
+
+.lesson-number {
+  margin: 0 auto;
+}
+
+.lesson-info {
+  width: 100%;
+  text-align: center;
+}
+
+.lesson-info span,
+.lesson-done-label {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lesson-info p {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lesson-open-btn {
+  justify-self: center;
+}
+
+@media (max-width: 1050px) {
+  .course-visual {
+    justify-content: center;
+  }
+
+  .lesson-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .lesson-open-btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .course-meta div {
+    width: 100%;
+  }
+
+  .course-visual {
+    width: 100%;
+  }
+
+  .lesson-row {
+    grid-template-columns: 1fr;
+  }
+}

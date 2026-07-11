@@ -90,7 +90,7 @@ export default function ReviewsPage() {
           <p className="reviews-label">Отзывы студентов</p>
 
           <h1>
-            Что говорят ученики о <span>Birzhan-Edu</span>
+            Что говорят ученики о <span>Frame School</span>
           </h1>
 
           <p>

@@ -14,13 +14,13 @@ function getCurrentUserName() {
 
     if (storedUser) {
       const user = JSON.parse(storedUser);
-      return user.username || user.name || user.email || "Islam";
+      return user.username || user.name || user.email || "Студент Frame School";
     }
   } catch {
-    // fallback ниже
+    // Берем запасное значение ниже.
   }
 
-  return localStorage.getItem("user-name") || "Islam";
+  return localStorage.getItem("user-name") || "Студент Frame School";
 }
 
 function readCertificateFromStorage(): CourseCertificate | null {
@@ -34,7 +34,7 @@ function readCertificateFromStorage(): CourseCertificate | null {
         return parsed;
       }
     } catch {
-      // пробуем список сертификатов ниже
+      // Если последний сертификат поврежден, пробуем список ниже.
     }
   }
 
@@ -51,12 +51,7 @@ function readCertificateFromStorage(): CourseCertificate | null {
 
         if (certificates.length > 0) {
           const lastCertificate = certificates[certificates.length - 1];
-
-          localStorage.setItem(
-            "last-course-bonus",
-            JSON.stringify(lastCertificate),
-          );
-
+          localStorage.setItem("last-course-bonus", JSON.stringify(lastCertificate));
           return lastCertificate;
         }
       }
@@ -77,7 +72,6 @@ function createDemoCertificate() {
 
   localStorage.setItem("last-course-bonus", JSON.stringify(demoCertificate));
   localStorage.setItem("my-certificates", JSON.stringify([demoCertificate]));
-
   window.location.reload();
 }
 
@@ -102,23 +96,17 @@ export default function CertificatePage() {
           <h1>Сертификат пока недоступен</h1>
 
           <p>
-            Заверши курс на 100%, нажми “Получить сертификат”, и здесь появится
-            официальный сертификат Birzhan-Edu Platform. Для проверки на показе
-            можно временно создать тестовый сертификат.
+            Заверши курс на 100%, нажми "Получить сертификат", и здесь появится
+            официальный сертификат Frame School. Для проверки отображения можно
+            временно создать тестовый сертификат.
           </p>
 
           <div className="certificate-empty-actions">
-            <Link
-              to="/courses"
-              className="certificate-btn certificate-btn--primary"
-            >
+            <Link to="/courses" className="certificate-btn certificate-btn--primary">
               Перейти к курсам →
             </Link>
 
-            <Link
-              to="/bonus"
-              className="certificate-btn certificate-btn--ghost"
-            >
+            <Link to="/bonus" className="certificate-btn certificate-btn--ghost">
               Проверить бонусы
             </Link>
 
@@ -143,18 +131,18 @@ export default function CertificatePage() {
         </Link>
 
         <button type="button" onClick={handlePrint}>
-          🖨 Скачать / распечатать
+          Скачать / распечатать
         </button>
       </section>
 
       <section className="certificate-card">
-        <div className="certificate-watermark">BIRZHAN-EDU</div>
+        <div className="certificate-watermark">FRAME SCHOOL</div>
 
         <div className="certificate-top">
-          <div className="certificate-logo">B</div>
+          <div className="certificate-logo">F</div>
 
           <div>
-            <span>Birzhan-Edu Platform</span>
+            <span>Frame School</span>
             <p>International Video Editing Education</p>
           </div>
         </div>
@@ -175,8 +163,8 @@ export default function CertificatePage() {
           <h3>{certificate.courseTitle}</h3>
 
           <p className="certificate-description">
-            Студент прошёл все уроки курса, выполнил практические задания и
-            получил доступ к бонусным материалам Birzhan-Edu Platform.
+            Студент прошел все уроки курса, выполнил практические задания и
+            получил доступ к бонусным материалам Frame School.
           </p>
         </div>
 
@@ -188,14 +176,12 @@ export default function CertificatePage() {
 
           <div>
             <span>ID сертификата</span>
-            <strong>
-              BEDU-{certificate.courseId}-{date.split(".").join("")}
-            </strong>
+            <strong>FS-{certificate.courseId}-{date.split(".").join("")}</strong>
           </div>
 
           <div className="certificate-sign">
             <span>Founder</span>
-            <strong>Birzhan-Edu</strong>
+            <strong>Frame School</strong>
           </div>
         </div>
       </section>

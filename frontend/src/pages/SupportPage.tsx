@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
+import { sendSupportMessage } from "../services/support";
 import "./SupportPage.css";
 
 const helpCards = [
@@ -44,7 +45,7 @@ const faqItems = [
   {
     question: "Можно ли написать администратору?",
     answer:
-      "Да. Через форму обращения можно описать проблему. Позже это можно подключить к backend и выводить сообщения в админ-панели.",
+      "Да. Через форму обращения можно описать проблему, и сообщение появится в админ-панели.",
   },
 ];
 
@@ -57,6 +58,8 @@ export default function SupportPage() {
   });
 
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   function handleChange(
     e: React.ChangeEvent<
@@ -69,22 +72,43 @@ export default function SupportPage() {
     });
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (!form.name || !form.email || !form.message) {
-      alert("Заполни имя, email и сообщение.");
+      setError("Заполни имя, email и сообщение.");
       return;
     }
 
-    setSent(true);
+    try {
+      setSending(true);
+      setError("");
+      setSent(false);
 
-    setForm({
-      name: "",
-      email: "",
-      topic: "lesson",
-      message: "",
-    });
+      await sendSupportMessage({
+        from: "user",
+        text: form.message,
+        name: form.name,
+        email: form.email,
+        topic: form.topic,
+      });
+
+      setSent(true);
+
+      setForm({
+        name: "",
+        email: "",
+        topic: "lesson",
+        message: "",
+      });
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          "Не удалось отправить обращение. Проверь backend и попробуй ещё раз.",
+      );
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -94,7 +118,7 @@ export default function SupportPage() {
           <p className="support-label">Центр поддержки</p>
 
           <h1>
-            Поможем решить вопрос по <span>Birzhan-Edu</span>
+            Поможем решить вопрос по <span>Frame School</span>
           </h1>
 
           <p>
@@ -140,7 +164,7 @@ export default function SupportPage() {
         </div>
         <div>
           <strong>Admin</strong>
-          <span>можно подключить к панели</span>
+          <span>попадает в панель</span>
         </div>
       </section>
 
@@ -202,17 +226,19 @@ export default function SupportPage() {
           <p className="support-label">Обращение</p>
           <h2>Написать в поддержку</h2>
           <p>
-            Сейчас форма работает как demo. Следующим шагом её можно подключить
-            к backend и показывать сообщения в админ-панели.
+            Обращение отправляется в backend и появляется в админ-панели
+            Frame School.
           </p>
         </div>
 
         <form className="support-form" onSubmit={handleSubmit}>
           {sent && (
             <div className="support-success">
-              Сообщение отправлено в demo-режиме ✅
+              Сообщение отправлено. Администратор увидит его в панели поддержки.
             </div>
           )}
+
+          {error && <div className="support-error-box">{error}</div>}
 
           <label>
             Имя
@@ -256,8 +282,12 @@ export default function SupportPage() {
             />
           </label>
 
-          <button className="support-btn support-btn--primary" type="submit">
-            Отправить обращение
+          <button
+            className="support-btn support-btn--primary"
+            type="submit"
+            disabled={sending}
+          >
+            {sending ? "Отправляем..." : "Отправить обращение"}
           </button>
         </form>
       </section>

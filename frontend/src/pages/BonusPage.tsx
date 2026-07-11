@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../services/api";
 import "./BonusPage.css";
 
 type CourseBonus = {
@@ -8,7 +9,23 @@ type CourseBonus = {
   claimedAt: string;
 };
 
-const bonuses = [
+type BonusItem = {
+  id?: number;
+  icon: string;
+  title: string;
+  text: string;
+  tag: string;
+};
+
+type ApiBonus = {
+  id: number;
+  title: string;
+  description: string;
+  status?: string | null;
+  requirement?: string | null;
+};
+
+const fallbackBonuses: BonusItem[] = [
   {
     icon: "🤖",
     title: "AI-пак для монтажа 2026",
@@ -48,7 +65,7 @@ const bonuses = [
   {
     icon: "🏆",
     title: "Сертификат после прохождения",
-    text: "После завершения курса студент получает сертификат Birzhan-Edu Platform.",
+    text: "После завершения курса студент получает сертификат Frame School.",
     tag: "Награда",
   },
   {
@@ -59,9 +76,24 @@ const bonuses = [
   },
 ];
 
+const bonusIcons = ["🤖", "🎬", "🎨", "⚡", "📋", "📁", "🏆", "💼"];
+
+function mapApiBonus(bonus: ApiBonus, index: number): BonusItem {
+  return {
+    id: bonus.id,
+    icon: bonusIcons[index % bonusIcons.length],
+    title: bonus.title,
+    text: bonus.description,
+    tag: bonus.requirement || bonus.status || "Доступно",
+  };
+}
+
 export default function BonusPage() {
   const [courseBonus, setCourseBonus] = useState<CourseBonus | null>(null);
   const [claimedBonuses, setClaimedBonuses] = useState<string[]>([]);
+  const [bonuses, setBonuses] = useState<BonusItem[]>(fallbackBonuses);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     const savedCourseBonus = localStorage.getItem("last-course-bonus");
@@ -82,22 +114,58 @@ export default function BonusPage() {
         setClaimedBonuses([]);
       }
     }
+    loadBonuses().catch((error) => {
+      console.error("Ошибка загрузки бонусов:", error);
+      setNotice("Бонусы показаны из резервного набора. Backend временно недоступен.");
+      setBonuses(fallbackBonuses);
+      setLoading(false);
+    });
   }, []);
 
-  function handleClaimBonus(title: string) {
-    const updatedBonuses = claimedBonuses.includes(title)
+  async function loadBonuses() {
+    try {
+      setLoading(true);
+      const response = await api.get("/bonus");
+      const data = response.data.data || response.data.bonuses || [];
+
+      if (Array.isArray(data) && data.length > 0) {
+        setBonuses(data.map(mapApiBonus));
+      } else {
+        setBonuses(fallbackBonuses);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleClaimBonus(bonus: BonusItem) {
+    const key = bonus.id ? `db:${bonus.id}` : bonus.title;
+    const updatedBonuses = claimedBonuses.includes(key)
       ? claimedBonuses
-      : [...claimedBonuses, title];
+      : [...claimedBonuses, key];
 
     setClaimedBonuses(updatedBonuses);
     localStorage.setItem("claimed-bonuses", JSON.stringify(updatedBonuses));
+    setNotice(`Бонус “${bonus.title}” добавлен в ваш набор.`);
+
+    if (!bonus.id || !localStorage.getItem("token")) return;
+
+    try {
+      await api.post(`/bonus/${bonus.id}/claim`);
+      setNotice(`Бонус “${bonus.title}” сохранён в вашем аккаунте.`);
+    } catch (error) {
+      console.error("Ошибка сохранения бонуса:", error);
+      setNotice(
+        "Бонус отмечен локально. Войдите заново, если нужно сохранить его в аккаунте.",
+      );
+    }
   }
 
   return (
     <main className="bonus-page">
       <section className="bonus-hero">
         <div className="bonus-hero__content">
-          <p className="bonus-label">Бонусы Birzhan-Edu · 2026</p>
+          <p className="bonus-label">Бонусы Frame School · 2026</p>
 
           <h1>
             Получите бонусы для быстрого старта в <span>монтаже</span>
@@ -159,11 +227,14 @@ export default function BonusPage() {
             Эти бонусы помогают студенту быстрее начать практику, собрать первые
             работы и подготовиться к реальным заказам.
           </p>
+          {notice && <p>{notice}</p>}
+          {loading && <p>Загружаем бонусы из backend...</p>}
         </div>
 
         <div className="bonus-grid">
           {bonuses.map((bonus) => {
-            const isClaimed = claimedBonuses.includes(bonus.title);
+            const key = bonus.id ? `db:${bonus.id}` : bonus.title;
+            const isClaimed = claimedBonuses.includes(key);
 
             return (
               <article
@@ -183,7 +254,7 @@ export default function BonusPage() {
                 <button
                   className="bonus-card-btn"
                   type="button"
-                  onClick={() => handleClaimBonus(bonus.title)}
+                  onClick={() => handleClaimBonus(bonus)}
                 >
                   {isClaimed ? "✅ Получено" : "Получить"}
                 </button>

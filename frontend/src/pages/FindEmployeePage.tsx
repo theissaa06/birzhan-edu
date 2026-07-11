@@ -94,7 +94,7 @@ export default function FindEmployeePage() {
           </h1>
 
           <p>
-            Birzhan-Edu помогает компаниям, блогерам и проектам находить
+            Frame School помогает компаниям, блогерам и проектам находить
             начинающих видеомонтажёров, эдиторов, CapCut-специалистов,
             создателей Reels/Shorts и digital-помощников.
           </p>

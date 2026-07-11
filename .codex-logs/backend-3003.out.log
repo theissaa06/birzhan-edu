@@ -1,0 +1,5 @@
+
+> birzhan-edu-backend@1.0.0 start
+> node src/server.js
+
+Server running on port 3003

@@ -13,7 +13,16 @@ export default function FloatingActionButton() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
+  function hasAuthToken() {
+    return Boolean(localStorage.getItem("token"));
+  }
+
   async function loadMessages() {
+    if (!hasAuthToken()) {
+      setMessages([]);
+      return;
+    }
+
     try {
       const data = await getSupportMessages();
       setMessages(data);
@@ -23,6 +32,11 @@ export default function FloatingActionButton() {
   }
 
   useEffect(() => {
+    if (!hasAuthToken()) {
+      setMessages([]);
+      return;
+    }
+
     loadMessages();
 
     const interval = setInterval(() => {
@@ -40,6 +54,18 @@ export default function FloatingActionButton() {
 
   async function handleSend() {
     if (!text.trim()) return;
+
+    if (!hasAuthToken()) {
+      setMessages([
+        {
+          id: Date.now(),
+          text: "Чтобы написать в поддержку, войдите в аккаунт.",
+          from: "admin",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      return;
+    }
 
     try {
       const newMessage = await sendSupportMessage({

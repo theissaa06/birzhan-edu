@@ -2,10 +2,23 @@
 
 async function verifyTurnstile(token, remoteIp) {
   try {
+    const allowLocalBypass =
+      process.env.ALLOW_TURNSTILE_BYPASS === "true" ||
+      process.env.NODE_ENV !== "production";
+
     if (!process.env.TURNSTILE_SECRET_KEY) {
-      console.error(
-        "[Turnstile] TURNSTILE_SECRET_KEY не найден в backend/.env",
-      );
+      if (allowLocalBypass && token === "bypass-no-key") {
+        console.warn(
+          "[Turnstile] TURNSTILE_SECRET_KEY не найден. Использован локальный bypass.",
+        );
+
+        return {
+          success: true,
+          reason: "local-bypass-no-key",
+        };
+      }
+
+      console.error("[Turnstile] TURNSTILE_SECRET_KEY не найден в backend/.env");
 
       return {
         success: false,

@@ -67,7 +67,7 @@ export default function OnlineCollegePage() {
           </h1>
 
           <p className="college-hero__text">
-            Birzhan-Edu Online College — современное онлайн-обучение
+            Frame School Online College — современное онлайн-обучение
             видеомонтажу, дизайну, контенту и digital-профессиям после 9-го или
             11-го класса.
           </p>

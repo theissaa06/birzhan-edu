@@ -1,6 +1,6 @@
 /* ============================================================
    Auth Pages — Login & Register
-   Birzhan-Edu 2026 · Тёплый тёмный стиль
+   Frame School 2026 · Тёплый тёмный стиль
    ============================================================ */
 
 .auth-page {
@@ -102,6 +102,34 @@
   color: #c9c3bb;
   font-size: 15px;
   line-height: 1.72;
+}
+
+.auth-progress {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 22px;
+}
+
+.auth-progress span {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: #7d7570;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.auth-progress span.active {
+  color: #fed7aa;
+  background: rgba(249,115,22,.12);
+  border-color: rgba(249,115,22,.30);
 }
 
 /* Список преимуществ */
@@ -224,6 +252,95 @@
   background: rgba(12,9,7,.9);
 }
 
+.auth-field input[aria-invalid="true"] {
+  border-color: rgba(239,68,68,.64);
+}
+
+.auth-field-hint {
+  color: #7d7570;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.auth-field-hint.success {
+  color: #86efac;
+}
+
+.auth-field-hint.error {
+  color: #fca5a5;
+}
+
+.auth-onboarding {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(249,115,22,.12), rgba(15,23,42,.22)),
+    rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.auth-onboarding-head {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.auth-onboarding-head span {
+  color: #fdba74;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.auth-onboarding-head strong {
+  color: #f8f4ef;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.auth-onboarding fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.auth-onboarding legend {
+  margin: 0 0 8px;
+  color: #c9c3bb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.auth-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.auth-choice {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: #c9c3bb;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  background: rgba(12,9,7,.50);
+  border: 1px solid rgba(255,255,255,.09);
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+
+.auth-choice:hover,
+.auth-choice.active {
+  color: #fff7ed;
+  background: rgba(249,115,22,.20);
+  border-color: rgba(249,115,22,.48);
+}
+
 /* Ошибка */
 .auth-error {
   padding: 12px 14px;
@@ -262,6 +379,13 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+.auth-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 /* Ссылка внизу */
@@ -329,6 +453,26 @@
   .auth-info h1 {
     font-size: 34px;
   }
+
+  .auth-progress {
+    grid-template-columns: 1fr;
+  }
+}
+
+.auth-success {
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #bbf7d0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  background: rgba(34,197,94,.10);
+  border: 1px solid rgba(34,197,94,.28);
+}
+
+.auth-security-warning a {
+  color: #fed7aa;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 560px) {
@@ -353,5 +497,9 @@
 
   .auth-card h2 {
     font-size: 22px;
+  }
+
+  .auth-choice-grid {
+    grid-template-columns: 1fr;
   }
 }

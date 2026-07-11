@@ -13,7 +13,7 @@ const hints: Hint[] = [
   {
     id: 1,
     icon: "🤖",
-    title: "Birzhan AI",
+    title: "Frame AI",
     text: "Спроси помощника про учёбу, код, монтаж или идеи.",
     position: "right",
   },

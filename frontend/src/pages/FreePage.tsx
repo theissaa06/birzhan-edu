@@ -58,7 +58,7 @@ export default function FreePage() {
           <p className="free-label">Бесплатный старт</p>
 
           <h1>
-            Попробуйте обучение на Birzhan-Edu <span>бесплатно</span>
+            Попробуйте обучение на Frame School <span>бесплатно</span>
           </h1>
 
           <p>
