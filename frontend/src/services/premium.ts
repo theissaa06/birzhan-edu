@@ -1,4 +1,4 @@
-import axios from "axios";
+import api from "./api";
 
 export type PremiumStatus = {
   userId: number;
@@ -17,17 +17,8 @@ type PremiumApiResponse = {
   message?: string;
 };
 
-const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003";
-
-// защита от ошибки, если в .env написано http://localhost:3003/api
-const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
-
-export async function getPremiumStatus(
-  userId: number = 1,
-): Promise<PremiumStatus> {
-  const response = await axios.get<PremiumApiResponse>(
-    `${API_URL}/api/premium/status/${userId}`,
-  );
+export async function getPremiumStatus(): Promise<PremiumStatus> {
+  const response = await api.get<PremiumApiResponse>("/premium/status");
 
   if (!response.data.success || !response.data.data) {
     throw new Error(
@@ -38,16 +29,30 @@ export async function getPremiumStatus(
   return response.data.data;
 }
 
-export async function activatePremium(
-  userId: number = 1,
-): Promise<PremiumStatus> {
-  const response = await axios.post<PremiumApiResponse>(
-    `${API_URL}/api/premium/activate`,
-    { userId },
+export async function activatePremium(payload: {
+  transactionId?: string;
+  provider?: string;
+  amount?: number;
+  currency?: string;
+  plan?: string;
+} = {}): Promise<PremiumStatus> {
+  const response = await api.post<PremiumApiResponse>(
+    "/premium/activate",
+    payload,
   );
 
   if (!response.data.success || !response.data.data) {
     throw new Error(response.data.message || "Не удалось активировать Premium");
+  }
+
+  return response.data.data;
+}
+
+export async function cancelPremium(): Promise<PremiumStatus> {
+  const response = await api.post<PremiumApiResponse>("/premium/cancel");
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.message || "Не удалось отключить Premium");
   }
 
   return response.data.data;

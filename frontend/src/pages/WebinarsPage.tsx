@@ -64,7 +64,7 @@ export default function WebinarsPage() {
           </h1>
 
           <p>
-            Участвуйте в бесплатных вебинарах Birzhan-Edu: изучайте монтаж,
+            Участвуйте в бесплатных вебинарах Frame School: изучайте монтаж,
             CapCut, Premiere Pro, TikTok-эдиты, карьеру и современные
             AI-инструменты.
           </p>
@@ -179,7 +179,7 @@ export default function WebinarsPage() {
             <summary>Вебинары бесплатные?</summary>
             <p>
               Да, этот раздел создан как бесплатный вход в платформу
-              Birzhan-Edu. Можно посмотреть материалы и выбрать дальнейший курс.
+              Frame School. Можно посмотреть материалы и выбрать дальнейший курс.
             </p>
           </details>
 

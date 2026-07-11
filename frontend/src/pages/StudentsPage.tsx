@@ -71,7 +71,7 @@ export default function StudentsPage() {
     <main className="students-page">
       <section className="students-hero">
         <div className="students-hero__content">
-          <p className="students-label">Студенты Birzhan-Edu</p>
+          <p className="students-label">Студенты Frame School</p>
 
           <h1>
             Истории, прогресс и результаты наших <span>студентов</span>

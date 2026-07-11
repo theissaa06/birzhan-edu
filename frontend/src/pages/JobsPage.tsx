@@ -55,7 +55,7 @@ const benefits = [
   {
     icon: "🚀",
     title: "Рост вместе с платформой",
-    text: "Birzhan-Edu развивается как полноценная EdTech-платформа, поэтому команде есть куда расти.",
+    text: "Frame School развивается как полноценная EdTech-платформа, поэтому команде есть куда расти.",
   },
   {
     icon: "🎓",
@@ -95,7 +95,7 @@ export default function JobsPage() {
           <p className="jobs-label">Работа у нас</p>
 
           <h1>
-            Присоединяйтесь к команде <span>Birzhan-Edu</span>
+            Присоединяйтесь к команде <span>Frame School</span>
           </h1>
 
           <p>
@@ -182,7 +182,7 @@ export default function JobsPage() {
           <p className="jobs-label jobs-label--dark">Почему с нами</p>
           <h2>Работа в проекте, который помогает людям учиться</h2>
           <p>
-            Birzhan-Edu объединяет обучение, практику, поддержку, бонусы,
+            Frame School объединяет обучение, практику, поддержку, бонусы,
             карьерное развитие и современный digital-контент.
           </p>
         </div>
@@ -258,7 +258,7 @@ export default function JobsPage() {
       </section>
 
       <section className="jobs-final">
-        <h2>Хотите стать частью Birzhan-Edu?</h2>
+        <h2>Хотите стать частью Frame School?</h2>
         <p>
           Выберите роль, подготовьте портфолио и отправьте заявку. Платформа
           растёт, и ей нужны сильные креативные люди.

@@ -1,6 +1,6 @@
 /* =========================================
-   Birzhan_edu — AdminPage 2026
-   Файл: frontend/src/pages/AdminPage.css
+   Frame School вЂ” AdminPage 2026
+   Р¤Р°Р№Р»: frontend/src/pages/AdminPage.css
    ========================================= */
 
 .admin-page {
@@ -925,11 +925,11 @@
   }
 }
 /* =========================================================
-   AdminPage final rebuild — аккуратная админка 2026
-   Вставить в самый низ frontend/src/pages/AdminPage.css
+   AdminPage final rebuild вЂ” Р°РєРєСѓСЂР°С‚РЅР°СЏ Р°РґРјРёРЅРєР° 2026
+   Р’СЃС‚Р°РІРёС‚СЊ РІ СЃР°РјС‹Р№ РЅРёР· frontend/src/pages/AdminPage.css
    ========================================================= */
 
-/* Главное: не ломаем стиль, только выравниваем архитектуру */
+/* Р“Р»Р°РІРЅРѕРµ: РЅРµ Р»РѕРјР°РµРј СЃС‚РёР»СЊ, С‚РѕР»СЊРєРѕ РІС‹СЂР°РІРЅРёРІР°РµРј Р°СЂС…РёС‚РµРєС‚СѓСЂСѓ */
 .admin-page,
 .admin-page * {
   box-sizing: border-box;
@@ -941,14 +941,14 @@
   overflow-x: hidden !important;
 }
 
-/* Нормальный центрированный контейнер */
+/* РќРѕСЂРјР°Р»СЊРЅС‹Р№ С†РµРЅС‚СЂРёСЂРѕРІР°РЅРЅС‹Р№ РєРѕРЅС‚РµР№РЅРµСЂ */
 .admin-container {
   width: min(1180px, calc(100% - 20px)) !important;
   max-width: 1180px !important;
   margin: 0 auto !important;
 }
 
-/* Верх админки */
+/* Р’РµСЂС… Р°РґРјРёРЅРєРё */
 .admin-header {
   max-width: 920px !important;
   margin: 0 0 26px !important;
@@ -960,7 +960,7 @@
   font-size: 12px !important;
 }
 
-/* Исправляет сломанный заголовок Birzhan-Edu */
+/* РСЃРїСЂР°РІР»СЏРµС‚ СЃР»РѕРјР°РЅРЅС‹Р№ Р·Р°РіРѕР»РѕРІРѕРє Frame School */
 .admin-title,
 .admin-page h1 {
   max-width: 900px !important;
@@ -984,7 +984,7 @@
   margin: 0 !important;
 }
 
-/* Кнопки под заголовком */
+/* РљРЅРѕРїРєРё РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј */
 .admin-header-actions,
 .admin-actions,
 .admin-hero-actions {
@@ -995,7 +995,7 @@
   margin-top: 16px !important;
 }
 
-/* Главная сетка админки */
+/* Р“Р»Р°РІРЅР°СЏ СЃРµС‚РєР° Р°РґРјРёРЅРєРё */
 .admin-layout,
 .admin-grid {
   display: grid !important;
@@ -1004,7 +1004,7 @@
   align-items: start !important;
 }
 
-/* Сайдбар */
+/* РЎР°Р№РґР±Р°СЂ */
 .admin-sidebar {
   position: sticky !important;
   top: 88px !important;
@@ -1036,13 +1036,13 @@
   line-height: 1.2 !important;
 }
 
-/* Контент */
+/* РљРѕРЅС‚РµРЅС‚ */
 .admin-content {
   width: 100% !important;
   min-width: 0 !important;
 }
 
-/* Статистика — теперь это нормальные карточки, а не голый текст */
+/* РЎС‚Р°С‚РёСЃС‚РёРєР° вЂ” С‚РµРїРµСЂСЊ СЌС‚Рѕ РЅРѕСЂРјР°Р»СЊРЅС‹Рµ РєР°СЂС‚РѕС‡РєРё, Р° РЅРµ РіРѕР»С‹Р№ С‚РµРєСЃС‚ */
 .admin-stats,
 .admin-stats-grid,
 .admin-stat-list {
@@ -1053,7 +1053,7 @@
   margin: 22px 0 22px !important;
 }
 
-/* Стили для любых элементов внутри статистики */
+/* РЎС‚РёР»Рё РґР»СЏ Р»СЋР±С‹С… СЌР»РµРјРµРЅС‚РѕРІ РІРЅСѓС‚СЂРё СЃС‚Р°С‚РёСЃС‚РёРєРё */
 .admin-stats > *,
 .admin-stats-grid > *,
 .admin-stat-list > *,
@@ -1086,7 +1086,7 @@
   -webkit-backdrop-filter: blur(18px) !important;
 }
 
-/* Числа в статистике */
+/* Р§РёСЃР»Р° РІ СЃС‚Р°С‚РёСЃС‚РёРєРµ */
 .admin-stats strong,
 .admin-stats b,
 .admin-stat-value,
@@ -1098,7 +1098,7 @@
   letter-spacing: -0.04em !important;
 }
 
-/* Подписи статистики */
+/* РџРѕРґРїРёСЃРё СЃС‚Р°С‚РёСЃС‚РёРєРё */
 .admin-stats span,
 .admin-stats p,
 .admin-stat-label,
@@ -1110,7 +1110,7 @@
   font-weight: 800 !important;
 }
 
-/* Уведомление “изменения сохранены” */
+/* РЈРІРµРґРѕРјР»РµРЅРёРµ вЂњРёР·РјРµРЅРµРЅРёСЏ СЃРѕС…СЂР°РЅРµРЅС‹вЂќ */
 .admin-success,
 .admin-alert,
 .admin-notice {
@@ -1125,7 +1125,7 @@
   border: 1px solid rgba(52, 211, 153, 0.24) !important;
 }
 
-/* Панели */
+/* РџР°РЅРµР»Рё */
 .admin-panel,
 .admin-card,
 .admin-section,
@@ -1155,7 +1155,7 @@
   letter-spacing: -0.04em !important;
 }
 
-/* Формы */
+/* Р¤РѕСЂРјС‹ */
 .admin-form {
   display: grid !important;
   gap: 16px !important;
@@ -1192,7 +1192,7 @@
   min-height: 118px !important;
 }
 
-/* Кнопки */
+/* РљРЅРѕРїРєРё */
 .admin-btn,
 .admin-button,
 .admin-add-btn,
@@ -1206,7 +1206,7 @@
   font-size: 13px !important;
 }
 
-/* Списки карточек */
+/* РЎРїРёСЃРєРё РєР°СЂС‚РѕС‡РµРє */
 .admin-course-list,
 .admin-list {
   display: grid !important;
@@ -1234,7 +1234,7 @@
   line-height: 1.55 !important;
 }
 
-/* Таблицы */
+/* РўР°Р±Р»РёС†С‹ */
 .admin-table-wrap,
 .table-wrap {
   width: 100% !important;
@@ -1261,14 +1261,14 @@
   font-size: 13px !important;
 }
 
-/* Чтобы длинные email/url не ломали весь layout */
+/* Р§С‚РѕР±С‹ РґР»РёРЅРЅС‹Рµ email/url РЅРµ Р»РѕРјР°Р»Рё РІРµСЃСЊ layout */
 .admin-page td,
 .admin-page p,
 .admin-page span {
   overflow-wrap: anywhere;
 }
 
-/* Но заголовки НЕ ломаем по буквам */
+/* РќРѕ Р·Р°РіРѕР»РѕРІРєРё РќР• Р»РѕРјР°РµРј РїРѕ Р±СѓРєРІР°Рј */
 .admin-page h1,
 .admin-page h2,
 .admin-page h3 {
@@ -1276,7 +1276,7 @@
   word-break: normal !important;
 }
 
-/* Средние экраны / приближение браузера */
+/* РЎСЂРµРґРЅРёРµ СЌРєСЂР°РЅС‹ / РїСЂРёР±Р»РёР¶РµРЅРёРµ Р±СЂР°СѓР·РµСЂР° */
 @media (max-width: 1200px) {
   .admin-container {
     width: min(100% - 28px, 1180px) !important;
@@ -1322,7 +1322,7 @@
   }
 }
 
-/* Планшет */
+/* РџР»Р°РЅС€РµС‚ */
 @media (max-width: 840px) {
   .admin-page {
     padding: 32px 14px 70px !important;
@@ -1358,7 +1358,7 @@
   }
 }
 
-/* Телефон */
+/* РўРµР»РµС„РѕРЅ */
 @media (max-width: 560px) {
   .admin-page {
     padding: 24px 12px 64px !important;
@@ -1404,11 +1404,11 @@
   }
 }
 /* =========================================================
-   Admin Support final polish — нормальный блок поддержки
-   Вставить в самый низ AdminPage.css
+   Admin Support final polish вЂ” РЅРѕСЂРјР°Р»СЊРЅС‹Р№ Р±Р»РѕРє РїРѕРґРґРµСЂР¶РєРё
+   Р’СЃС‚Р°РІРёС‚СЊ РІ СЃР°РјС‹Р№ РЅРёР· AdminPage.css
    ========================================================= */
 
-/* Блок поддержки не должен быть огромным на весь экран */
+/* Р‘Р»РѕРє РїРѕРґРґРµСЂР¶РєРё РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РѕРіСЂРѕРјРЅС‹Рј РЅР° РІРµСЃСЊ СЌРєСЂР°РЅ */
 .admin-support,
 .admin-support-panel,
 .admin-messages-panel,
@@ -1418,7 +1418,7 @@
   overflow: hidden !important;
 }
 
-/* Список сообщений — компактный скролл внутри блока */
+/* РЎРїРёСЃРѕРє СЃРѕРѕР±С‰РµРЅРёР№ вЂ” РєРѕРјРїР°РєС‚РЅС‹Р№ СЃРєСЂРѕР»Р» РІРЅСѓС‚СЂРё Р±Р»РѕРєР° */
 .admin-support-list,
 .admin-message-list {
   display: grid !important;
@@ -1430,7 +1430,7 @@
   scrollbar-width: thin !important;
 }
 
-/* Карточка сообщения */
+/* РљР°СЂС‚РѕС‡РєР° СЃРѕРѕР±С‰РµРЅРёСЏ */
 .admin-support-card,
 .admin-message-card,
 .support-message-card {
@@ -1448,7 +1448,7 @@
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18) !important;
 }
 
-/* Верх карточки */
+/* Р’РµСЂС… РєР°СЂС‚РѕС‡РєРё */
 .admin-support-top,
 .admin-message-top {
   display: flex !important;
@@ -1458,7 +1458,7 @@
   margin-bottom: 10px !important;
 }
 
-/* Имя / email */
+/* РРјСЏ / email */
 .admin-support-author,
 .admin-message-author {
   color: #ffffff !important;
@@ -1467,7 +1467,7 @@
   line-height: 1.25 !important;
 }
 
-/* Время */
+/* Р’СЂРµРјСЏ */
 .admin-support-time,
 .admin-message-time {
   flex: 0 0 auto !important;
@@ -1476,7 +1476,7 @@
   font-weight: 750 !important;
 }
 
-/* Текст сообщения */
+/* РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ */
 .admin-support-text,
 .admin-message-text {
   max-height: 88px !important;
@@ -1487,7 +1487,7 @@
   line-height: 1.55 !important;
 }
 
-/* Длинные сообщения не ломают страницу */
+/* Р”Р»РёРЅРЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ РЅРµ Р»РѕРјР°СЋС‚ СЃС‚СЂР°РЅРёС†Сѓ */
 .admin-support-text,
 .admin-message-text,
 .admin-support-card,
@@ -1495,7 +1495,7 @@
   overflow-wrap: anywhere !important;
 }
 
-/* Действия под сообщением */
+/* Р”РµР№СЃС‚РІРёСЏ РїРѕРґ СЃРѕРѕР±С‰РµРЅРёРµРј */
 .admin-support-actions,
 .admin-message-actions,
 .support-message-actions {
@@ -1505,7 +1505,7 @@
   margin-top: 12px !important;
 }
 
-/* Кнопки внутри поддержки */
+/* РљРЅРѕРїРєРё РІРЅСѓС‚СЂРё РїРѕРґРґРµСЂР¶РєРё */
 .admin-support-actions button,
 .admin-message-actions button,
 .support-message-actions button,
@@ -1517,7 +1517,7 @@
   font-size: 11px !important;
 }
 
-/* Панель ответа админа не должна быть огромной */
+/* РџР°РЅРµР»СЊ РѕС‚РІРµС‚Р° Р°РґРјРёРЅР° РЅРµ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РѕРіСЂРѕРјРЅРѕР№ */
 .admin-reply-box,
 .admin-support-reply,
 .support-reply-box {
@@ -1536,7 +1536,7 @@
   resize: vertical !important;
 }
 
-/* Убираем гигантские пустые зоны внутри админки */
+/* РЈР±РёСЂР°РµРј РіРёРіР°РЅС‚СЃРєРёРµ РїСѓСЃС‚С‹Рµ Р·РѕРЅС‹ РІРЅСѓС‚СЂРё Р°РґРјРёРЅРєРё */
 .admin-panel,
 .admin-card,
 .admin-section,
@@ -1544,12 +1544,12 @@
   min-height: auto !important;
 }
 
-/* Если сообщения идут обычными div без классов — тоже выравниваем */
+/* Р•СЃР»Рё СЃРѕРѕР±С‰РµРЅРёСЏ РёРґСѓС‚ РѕР±С‹С‡РЅС‹РјРё div Р±РµР· РєР»Р°СЃСЃРѕРІ вЂ” С‚РѕР¶Рµ РІС‹СЂР°РІРЅРёРІР°РµРј */
 .admin-content article {
   max-width: 100% !important;
 }
 
-/* Нижний чат/виджет не должен мешать админке */
+/* РќРёР¶РЅРёР№ С‡Р°С‚/РІРёРґР¶РµС‚ РЅРµ РґРѕР»Р¶РµРЅ РјРµС€Р°С‚СЊ Р°РґРјРёРЅРєРµ */
 .floating-action-button,
 .floating-support-btn,
 .support-floating-button,
@@ -1563,7 +1563,7 @@
   z-index: 5000 !important;
 }
 
-/* Окно поддержки пользователя — компактнее */
+/* РћРєРЅРѕ РїРѕРґРґРµСЂР¶РєРё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ вЂ” РєРѕРјРїР°РєС‚РЅРµРµ */
 .support-widget,
 .support-chat,
 .floating-chat,
@@ -1577,7 +1577,7 @@
   overflow: hidden !important;
 }
 
-/* Тело чата — со скроллом, не на всю страницу */
+/* РўРµР»Рѕ С‡Р°С‚Р° вЂ” СЃРѕ СЃРєСЂРѕР»Р»РѕРј, РЅРµ РЅР° РІСЃСЋ СЃС‚СЂР°РЅРёС†Сѓ */
 .support-widget-body,
 .support-chat-body,
 .chat-widget-body,
@@ -1587,7 +1587,7 @@
   overflow-y: auto !important;
 }
 
-/* Адаптация */
+/* РђРґР°РїС‚Р°С†РёСЏ */
 @media (max-width: 1100px) {
   .admin-support-list,
   .admin-message-list {
@@ -1615,8 +1615,8 @@
   }
 }
 /* =========================================================
-   AdminPage compact final fix — поддержка и админка нормальнее
-   Вставить в самый низ frontend/src/pages/AdminPage.css
+   AdminPage compact final fix вЂ” РїРѕРґРґРµСЂР¶РєР° Рё Р°РґРјРёРЅРєР° РЅРѕСЂРјР°Р»СЊРЅРµРµ
+   Р’СЃС‚Р°РІРёС‚СЊ РІ СЃР°РјС‹Р№ РЅРёР· frontend/src/pages/AdminPage.css
    ========================================================= */
 
 .admin-page,
@@ -1797,7 +1797,7 @@
   font-size: 12px !important;
 }
 
-/* SUPPORT — главное исправление */
+/* SUPPORT вЂ” РіР»Р°РІРЅРѕРµ РёСЃРїСЂР°РІР»РµРЅРёРµ */
 .admin-support {
   max-height: none !important;
 }
@@ -1930,7 +1930,7 @@
   z-index: 5000 !important;
 }
 
-/* Приближение / средний экран */
+/* РџСЂРёР±Р»РёР¶РµРЅРёРµ / СЃСЂРµРґРЅРёР№ СЌРєСЂР°РЅ */
 @media (max-width: 1250px) {
   .admin-layout {
     grid-template-columns: 1fr !important;
@@ -2001,12 +2001,12 @@
 }
 /* =========================================================
    Admin Applications + Users final polish
-   Красивые заявки и пользователи
-   Вставить в самый низ AdminPage.css
+   РљСЂР°СЃРёРІС‹Рµ Р·Р°СЏРІРєРё Рё РїРѕР»СЊР·РѕРІР°С‚РµР»Рё
+   Р’СЃС‚Р°РІРёС‚СЊ РІ СЃР°РјС‹Р№ РЅРёР· AdminPage.css
    ========================================================= */
 
 /* =======================
-   ЗАЯВКИ
+   Р—РђРЇР’РљР
    ======================= */
 
 .admin-table {
@@ -2107,7 +2107,7 @@
 }
 
 /* =======================
-   ПОЛЬЗОВАТЕЛИ
+   РџРћР›Р¬Р—РћР’РђРўР•Р›Р
    ======================= */
 
 .admin-users-list {
@@ -2298,7 +2298,7 @@
 }
 
 /* =======================
-   АДАПТАЦИЯ
+   РђР”РђРџРўРђР¦РРЇ
    ======================= */
 
 @media (max-width: 1050px) {
@@ -2342,11 +2342,11 @@
 }
 /* =========================================================
    Admin typography + spacing polish
-   Исправляет слипшийся текст, отступы, карточки и формы
-   Вставить в самый низ AdminPage.css
+   РСЃРїСЂР°РІР»СЏРµС‚ СЃР»РёРїС€РёР№СЃСЏ С‚РµРєСЃС‚, РѕС‚СЃС‚СѓРїС‹, РєР°СЂС‚РѕС‡РєРё Рё С„РѕСЂРјС‹
+   Р’СЃС‚Р°РІРёС‚СЊ РІ СЃР°РјС‹Р№ РЅРёР· AdminPage.css
    ========================================================= */
 
-/* Общая читаемость */
+/* РћР±С‰Р°СЏ С‡РёС‚Р°РµРјРѕСЃС‚СЊ */
 .admin-page {
   font-size: 15px !important;
   line-height: 1.55 !important;
@@ -2366,7 +2366,7 @@
   letter-spacing: normal;
 }
 
-/* Hero / верх админки */
+/* Hero / РІРµСЂС… Р°РґРјРёРЅРєРё */
 .admin-hero,
 .admin-header {
   margin-bottom: 34px !important;
@@ -2390,7 +2390,7 @@
   line-height: 1.7 !important;
 }
 
-/* Кнопки под hero */
+/* РљРЅРѕРїРєРё РїРѕРґ hero */
 .admin-hero-actions,
 .admin-header-actions {
   display: flex !important;
@@ -2399,7 +2399,7 @@
   margin-top: 18px !important;
 }
 
-/* Статистика */
+/* РЎС‚Р°С‚РёСЃС‚РёРєР° */
 .admin-stats,
 .admin-stats-grid {
   gap: 16px !important;
@@ -2427,14 +2427,14 @@
   line-height: 1.35 !important;
 }
 
-/* Основной layout */
+/* РћСЃРЅРѕРІРЅРѕР№ layout */
 .admin-layout,
 .admin-grid {
   gap: 26px !important;
   align-items: start !important;
 }
 
-/* Панели */
+/* РџР°РЅРµР»Рё */
 .admin-panel,
 .admin-card,
 .admin-section,
@@ -2472,7 +2472,7 @@
   line-height: 1.6 !important;
 }
 
-/* Карточки курсов */
+/* РљР°СЂС‚РѕС‡РєРё РєСѓСЂСЃРѕРІ */
 .admin-course-list {
   gap: 18px !important;
 }
@@ -2509,7 +2509,7 @@
   line-height: 1.45 !important;
 }
 
-/* Кнопки внутри карточек */
+/* РљРЅРѕРїРєРё РІРЅСѓС‚СЂРё РєР°СЂС‚РѕС‡РµРє */
 .admin-course-actions,
 .admin-list-actions,
 .admin-form-actions {
@@ -2527,7 +2527,7 @@
   padding: 0 14px !important;
 }
 
-/* Уроки */
+/* РЈСЂРѕРєРё */
 .admin-lesson-list,
 .admin-lessons-list {
   gap: 16px !important;
@@ -2553,7 +2553,7 @@
   line-height: 1.6 !important;
 }
 
-/* Правая колонка с формами */
+/* РџСЂР°РІР°СЏ РєРѕР»РѕРЅРєР° СЃ С„РѕСЂРјР°РјРё */
 .admin-side,
 .admin-sidebar,
 .admin-forms,
@@ -2561,7 +2561,7 @@
   gap: 18px !important;
 }
 
-/* Формы */
+/* Р¤РѕСЂРјС‹ */
 .admin-form {
   display: grid !important;
   gap: 16px !important;
@@ -2596,7 +2596,7 @@
   resize: vertical !important;
 }
 
-/* Заголовки форм справа */
+/* Р—Р°РіРѕР»РѕРІРєРё С„РѕСЂРј СЃРїСЂР°РІР° */
 .admin-form h2,
 .admin-form h3,
 .admin-sidebar h2,
@@ -2617,7 +2617,7 @@
   line-height: 1.6 !important;
 }
 
-/* Блок добавления урока */
+/* Р‘Р»РѕРє РґРѕР±Р°РІР»РµРЅРёСЏ СѓСЂРѕРєР° */
 .admin-lesson-type,
 .admin-radio-group,
 .admin-type-list {
@@ -2636,7 +2636,7 @@
   font-size: 13px !important;
 }
 
-/* Выбранный курс */
+/* Р’С‹Р±СЂР°РЅРЅС‹Р№ РєСѓСЂСЃ */
 .admin-selected-course,
 .admin-current-course {
   margin: 16px 0 !important;
@@ -2654,7 +2654,7 @@
   line-height: 1.35 !important;
 }
 
-/* Все кнопки чуть ровнее */
+/* Р’СЃРµ РєРЅРѕРїРєРё С‡СѓС‚СЊ СЂРѕРІРЅРµРµ */
 .admin-page button,
 .admin-page a {
   line-height: 1.2 !important;
@@ -2666,20 +2666,20 @@
   padding-right: 14px !important;
 }
 
-/* Чтобы текст не прилипал к краям */
+/* Р§С‚РѕР±С‹ С‚РµРєСЃС‚ РЅРµ РїСЂРёР»РёРїР°Р» Рє РєСЂР°СЏРј */
 .admin-page article,
 .admin-page section,
 .admin-page form {
   scroll-margin-top: 90px;
 }
 
-/* Скролл справа внутри админки */
+/* РЎРєСЂРѕР»Р» СЃРїСЂР°РІР° РІРЅСѓС‚СЂРё Р°РґРјРёРЅРєРё */
 .admin-scroll,
 .admin-content-scroll {
   padding-right: 10px !important;
 }
 
-/* Меньше сжатия на ноутбуке */
+/* РњРµРЅСЊС€Рµ СЃР¶Р°С‚РёСЏ РЅР° РЅРѕСѓС‚Р±СѓРєРµ */
 @media (max-width: 1200px) {
   .admin-layout,
   .admin-grid {
@@ -2694,7 +2694,7 @@
   }
 }
 
-/* Телефон */
+/* РўРµР»РµС„РѕРЅ */
 @media (max-width: 720px) {
   .admin-panel,
   .admin-card,
@@ -2723,7 +2723,7 @@
 }
 /* =========================================================
    Admin stats center fix
-   Центрирует блок статистики в админке
+   Р¦РµРЅС‚СЂРёСЂСѓРµС‚ Р±Р»РѕРє СЃС‚Р°С‚РёСЃС‚РёРєРё РІ Р°РґРјРёРЅРєРµ
    ========================================================= */
 
 .admin-stats,
@@ -2749,14 +2749,14 @@
   border-radius: 20px !important;
 }
 
-/* Если статистика находится внутри общего контейнера */
+/* Р•СЃР»Рё СЃС‚Р°С‚РёСЃС‚РёРєР° РЅР°С…РѕРґРёС‚СЃСЏ РІРЅСѓС‚СЂРё РѕР±С‰РµРіРѕ РєРѕРЅС‚РµР№РЅРµСЂР° */
 .admin-container .admin-stats,
 .admin-page .admin-stats {
   margin-left: auto !important;
   margin-right: auto !important;
 }
 
-/* На ноутбуке */
+/* РќР° РЅРѕСѓС‚Р±СѓРєРµ */
 @media (max-width: 1100px) {
   .admin-stats,
   .admin-stats-grid,
@@ -2765,7 +2765,7 @@
   }
 }
 
-/* Планшет */
+/* РџР»Р°РЅС€РµС‚ */
 @media (max-width: 760px) {
   .admin-stats,
   .admin-stats-grid,
@@ -2774,11 +2774,897 @@
   }
 }
 
-/* Телефон */
+/* РўРµР»РµС„РѕРЅ */
 @media (max-width: 520px) {
   .admin-stats,
   .admin-stats-grid,
   .admin-stat-list {
     grid-template-columns: 1fr !important;
   }
+}
+
+
+/* =========================================================
+   Admin Dashboard 2026 - Продвинутый дашборд метрик
+   ========================================================= */
+
+.admin-dashboard {
+  position: relative;
+  z-index: 2;
+  width: min(1240px, 100%);
+  margin: 30px auto 34px;
+}
+
+.admin-dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-dashboard-header h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 24px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.admin-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(240px, 1fr));
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+.admin-metric-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.045));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-metric-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.32);
+}
+
+.admin-metric-icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  font-size: 24px;
+  background: rgba(15, 23, 42, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.admin-metric-card strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 32px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  margin-bottom: 6px;
+}
+
+.admin-metric-card span {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.admin-metric-card--primary .admin-metric-icon {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.admin-metric-card--success .admin-metric-icon {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.admin-metric-card--info .admin-metric-icon {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.admin-metric-card--warning .admin-metric-icon {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.admin-metric-card--premium .admin-metric-icon {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.admin-metric-card--revenue .admin-metric-icon {
+  background: rgba(236, 72, 153, 0.15);
+  border-color: rgba(236, 72, 153, 0.3);
+}
+
+.admin-metric-card--conversion .admin-metric-icon {
+  background: rgba(20, 184, 166, 0.15);
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.admin-metric-card--courses .admin-metric-icon {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.admin-funnel-section {
+  padding: 24px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-funnel-section h3 {
+  margin: 0 0 18px;
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+}
+
+.admin-funnel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-funnel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease;
+}
+
+.admin-funnel-item:hover {
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.admin-funnel-item span {
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.admin-funnel-item strong {
+  color: #38bdf8;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.admin-stats--compact {
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.admin-stats--compact > * {
+  min-height: 72px !important;
+  padding: 16px !important;
+}
+
+.admin-stats--compact strong {
+  font-size: 24px !important;
+}
+
+.admin-stats--compact span {
+  font-size: 12px !important;
+}
+
+@media (max-width: 1024px) {
+  .admin-dashboard-grid {
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-metric-card {
+    padding: 20px;
+  }
+
+  .admin-metric-card strong {
+    font-size: 28px;
+  }
+}
+
+
+
+/* =========================================================
+   Admin Filters Bar - Поиск и фильтры
+   ========================================================= */
+
+.admin-filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  margin-bottom: 20px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+}
+
+.admin-search-wrapper {
+  flex: 1;
+  min-width: 200px;
+}
+
+.admin-search-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: none;
+  font-size: 14px;
+  font-weight: 650;
+  transition: 0.2s ease;
+}
+
+.admin-search-input::placeholder {
+  color: #64748b;
+}
+
+.admin-search-input:focus {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.admin-filters-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-filter-select {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: none;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admin-filter-select:focus {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.admin-filter-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.admin-filters-count {
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .admin-filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-search-wrapper {
+    width: 100%;
+  }
+
+  .admin-filters-group {
+    width: 100%;
+  }
+
+  .admin-filter-select {
+    flex: 1;
+  }
+
+  .admin-filters-count {
+    text-align: center;
+  }
+}
+
+
+
+/* =========================================================
+   Admin Premium Buttons
+   ========================================================= */
+
+.admin-btn--premium {
+  color: #fef08a !important;
+  border: 1px solid rgba(250, 204, 21, 0.4) !important;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(234, 179, 8, 0.1)) !important;
+  box-shadow: 0 0 20px rgba(250, 204, 21, 0.2) !important;
+}
+
+.admin-btn--premium:hover {
+  color: #fef08a !important;
+  border-color: rgba(250, 204, 21, 0.6) !important;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.25), rgba(234, 179, 8, 0.18)) !important;
+  box-shadow: 0 0 30px rgba(250, 204, 21, 0.35) !important;
+}
+
+.admin-btn--danger {
+  color: #fecdd3 !important;
+  border: 1px solid rgba(251, 113, 133, 0.4) !important;
+  background: rgba(251, 113, 133, 0.1) !important;
+}
+
+.admin-btn--danger:hover {
+  color: #ffffff !important;
+  border-color: rgba(251, 113, 133, 0.6) !important;
+  background: rgba(251, 113, 133, 0.2) !important;
+}
+
+/* =========================================================
+   Admin Modal Select
+   ========================================================= */
+
+.admin-modal-select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  margin: 16px 0;
+  border-radius: 14px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: none;
+  font-size: 15px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admin-modal-select:focus {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.admin-modal-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+
+
+/* =========================================================
+   Command Palette (Cmd+K)
+   ========================================================= */
+
+.command-palette-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.command-palette {
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 32px 96px rgba(0, 0, 0, 0.48);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.command-palette-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.command-palette-icon {
+  font-size: 24px;
+}
+
+.command-palette-input {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: none;
+  font-size: 15px;
+  font-weight: 650;
+  transition: 0.2s ease;
+}
+
+.command-palette-input::placeholder {
+  color: #64748b;
+}
+
+.command-palette-input:focus {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.command-palette-shortcut {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.command-palette-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.command-palette-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  color: #e2e8f0;
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.command-palette-item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.24);
+  color: #f8fafc;
+}
+
+.command-palette-item-icon {
+  font-size: 20px;
+}
+
+.command-palette-item-label {
+  flex: 1;
+}
+
+.command-palette-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #94a3b8;
+}
+
+.command-palette-empty span {
+  font-size: 32px;
+}
+
+.command-palette-empty p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.command-palette-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.command-palette-footer kbd {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 640px) {
+  .command-palette {
+    max-width: 100%;
+    border-radius: 20px;
+  }
+
+  .command-palette-header {
+    padding: 16px 18px;
+  }
+
+  .command-palette-shortcut {
+    display: none;
+  }
+
+  .command-palette-item {
+    padding: 12px 14px;
+  }
+}
+
+
+
+/* =========================================================
+   Admin Notifications Top - Маленькие уведомления наверху
+   ========================================================= */
+
+.admin-notification--top {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  max-width: 400px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.admin-notification--top.admin-error {
+  background: rgba(251, 113, 133, 0.15);
+  border: 1px solid rgba(251, 113, 133, 0.4);
+  color: #fecdd3;
+}
+
+.admin-notification--top.admin-success {
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #bbf7d0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-notification--top.admin-success span {
+  font-size: 20px;
+}
+
+.admin-notification--top.admin-success strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.admin-notification--top.admin-success p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+  .admin-notification--top {
+    left: 20px;
+    right: 20px;
+    max-width: none;
+  }
+}
+
+
+/* =========================================================
+   Admin Toasts near users database
+   ========================================================= */
+
+.admin-toast-zone {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.admin-toast {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  overflow: hidden;
+  padding: 13px 14px 16px;
+  color: #dff8ff;
+  background:
+    linear-gradient(135deg, rgba(18, 28, 43, 0.98), rgba(13, 18, 30, 0.96)),
+    repeating-linear-gradient(90deg, rgba(93, 226, 255, 0.08) 0, rgba(93, 226, 255, 0.08) 1px, transparent 1px, transparent 28px);
+  border: 1px solid rgba(93, 226, 255, 0.2);
+  border-radius: 16px 16px 16px 6px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.32);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  transform: translateX(calc(var(--toast-index, 0) * 6px));
+  animation: adminToastSnap 260ms cubic-bezier(0.2, 0.95, 0.2, 1.2);
+}
+
+.admin-toast--success {
+  border-color: rgba(93, 226, 255, 0.42);
+  box-shadow: 0 18px 48px rgba(42, 211, 238, 0.12);
+}
+
+.admin-toast--error {
+  color: #ffe4e8;
+  border-color: rgba(255, 122, 151, 0.44);
+  box-shadow: 0 18px 48px rgba(255, 93, 132, 0.13);
+}
+
+.admin-toast--info {
+  border-color: rgba(190, 130, 255, 0.38);
+  box-shadow: 0 18px 48px rgba(190, 130, 255, 0.12);
+}
+
+.admin-toast-icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: #05111a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 1000;
+  background: linear-gradient(135deg, #5de2ff, #d946ef);
+  border-radius: 8px 8px 8px 3px;
+  box-shadow: 0 0 18px rgba(93, 226, 255, 0.3);
+}
+
+.admin-toast--error .admin-toast-icon {
+  background: linear-gradient(135deg, #ff8aa4, #ffcf70);
+}
+
+.admin-toast--info .admin-toast-icon {
+  background: linear-gradient(135deg, #93c5fd, #d946ef);
+}
+
+.admin-toast-copy strong {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.admin-toast-copy p {
+  margin: 0;
+  color: rgba(219, 234, 254, 0.78);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.admin-toast-close {
+  width: 26px;
+  height: 26px;
+  color: rgba(226, 232, 240, 0.74);
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.admin-toast-close:hover {
+  color: #ffffff;
+  border-color: rgba(93, 226, 255, 0.42);
+}
+
+.admin-toast-timeline {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 7px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.35) 0, rgba(255, 255, 255, 0.35) 1px, transparent 1px, transparent 13px),
+    rgba(148, 163, 184, 0.16);
+}
+
+.admin-toast-timeline::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #5de2ff, #d946ef);
+  animation: adminToastTimeline 5200ms linear forwards;
+}
+
+@keyframes adminToastSnap {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(calc(var(--toast-index, 0) * 6px));
+  }
+}
+
+@keyframes adminToastTimeline {
+  from { transform: translateX(0); }
+  to { transform: translateX(102%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-toast,
+  .admin-toast-timeline::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-toast {
+    transform: none;
+  }
+}
+
+/* =========================================================
+   Admin User Blocking And Badges
+   ========================================================= */
+
+.admin-user-card--blocked {
+  border-color: rgba(255, 122, 151, 0.44) !important;
+  background:
+    linear-gradient(135deg, rgba(45, 20, 34, 0.92), rgba(15, 23, 42, 0.98)),
+    rgba(15, 23, 42, 0.9) !important;
+  box-shadow: 0 22px 56px rgba(255, 93, 132, 0.12) !important;
+}
+
+.admin-user-card--blocked::after {
+  content: "BLOCKED";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 5px 9px;
+  color: #ffe4e6;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(255, 122, 151, 0.38);
+  border-radius: 999px;
+  background: rgba(127, 29, 29, 0.34);
+}
+
+.admin-role--owner {
+  color: #07111d !important;
+  border-color: rgba(255, 210, 92, 0.72) !important;
+  background: linear-gradient(135deg, #ffd25c, #ff8f3d) !important;
+}
+
+.admin-role--developer {
+  color: #07111d !important;
+  border-color: rgba(93, 226, 255, 0.72) !important;
+  background: linear-gradient(135deg, #5de2ff, #9d7cff) !important;
+}
+
+.admin-role--premium {
+  color: #07111d !important;
+  border-color: rgba(216, 180, 254, 0.72) !important;
+  background: linear-gradient(135deg, #d8b4fe, #5de2ff) !important;
+}
+
+.admin-user-blocked-chip {
+  color: #fecdd3 !important;
+  border-color: rgba(255, 122, 151, 0.42) !important;
+  background: rgba(127, 29, 29, 0.34) !important;
+}
+
+.admin-user-blocked-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  color: #ffe4e6;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  border: 1px solid rgba(255, 122, 151, 0.28);
+  border-radius: 12px;
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.admin-btn--safe {
+  color: #052e1b !important;
+  border-color: rgba(143, 255, 210, 0.58) !important;
+  background: linear-gradient(135deg, #8fffd2, #5de2ff) !important;
+}
+
+.admin-btn--safe:hover {
+  color: #02140c !important;
+  box-shadow: 0 0 26px rgba(93, 226, 255, 0.24) !important;
+}
+
+.admin-btn--warning {
+  color: #231304 !important;
+  border-color: rgba(255, 207, 112, 0.58) !important;
+  background: linear-gradient(135deg, #ffcf70, #ff9f43) !important;
+}
+
+.admin-btn--warning:hover {
+  color: #160c02 !important;
+  box-shadow: 0 0 26px rgba(255, 159, 67, 0.24) !important;
 }

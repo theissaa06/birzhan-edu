@@ -1,37 +1,57 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import "./CertificatePage.css";
+import "./MyCertificatesPage.css";
 
-type CourseBonus = {
+type CourseCertificate = {
   courseId: number;
   courseTitle: string;
   claimedAt: string;
 };
 
-export default function CertificatePage() {
-  const [copied, setCopied] = useState(false);
+function readCertificate(): CourseCertificate | null {
+  const savedCertificate = localStorage.getItem("last-course-bonus");
 
-  const savedBonus = localStorage.getItem("last-course-bonus");
+  if (!savedCertificate) return null;
 
-  let certificate: CourseBonus | null = null;
+  try {
+    const parsed = JSON.parse(savedCertificate);
+    return parsed?.courseId && parsed?.courseTitle && parsed?.claimedAt
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+}
 
-  if (savedBonus) {
-    try {
-      certificate = JSON.parse(savedBonus);
-    } catch {
-      certificate = null;
+function getStudentName() {
+  try {
+    const storedUser =
+      localStorage.getItem("user") || localStorage.getItem("currentUser");
+
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      return user.username || user.name || user.email || "Студент Frame School";
     }
+  } catch {
+    // Используем запасное имя ниже.
   }
 
-  const studentName = localStorage.getItem("user-name") || "Islam";
+  return localStorage.getItem("user-name") || "Студент Frame School";
+}
+
+export default function MyCertificatesPage() {
+  const [copied, setCopied] = useState(false);
+  const certificate = readCertificate();
+  const studentName = getStudentName();
 
   const date = certificate?.claimedAt
     ? new Date(certificate.claimedAt).toLocaleDateString("ru-RU")
     : new Date().toLocaleDateString("ru-RU");
 
   const certificateId = certificate
-    ? `BEDU-${certificate.courseId}-${date.split(".").join("")}`
+    ? `FRAME-${certificate.courseId}-${date.split(".").join("")}`
     : "";
+
   const publicCertificateUrl = `${window.location.origin}/certificate/public?name=${encodeURIComponent(
     studentName,
   )}&course=${encodeURIComponent(
@@ -42,6 +62,11 @@ export default function CertificatePage() {
     publicCertificateUrl,
   )}`;
 
+  function flashCopied() {
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
   function handlePrint() {
     window.print();
   }
@@ -51,45 +76,29 @@ export default function CertificatePage() {
 
     try {
       await navigator.clipboard.writeText(certificateId);
-      setCopied(true);
-
-      setTimeout(() => {
-        setCopied(false);
-      }, 1800);
-    } catch {
-      setCopied(true);
-
-      setTimeout(() => {
-        setCopied(false);
-      }, 1800);
+    } finally {
+      flashCopied();
     }
   }
 
   async function handleShare() {
     if (!certificate) return;
 
-    const shareText = `🎓 Я получил сертификат Birzhan-Edu Platform!
-
-Курс: ${certificate.courseTitle}
-ID сертификата: ${certificateId}
-Дата выдачи: ${date}`;
+    const shareText = `Я получил сертификат Frame School!\n\nКурс: ${certificate.courseTitle}\nID сертификата: ${certificateId}\nДата выдачи: ${date}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Мой сертификат Birzhan-Edu",
+          title: "Мой сертификат Frame School",
           text: shareText,
+          url: publicCertificateUrl,
         });
       } catch {
-        console.log("Пользователь отменил отправку");
+        return;
       }
     } else {
-      await navigator.clipboard.writeText(shareText);
-      setCopied(true);
-
-      setTimeout(() => {
-        setCopied(false);
-      }, 1800);
+      await navigator.clipboard.writeText(`${shareText}\n${publicCertificateUrl}`);
+      flashCopied();
     }
   }
 
@@ -102,8 +111,8 @@ ID сертификата: ${certificateId}
           <h1>Сертификат пока недоступен</h1>
 
           <p>
-            Заверши курс на 100%, нажми “Получить сертификат”, и здесь появится
-            твой официальный сертификат Birzhan-Edu Platform.
+            Заверши курс на 100%, нажми "Получить сертификат", и здесь появится
+            твой официальный сертификат Frame School.
           </p>
 
           <Link to="/courses">Перейти к курсам →</Link>
@@ -116,7 +125,7 @@ ID сертификата: ${certificateId}
     <main className="certificate-page">
       {copied && (
         <div className="certificate-toast">
-          <div>✅</div>
+          <div>✓</div>
           <span>Данные сертификата скопированы</span>
         </div>
       )}
@@ -128,15 +137,15 @@ ID сертификата: ${certificateId}
 
         <div className="certificate-action-buttons">
           <button type="button" onClick={handleShare}>
-            📤 Поделиться
+            Поделиться
           </button>
 
           <button type="button" onClick={handleCopyId}>
-            🔗 Скопировать ID
+            Скопировать ID
           </button>
 
           <button type="button" onClick={handlePrint}>
-            🖨 Скачать / распечатать
+            Скачать / распечатать
           </button>
         </div>
       </section>
@@ -145,10 +154,10 @@ ID сертификата: ${certificateId}
         <div className="certificate-gold-line"></div>
 
         <div className="certificate-top">
-          <div className="certificate-logo">B</div>
+          <div className="certificate-logo">F</div>
 
           <div>
-            <span>Birzhan-Edu Platform</span>
+            <span>Frame School</span>
             <p>International Video Editing Education</p>
           </div>
         </div>
@@ -169,8 +178,8 @@ ID сертификата: ${certificateId}
           <h3>{certificate.courseTitle}</h3>
 
           <p className="certificate-description">
-            Студент прошёл все уроки курса, выполнил практические задания и
-            получил подтверждение навыков на платформе Birzhan-Edu.
+            Студент прошел все уроки курса, выполнил практические задания и
+            получил подтверждение навыков на платформе Frame School.
           </p>
         </div>
 
@@ -187,19 +196,17 @@ ID сертификата: ${certificateId}
 
           <div className="certificate-qr-box">
             <span>QR / Verify</span>
-
             <img src={qrUrl} alt="QR-код сертификата" />
-
-            <small>Сканируй для проверки данных</small>
+            <small>Сканируй для проверки сертификата</small>
           </div>
 
           <div className="certificate-sign">
             <span>Founder</span>
-            <strong>Birzhan-Edu</strong>
+            <strong>Frame School</strong>
           </div>
         </div>
 
-        <div className="certificate-watermark">BIRZHAN-EDU</div>
+        <div className="certificate-watermark">FRAME SCHOOL</div>
       </section>
     </main>
   );

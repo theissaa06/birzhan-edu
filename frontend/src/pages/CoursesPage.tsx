@@ -29,6 +29,11 @@ const categories = [
   { title: "VFX", value: "vfx", icon: "⚡" },
 ];
 
+const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:3003").replace(
+  /\/api\/?$/,
+  "",
+);
+
 function getCurrentUserKey() {
   try {
     const storedUser =
@@ -254,8 +259,7 @@ export default function CoursesPage() {
           <h3>Ошибка</h3>
           <p>{error}</p>
           <p>
-            Backend должен быть запущен на{" "}
-            <strong>http://localhost:3003</strong>
+            Проверьте, что backend доступен по адресу <strong>{apiOrigin}</strong>
           </p>
         </section>
       )}

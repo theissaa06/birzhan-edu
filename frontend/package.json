@@ -1,10 +1,11 @@
 {
-  "name": "birzhan-edu-frontend",
+  "name": "frame-school-frontend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:host": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },

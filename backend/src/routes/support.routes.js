@@ -1,7 +1,14 @@
 const router = require("express").Router();
 const prisma = require("../config/prisma");
+const { authMiddleware, adminMiddleware } = require("../middleware/auth.middleware");
 
-router.get("/", async (req, res) => {
+function requireAdminForAdminMessage(req, res, next) {
+  if (req.body?.from !== "admin") return next();
+
+  return authMiddleware(req, res, () => adminMiddleware(req, res, next));
+}
+
+router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const messages = await prisma.supportMessage.findMany({
       orderBy: { createdAt: "asc" },
@@ -26,21 +33,39 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdminForAdminMessage, async (req, res) => {
   try {
-    const { text, from, userId } = req.body;
+    const { text, from, name, email, topic, userId } = req.body || {};
+    const cleanText = String(text || "").trim();
+    const cleanName = String(name || "").trim().slice(0, 80);
+    const cleanEmail = String(email || "").trim().toLowerCase().slice(0, 120);
+    const cleanTopic = String(topic || "other").trim().slice(0, 40);
 
-    if (!text || !from) {
+    if (!cleanText) {
       return res.status(400).json({
         success: false,
-        message: "Текст и отправитель обязательны",
+        message: "Текст обращения обязателен",
       });
     }
 
+    const isAdminMessage = from === "admin" && req.user?.isAdmin;
+    const fullText = isAdminMessage
+      ? cleanText.slice(0, 4000)
+      : [
+          cleanName ? `Имя: ${cleanName}` : null,
+          cleanEmail ? `Email: ${cleanEmail}` : null,
+          cleanTopic ? `Тема: ${cleanTopic}` : null,
+          "",
+          cleanText,
+        ]
+          .filter((line) => line !== null)
+          .join("\n")
+          .slice(0, 4000);
+
     const message = await prisma.supportMessage.create({
       data: {
-        text: text.trim(),
-        from,
+        text: fullText,
+        from: isAdminMessage ? "admin" : "user",
         userId: userId ? Number(userId) : null,
       },
       include: {
@@ -59,15 +84,18 @@ router.post("/", async (req, res) => {
       data: message,
     });
   } catch (e) {
+    console.error("[Support] Ошибка отправки сообщения", {
+      error: e?.message || e,
+    });
+
     res.status(500).json({
       success: false,
       message: "Ошибка отправки сообщения",
-      error: e.message,
     });
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const id = Number(req.params.id);
 

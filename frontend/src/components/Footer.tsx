@@ -8,12 +8,12 @@ export default function Footer() {
         <div className="footer-main">
           <div className="footer-brand">
             <Link to="/" className="footer-logo">
-              Birzhan-Edu
+              Frame School
             </Link>
 
             <p>
-              Образовательная платформа нового поколения. Учись монтажу, дизайну
-              и медиа онлайн.
+              Образовательная платформа по видеомонтажу: практика, портфолио,
+              сертификаты и понятный путь от первого кадра до готовой работы.
             </p>
 
             <div className="footer-socials">
@@ -88,7 +88,7 @@ export default function Footer() {
 
             <div className="footer-contact">
               <p>📞 +7 (727) 123-45-67</p>
-              <p>✉️ hello@birzhan.edu</p>
+              <p>✉️ hello@frameschool.kz</p>
               <p>📍 Алматы, Казахстан</p>
             </div>
 
@@ -107,7 +107,7 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <span>© 2026 Birzhan-Edu Platform. Все права защищены.</span>
+          <span>© 2026 Frame School. Все права защищены.</span>
 
           <div>
             <Link to="/support">Политика конфиденциальности</Link>

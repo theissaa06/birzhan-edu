@@ -55,7 +55,7 @@ export default function HomePage() {
     <main className="home-page">
       <section className="home-hero">
         <div className="home-hero__content">
-          <p className="home-label">Birzhan-Edu Platform · 2026</p>
+          <p className="home-label">Frame School · 2026</p>
 
           <h1>
             Обучение монтажу <br />с нуля до уверенного{" "}
@@ -63,8 +63,8 @@ export default function HomePage() {
           </h1>
 
           <p className="home-hero__text">
-            Международная образовательная платформа для изучения видеомонтажа,
-            CapCut, Premiere Pro, цветокоррекции, звука, VFX и создания контента
+            Образовательная платформа, где урок начинается с практического
+            задания: CapCut, Premiere Pro, цветокоррекция, звук, VFX и контент
             для TikTok, YouTube и Reels.
           </p>
 
@@ -93,7 +93,7 @@ export default function HomePage() {
 
             <div className="home-video-screen">
               <div className="play-circle">▶</div>
-              <p>Видео урок: монтаж эдита</p>
+              <p>Практика: монтаж эдита</p>
             </div>
 
             <div className="home-timeline">
@@ -145,10 +145,11 @@ export default function HomePage() {
       <section className="home-dark-section">
         <div className="home-dark-content">
           <p className="home-label">Как проходит обучение</p>
-          <h2>Уроки, практика, прогресс, портфолио — всё в одной платформе</h2>
+          <h2>Задания, видео-подсказки, прогресс и портфолио в одной платформе</h2>
           <p>
-            Студент смотрит видеоурок, повторяет действия, выполняет практику,
-            отмечает урок пройденным и постепенно собирает собственные работы.
+            Студент получает задачу, смотрит короткие видео-подсказки,
+            выполняет монтаж в реальном редакторе и постепенно собирает
+            собственные работы.
           </p>
 
           <Link to="/courses" className="home-btn home-btn--primary">
@@ -159,14 +160,14 @@ export default function HomePage() {
         <div className="home-learning-steps">
           <div>
             <span>01</span>
-            <h3>Смотрите видео</h3>
-            <p>Каждый урок объясняет тему простым языком.</p>
+            <h3>Получаете задачу</h3>
+            <p>Каждый урок начинается с понятного результата.</p>
           </div>
 
           <div>
             <span>02</span>
-            <h3>Повторяете действия</h3>
-            <p>Студент делает монтаж вместе с преподавателем.</p>
+            <h3>Смотрите подсказки</h3>
+            <p>Видео помогает выполнить конкретный прием в редакторе.</p>
           </div>
 
           <div>
@@ -188,7 +189,7 @@ export default function HomePage() {
           <p className="home-label">Кому подходит</p>
           <h2>Платформа для тех, кто хочет создавать сильный контент</h2>
           <p>
-            Birzhan-Edu подходит новичкам, школьникам, блогерам и будущим
+            Frame School подходит новичкам, школьникам, блогерам и будущим
             digital-специалистам, которые хотят освоить монтаж и собрать первые
             работы.
           </p>
@@ -251,7 +252,7 @@ export default function HomePage() {
       <section className="home-section">
         <div className="home-section__head">
           <p className="home-label">Преимущества</p>
-          <h2>Почему выбирают Birzhan-Edu</h2>
+          <h2>Почему выбирают Frame School</h2>
         </div>
 
         <div className="home-benefits">

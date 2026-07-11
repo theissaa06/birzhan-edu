@@ -45,14 +45,14 @@ export default function AboutPage() {
     <main className="about-page">
       <section className="about-hero">
         <div className="about-hero__content">
-          <p className="about-label">О Birzhan-Edu Platform</p>
+          <p className="about-label">О Frame School</p>
 
           <h1>
             Международная платформа для обучения <span>видеомонтажу</span>
           </h1>
 
           <p>
-            Birzhan-Edu Platform — это образовательная онлайн-платформа нового
+            Frame School — это образовательная онлайн-платформа нового
             поколения, где студенты изучают монтаж, эдиты, CapCut, Premiere Pro,
             цветокоррекцию, звук, VFX и создание контента для TikTok, YouTube,
             Reels и Shorts.
@@ -140,7 +140,7 @@ export default function AboutPage() {
       <section className="about-roadmap">
         <div className="about-section__head">
           <p className="about-label">Развитие</p>
-          <h2>Куда будет развиваться Birzhan-Edu</h2>
+          <h2>Куда будет развиваться Frame School</h2>
         </div>
 
         <div className="about-roadmap-grid">
@@ -184,7 +184,7 @@ export default function AboutPage() {
 
       <section className="about-final">
         <h2>
-          Birzhan-Edu — платформа для тех, кто хочет создавать сильный контент
+          Frame School — платформа для тех, кто хочет создавать сильный контент
         </h2>
         <p>
           Начните с первого курса, пройдите уроки, выполните практику и соберите

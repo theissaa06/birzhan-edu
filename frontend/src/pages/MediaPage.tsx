@@ -1,5 +1,5 @@
 ﻿/* =========================================
-   Birzhan_edu — MediaPage 2026
+   Frame School — MediaPage 2026
    Файл: frontend/src/pages/MediaPage.jsx
    Тема платформы: видеомонтаж / эдитинг
    Стили подключаются из ./MediaPage.css (без изменений)
@@ -14,7 +14,7 @@ const FEATURED_ARTICLE = {
   icon: "🎬",
   title: "Как наши выпускники получают первые заказы на монтаж без портфолио",
   text:
-    "Поговорили с пятью выпускниками курса по видеомонтажу Birzhan_edu, которые нашли первых клиентов за 1–3 месяца после обучения. Делимся тем, что сработало: от тестового монтажа до общения с заказчиком.",
+    "Поговорили с пятью выпускниками курса по видеомонтажу Frame School, которые нашли первых клиентов за 1–3 месяца после обучения. Делимся тем, что сработало: от тестового монтажа до общения с заказчиком.",
   author: "Алина Бекова",
   date: "12 июня 2026",
   readTime: "7 мин",
@@ -123,12 +123,12 @@ export default function MediaPage() {
         {/* Hero */}
         <section className="media-hero">
           <div className="media-hero__content">
-            <span className="media-kicker">Медиа Birzhan_edu</span>
+            <span className="media-kicker">Медиа Frame School</span>
             <h1 className="media-title">
               Монтируй так, чтобы <span>смотрели до конца</span>
             </h1>
             <p className="media-subtitle">
-              Статьи, разборы и истории от выпускников и преподавателей Birzhan_edu — о монтаже,
+              Статьи, разборы и истории от выпускников и преподавателей Frame School — о монтаже,
               софте и работе, которая держит внимание зрителя.
             </p>
           </div>
@@ -269,7 +269,7 @@ export default function MediaPage() {
         <section className="media-final">
           <h2>Получайте новые разборы по почте</h2>
           <p>
-            Раз в неделю — самое полезное из медиа Birzhan_edu: разборы монтажа, обзоры
+            Раз в неделю — самое полезное из медиа Frame School: разборы монтажа, обзоры
             инструментов и истории выпускников. Без спама.
           </p>
           <a href="#" className="media-btn media-btn--primary">

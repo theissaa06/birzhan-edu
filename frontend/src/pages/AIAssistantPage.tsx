@@ -10,11 +10,11 @@ type ChatMessage = {
 };
 
 const quickQuestions = [
-  "Привет",
-  "Сколько будет 2+2?",
-  "Напиши поздравление с днем рождения",
-  "Помоги придумать идею для видео",
+  "Составь план монтажа для TikTok-ролика на 30 секунд",
+  "Помоги улучшить описание моего видео",
+  "Придумай 5 хуков для Reels про обучение монтажу",
   "Как сделать монтаж под бит в CapCut?",
+  "Разбери мой сценарий и предложи структуру",
 ];
 
 export default function AIAssistantPage() {
@@ -22,13 +22,14 @@ export default function AIAssistantPage() {
     {
       id: 1,
       role: "assistant",
-      text: "Привет! Я Birzhan AI. Можешь задать мне любой вопрос: про учебу, код, тексты, идеи, монтаж, сайт или обычные темы. Чем помочь?",
+      text: "Привет! Я Frame AI, помощник Frame School по монтажу, идеям, сценариям, портфолио и обучению. Напиши задачу обычным текстом: помогу придумать хук, собрать структуру ролика, разобрать ошибку в монтаже или подготовить текст для клиента.",
     },
   ]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -50,6 +51,7 @@ export default function AIAssistantPage() {
     if (!text || loading) return;
 
     setError("");
+    setStatusMessage("");
 
     const userMessage: ChatMessage = {
       id: Date.now(),
@@ -96,10 +98,19 @@ export default function AIAssistantPage() {
           text: finalAnswer,
         },
       ]);
+
+      if (response.demo || response.source === "demo") {
+        setStatusMessage(
+          response.message ||
+            "Frame AI ответил в резервном режиме без обращения к модели.",
+        );
+      }
     } catch (err: any) {
       const failText =
         err?.response?.data?.message ||
-        err?.message ||
+        (err?.code === "ECONNABORTED"
+          ? "Не получилось получить ответ вовремя. Попробуй ещё раз."
+          : err?.message) ||
         "AI временно недоступен. Попробуй ещё раз.";
 
       setMessages((prev) => [
@@ -115,6 +126,11 @@ export default function AIAssistantPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleQuickQuestion(question: string) {
+    setInput(question);
+    handleSend(question);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -138,7 +154,7 @@ export default function AIAssistantPage() {
               ← Назад к курсам
             </Link>
 
-            <span className="ai-mini-badge">BIRZHAN AI ASSISTANT</span>
+            <span className="ai-mini-badge">FRAME AI ASSISTANT</span>
           </div>
 
           <h1 className="ai-title">
@@ -146,8 +162,9 @@ export default function AIAssistantPage() {
           </h1>
 
           <p className="ai-subtitle">
-            Задавайте любые вопросы: учеба, тексты, идеи, код, сайт,
-            видеомонтаж, CapCut, Premiere Pro, портфолио или обычные темы.
+            Задавайте свободные вопросы про видеомонтаж, CapCut, Premiere Pro,
+            сценарии, портфолио, первые заказы и обучение. Ключ Gemini остаётся
+            только на backend.
           </p>
         </div>
 
@@ -176,7 +193,7 @@ export default function AIAssistantPage() {
                   key={question}
                   type="button"
                   className="ai-quick-btn"
-                  onClick={() => handleSend(question)}
+                  onClick={() => handleQuickQuestion(question)}
                   disabled={loading}
                 >
                   {question}
@@ -185,7 +202,7 @@ export default function AIAssistantPage() {
             </div>
 
             <div className="ai-sidebar-note">
-              <strong>Birzhan AI</strong>
+              <strong>Frame AI</strong>
               <p>
                 Помощник отвечает на разные темы, но особенно хорошо помогает с
                 обучением, сайтом, кодом и видеомонтажом.
@@ -198,10 +215,21 @@ export default function AIAssistantPage() {
           <div className="ai-chat-header">
             <div>
               <span className="ai-online">ONLINE</span>
-              <h3>Birzhan AI</h3>
+              <h3>Frame AI</h3>
             </div>
 
-            <div className="ai-premium-chip">💎 Premium PRO</div>
+            <Link
+              to="/premium"
+              className="ai-premium-chip"
+              aria-label="Перейти к Premium PRO"
+            >
+              <span className="ai-premium-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M12 2L22 12L12 22L2 12Z" />
+                </svg>
+              </span>
+              Premium PRO
+            </Link>
           </div>
 
           <div className="ai-chat-body">
@@ -215,7 +243,7 @@ export default function AIAssistantPage() {
                     ? "Вы"
                     : message.role === "error"
                       ? "Ошибка"
-                      : "BIRZHAN AI"}
+                      : "FRAME AI"}
                 </div>
 
                 <div className="ai-message-text">{message.text}</div>
@@ -224,7 +252,7 @@ export default function AIAssistantPage() {
 
             {loading && (
               <div className="ai-message ai-message--assistant">
-                <div className="ai-message-label">BIRZHAN AI</div>
+                <div className="ai-message-label">FRAME AI</div>
 
                 <div className="ai-message-text ai-typing">
                   <span />
@@ -238,6 +266,9 @@ export default function AIAssistantPage() {
           </div>
 
           {error && <div className="ai-error-banner">{error}</div>}
+          {!error && statusMessage && (
+            <div className="ai-status-banner">{statusMessage}</div>
+          )}
 
           <form className="ai-input-row" onSubmit={handleSubmit}>
             <textarea

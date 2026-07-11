@@ -38,6 +38,12 @@ type AdminUser = {
   email: string;
   phone?: string | null;
   role: "USER" | "ADMIN";
+  badges?: string[];
+  blockedAt?: string | null;
+  blockedUntil?: string | null;
+  blockedReason?: string | null;
+  blockedById?: number | null;
+  premiumUntil?: string | null;
   isPhoneVerified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -47,6 +53,16 @@ type AdminUser = {
   supportMessages?: unknown[];
 };
 
+type AdminApplication = {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  type: string;
+  message?: string | null;
+  createdAt: string;
+};
+
 type ConfirmTarget =
   | { type: "course"; id: number; title?: string }
   | { type: "lesson"; id: number; title?: string }
@@ -54,31 +70,24 @@ type ConfirmTarget =
   | { type: "support"; id: number; title?: string }
   | null;
 
-const USERS_API_BASE = "/users";
+type AdminToastType = "success" | "error" | "info";
 
-const demoApplications = [
-  {
-    id: 1,
-    name: "Алихан",
-    email: "alikhan@mail.com",
-    type: "Курс",
-    message: "Хочу записаться на CapCut с нуля.",
-  },
-  {
-    id: 2,
-    name: "Аружан",
-    email: "aruzhan@mail.com",
-    type: "Вебинар",
-    message: "Интересует вебинар по TikTok-эдитам.",
-  },
-  {
-    id: 3,
-    name: "Дамир",
-    email: "damir@mail.com",
-    type: "Работа",
-    message: "Хочу откликнуться на роль наставника.",
-  },
-];
+type AdminToast = {
+  id: number;
+  type: AdminToastType;
+  title: string;
+  message?: string;
+};
+
+const USERS_API_BASE = "/users";
+const ADMIN_TOAST_TTL_MS = 5200;
+const protectedBadges = new Set(["OWNER", "DEVELOPER"]);
+
+const adminToastIcon: Record<AdminToastType, string> = {
+  success: "✓",
+  error: "!",
+  info: "i",
+};
 
 const categoryOptions = [
   { label: "CapCut", value: "capcut" },
@@ -92,6 +101,8 @@ const categoryOptions = [
 export default function AdminPage() {
   const navigate = useNavigate();
   const supportMessagesRef = useRef<HTMLDivElement | null>(null);
+  const toastIdRef = useRef(0);
+  const toastTimersRef = useRef<number[]>([]);
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -99,15 +110,37 @@ export default function AdminPage() {
   const [supportMessagesList, setSupportMessagesList] = useState<
     SupportMessage[]
   >([]);
+  const [applications, setApplications] = useState<AdminApplication[]>([]);
 
   const [adminReplyText, setAdminReplyText] = useState("");
   const [loading, setLoading] = useState(true);
   const [lessonsLoading, setLessonsLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [, setError] = useState("");
+  const [, setSuccessMessage] = useState("");
+  const [toasts, setToasts] = useState<AdminToast[]>([]);
+
+  // Продвинутые метрики дашборда
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // Поиск и фильтры для пользователей
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<"ALL" | "USER" | "ADMIN">("ALL");
+  const [userPremiumFilter, setUserPremiumFilter] = useState<"ALL" | "PREMIUM" | "FREE">("ALL");
+
+  // Управление Premium
+  const [premiumUserId, setPremiumUserId] = useState<number | null>(null);
+  const [premiumAction, setPremiumAction] = useState<"grant" | "revoke" | null>(null);
+  const [premiumDuration, setPremiumDuration] = useState("30"); // дней
+
+  // Command Palette (Cmd+K)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandSearch, setCommandSearch] = useState("");
+  const commandPaletteRef = useRef<HTMLDivElement>(null);
 
   const [resetUserId, setResetUserId] = useState<number | null>(null);
   const [resetUserName, setResetUserName] = useState("");
@@ -138,24 +171,203 @@ export default function AdminPage() {
   useEffect(() => {
     loadCourses();
     loadUsers();
+    loadApplications();
     loadSupportMessages();
+    loadDashboardStats();
 
     const interval = window.setInterval(() => {
       loadSupportMessages(false);
     }, 3000);
 
-    return () => window.clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Command Palette keyboard shortcut
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+      if (e.key === "Escape" && commandPaletteOpen) {
+        setCommandPaletteOpen(false);
+        setCommandSearch("");
+      }
+    };
 
-  function showSuccess(message: string) {
-    setSuccessMessage(message);
-    setError("");
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.clearInterval(interval);
+      toastTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+      toastTimersRef.current = [];
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commandPaletteOpen]);
+
+  function dismissToast(id: number) {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
   }
 
-  function showError(message: string) {
+  function pushToast(
+    type: AdminToastType,
+    title: string,
+    message = "Данные обновлены и сохранены в базе.",
+  ) {
+    const id = toastIdRef.current + 1;
+    toastIdRef.current = id;
+
+    setToasts((current) => [{ id, type, title, message }, ...current].slice(0, 4));
+
+    const timerId = window.setTimeout(() => {
+      dismissToast(id);
+    }, ADMIN_TOAST_TTL_MS);
+
+    toastTimersRef.current.push(timerId);
+  }
+
+  function showSuccess(message: string, details?: string) {
+    setSuccessMessage(message);
+    setError("");
+    pushToast("success", message, details);
+  }
+
+  function showError(message: string, details = "Действие не выполнено. Проверь данные или backend.") {
     setError(message);
     setSuccessMessage("");
+    pushToast("error", message, details);
+  }
+
+  function showInfo(message: string, details?: string) {
+    setError("");
+    setSuccessMessage("");
+    pushToast("info", message, details || "Операция запущена.");
+  }
+
+  async function loadDashboardStats() {
+    try {
+      setStatsLoading(true);
+      const response = await api.get("/admin/stats");
+      if (response.data.success) {
+        setDashboardStats(response.data.stats);
+      }
+    } catch (err) {
+      console.error("Ошибка загрузки метрик:", err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+
+  // Фильтрация пользователей
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      userSearchQuery === "" ||
+      user.username?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+
+    const matchesRole =
+      userRoleFilter === "ALL" || user.role === userRoleFilter;
+
+    // Проверка Premium через premiumUntil
+    const isPremium = user.premiumUntil && new Date(user.premiumUntil) > new Date();
+    const matchesPremium =
+      userPremiumFilter === "ALL" ||
+      (userPremiumFilter === "PREMIUM" && isPremium) ||
+      (userPremiumFilter === "FREE" && !isPremium);
+
+    return matchesSearch && matchesRole && matchesPremium;
+  });
+
+  // Управление Premium
+  async function handleGrantPremium(userId: number) {
+    const targetUser = users.find((user) => user.id === userId);
+    const userLabel = targetUser?.username || targetUser?.email || "пользователь";
+    try {
+      setActionLoading(true);
+      console.log("[Frontend] Granting premium for user:", userId, "duration:", premiumDuration);
+      
+      const response = await api.post("/admin/premium/grant", {
+        userId,
+        durationDays: parseInt(premiumDuration, 10),
+      });
+      
+      console.log("[Frontend] Premium grant response:", response.data);
+      
+      if (response.data.success) {
+        showSuccess(
+          `Premium выдан: ${userLabel}`,
+          `Срок подписки: ${premiumDuration} дней. Карточка пользователя обновлена из БД.`,
+        );
+        loadUsers();
+        loadDashboardStats();
+      } else {
+        showError(response.data.message || "Не удалось выдать Premium");
+      }
+    } catch (err: any) {
+      console.error("[Frontend] Premium grant error:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Не удалось выдать Premium";
+      showError(errorMessage);
+    } finally {
+      setActionLoading(false);
+      setPremiumUserId(null);
+      setPremiumAction(null);
+    }
+  }
+
+  async function handleRevokePremium(userId: number) {
+    const targetUser = users.find((user) => user.id === userId);
+    const userLabel = targetUser?.username || targetUser?.email || "пользователь";
+    try {
+      setActionLoading(true);
+      console.log("[Frontend] Revoking premium for user:", userId);
+      
+      const response = await api.post("/admin/premium/revoke", { userId });
+      
+      console.log("[Frontend] Premium revoke response:", response.data);
+      
+      if (response.data.success) {
+        showSuccess(
+          `Premium отозван: ${userLabel}`,
+          "Доступ снят на backend, список пользователей обновлён из базы.",
+        );
+        loadUsers();
+        loadDashboardStats();
+      } else {
+        showError(response.data.message || "Не удалось отозвать Premium");
+      }
+    } catch (err: any) {
+      console.error("[Frontend] Premium revoke error:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Не удалось отозвать Premium";
+      showError(errorMessage);
+    } finally {
+      setActionLoading(false);
+      setPremiumUserId(null);
+      setPremiumAction(null);
+    }
+  }
+
+  // Command Palette команды
+  const commands = [
+    { id: "refresh-courses", label: "Обновить курсы", action: loadCourses, icon: "📚" },
+    { id: "refresh-users", label: "Обновить пользователей", action: loadUsers, icon: "👥" },
+    { id: "refresh-applications", label: "Обновить заявки", action: () => loadApplications(true), icon: "📨" },
+    { id: "refresh-stats", label: "Обновить метрики", action: loadDashboardStats, icon: "📊" },
+    { id: "refresh-support", label: "Обновить поддержку", action: () => loadSupportMessages(true), icon: "💬" },
+    { id: "clear-filters", label: "Очистить фильтры", action: () => {
+      setUserSearchQuery("");
+      setUserRoleFilter("ALL");
+      setUserPremiumFilter("ALL");
+    }, icon: "🔍" },
+  ];
+
+  const filteredCommands = commands.filter(cmd =>
+    cmd.label.toLowerCase().includes(commandSearch.toLowerCase())
+  );
+
+  function executeCommand(commandId: string) {
+    const command = commands.find(c => c.id === commandId);
+    if (command) {
+      command.action();
+      setCommandPaletteOpen(false);
+      setCommandSearch("");
+    }
   }
 
   async function loadCourses() {
@@ -230,6 +442,29 @@ export default function AdminPage() {
       showError("Не удалось загрузить пользователей. Проверь backend.");
     } finally {
       setUsersLoading(false);
+    }
+  }
+
+  async function loadApplications(showSuccessAfterLoad = false) {
+    try {
+      setApplicationsLoading(true);
+      const response = await api.get("/applications");
+      const data = response.data.data || response.data.applications || [];
+      const safeData = Array.isArray(data) ? data : [];
+      setApplications(safeData);
+
+      if (showSuccessAfterLoad) {
+        showSuccess(
+          `Заявки обновлены: ${safeData.length}`,
+          "Показаны все реальные заявки из базы данных.",
+        );
+      }
+    } catch (err) {
+      console.error("Ошибка загрузки заявок:", err);
+      showError("Не удалось загрузить заявки.");
+      setApplications([]);
+    } finally {
+      setApplicationsLoading(false);
     }
   }
 
@@ -573,6 +808,8 @@ export default function AdminPage() {
   }
 
   async function handleChangeUserRole(userId: number, role: "USER" | "ADMIN") {
+    const targetUser = users.find((user) => user.id === userId);
+    const userLabel = targetUser?.username || targetUser?.email || "пользователь";
     try {
       setActionLoading(true);
       setError("");
@@ -581,13 +818,91 @@ export default function AdminPage() {
 
       showSuccess(
         role === "ADMIN"
-          ? "Пользователь получил роль ADMIN."
-          : "Пользователь получил роль USER.",
+          ? `${userLabel} получил роль ADMIN`
+          : `${userLabel} переведён в USER`,
+        "Роль сохранена на backend, список пользователей обновляется из БД.",
       );
       await loadUsers();
     } catch (err) {
       console.error("Ошибка изменения роли:", err);
       showError("Не удалось изменить роль пользователя.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  function isUserBlocked(user: AdminUser) {
+    if (!user.blockedAt) return false;
+    if (!user.blockedUntil) return true;
+    return new Date(user.blockedUntil) > new Date();
+  }
+
+  function isProtectedUser(user: AdminUser) {
+    return (user.badges || []).some((badge) => protectedBadges.has(badge));
+  }
+
+  async function handleToggleUserBadge(user: AdminUser, badge: "OWNER" | "DEVELOPER") {
+    const currentBadges = user.badges || [];
+    const nextBadges = currentBadges.includes(badge)
+      ? currentBadges.filter((item) => item !== badge)
+      : [...currentBadges, badge];
+
+    try {
+      setActionLoading(true);
+      await api.patch(`${USERS_API_BASE}/${user.id}/badges`, {
+        badges: nextBadges,
+      });
+
+      showSuccess(
+        `${badge} обновлён: ${user.username || user.email}`,
+        "Значки сохранены в базе, права пересчитаны на backend.",
+      );
+      await loadUsers();
+    } catch (err: any) {
+      console.error("Ошибка изменения значков:", err);
+      showError(err.response?.data?.message || "Не удалось изменить значки пользователя.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleBlockUser(user: AdminUser, duration: "days" | "weeks" | "months" | "forever") {
+    try {
+      setActionLoading(true);
+      await api.patch(`${USERS_API_BASE}/${user.id}/block`, {
+        duration,
+        amount: duration === "months" ? 1 : duration === "weeks" ? 1 : 7,
+        reason: "Блокировка администратором Frame School",
+      });
+
+      showSuccess(
+        `Пользователь заблокирован: ${user.username || user.email}`,
+        duration === "forever"
+          ? "Доступ закрыт навсегда без удаления данных."
+          : "Доступ временно закрыт без потери Premium, прогресса и бонусов.",
+      );
+      await loadUsers();
+    } catch (err: any) {
+      console.error("Ошибка блокировки пользователя:", err);
+      showError(err.response?.data?.message || "Не удалось заблокировать пользователя.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleUnblockUser(user: AdminUser) {
+    try {
+      setActionLoading(true);
+      await api.patch(`${USERS_API_BASE}/${user.id}/unblock`);
+
+      showSuccess(
+        `Пользователь разблокирован: ${user.username || user.email}`,
+        "Доступ восстановлен без сброса Premium, прогресса и достижений.",
+      );
+      await loadUsers();
+    } catch (err: any) {
+      console.error("Ошибка разблокировки пользователя:", err);
+      showError(err.response?.data?.message || "Не удалось разблокировать пользователя.");
     } finally {
       setActionLoading(false);
     }
@@ -618,7 +933,10 @@ export default function AdminPage() {
       setResetUserId(null);
       setResetUserName("");
       setResetPasswordValue("");
-      showSuccess(`Пароль изменён. Новый пароль: ${savedPassword}`);
+      showSuccess(
+        `Пароль изменён для ${resetUserName || "пользователя"}`,
+        `Новый пароль: ${savedPassword}`,
+      );
 
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -634,13 +952,18 @@ export default function AdminPage() {
   }
 
   async function performDeleteUser(userId: number) {
+    const targetUser = users.find((user) => user.id === userId);
+    const userLabel = targetUser?.username || targetUser?.email || "пользователь";
     try {
       setActionLoading(true);
       setError("");
 
       await api.delete(`${USERS_API_BASE}/${userId}`);
 
-      showSuccess("Пользователь успешно удалён.");
+      showSuccess(
+        `Пользователь удалён: ${userLabel}`,
+        "Запись удалена из базы, список пользователей обновлён.",
+      );
       await loadUsers();
     } catch (err) {
       console.error("Ошибка удаления пользователя:", err);
@@ -703,19 +1026,26 @@ export default function AdminPage() {
     if (target.type === "support") await performDeleteSupportMessage(target.id);
   }
 
-  function handleApplicationReply(app: (typeof demoApplications)[number]) {
-    setAdminReplyText(
-      `Здравствуйте, ${app.name}! Спасибо за заявку по теме “${app.type}”. Мы получили сообщение: “${app.message}”.`,
+  function handleApplicationReply(app: AdminApplication) {
+    const subject = encodeURIComponent(`Frame School: заявка “${app.type}”`);
+    const body = encodeURIComponent(
+      [
+        `Здравствуйте, ${app.name}!`,
+        "",
+        `Спасибо за заявку по теме “${app.type}”.`,
+        app.message ? `Мы получили сообщение: “${app.message}”.` : "",
+        "",
+        "Команда Frame School",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     );
-    showSuccess(
-      `Черновик ответа для ${app.name} подготовлен в блоке поддержки.`,
+
+    window.location.href = `mailto:${app.email}?subject=${subject}&body=${body}`;
+    showInfo(
+      `Открываю ответ для ${app.name}`,
+      `Email: ${app.email}. Заявка осталась в истории админки.`,
     );
-    window.setTimeout(() => {
-      supportMessagesRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 100);
   }
 
   function shortHash(hash: string) {
@@ -783,7 +1113,7 @@ export default function AdminPage() {
           <p className="admin-label">Админ-панель</p>
 
           <h1>
-            Управление платформой <span>Birzhan-Edu</span>
+            Управление платформой <span>Frame School</span>
           </h1>
 
           <p>
@@ -810,49 +1140,120 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="admin-stats">
-        <div>
-          <strong>{courses.length}</strong>
-          <span>курсов в базе</span>
+      {/* Продвинутый дашборд метрик */}
+      <section className="admin-dashboard">
+        <div className="admin-dashboard-header">
+          <p className="admin-label">ДАШБОРД МЕТРИК</p>
+          <h2>Ключевые показатели</h2>
+          <button
+            className="admin-small-btn"
+            type="button"
+            onClick={loadDashboardStats}
+            disabled={statsLoading}
+          >
+            {statsLoading ? "..." : "Обновить"}
+          </button>
         </div>
-        <div>
-          <strong>
-            {courses.reduce(
-              (total, course) => total + (course.lessons?.length || 0),
-              0,
-            )}
-          </strong>
-          <span>уроков</span>
-        </div>
-        <div>
-          <strong>{users.length}</strong>
-          <span>пользователей</span>
-        </div>
-        <div>
-          <strong>{demoApplications.length}</strong>
-          <span>заявок</span>
-        </div>
-        <div className="admin-stat-support">
-          {supportMessagesList.length > 0 && (
-            <span className="admin-notification-dot">
-              {supportMessagesList.length}
-            </span>
-          )}
-          <strong>{supportMessagesList.length}</strong>
-          <span>сообщений поддержки</span>
-        </div>
-      </section>
 
-      {error && <div className="admin-error">{error}</div>}
-      {successMessage && (
-        <div className="admin-success">
-          <span>✅</span>
-          <div>
-            <strong>{successMessage}</strong>
-            <p>Изменения сохранены и данные обновлены.</p>
+        <div className="admin-dashboard-grid">
+          {/* Основные метрики */}
+          <div className="admin-metric-card admin-metric-card--primary">
+            <span className="admin-metric-icon">👥</span>
+            <div>
+              <strong>{dashboardStats?.users || users.length}</strong>
+              <span>Всего пользователей</span>
+            </div>
+          </div>
+
+          <div className="admin-metric-card admin-metric-card--success">
+            <span className="admin-metric-icon">📊</span>
+            <div>
+              <strong>{dashboardStats?.activeUsers || 0}</strong>
+              <span>Активных (за неделю)</span>
+            </div>
+          </div>
+
+          <div className="admin-metric-card admin-metric-card--info">
+            <span className="admin-metric-icon">📈</span>
+            <div>
+              <strong>+{dashboardStats?.newUsersMonth || 0}</strong>
+              <span>Новых за месяц</span>
+            </div>
+          </div>
+
+          <div className="admin-metric-card admin-metric-card--warning">
+            <span className="admin-metric-icon">✅</span>
+            <div>
+              <strong>{dashboardStats?.completedSubmissionsMonth || 0}</strong>
+              <span>Выполнено заданий (мес)</span>
+            </div>
+          </div>
+
+          {/* Premium метрики */}
+          <div className="admin-metric-card admin-metric-card--premium">
+            <span className="admin-metric-icon">💎</span>
+            <div>
+              <strong>{dashboardStats?.premiumUsers || 0}</strong>
+              <span>Premium пользователей</span>
+            </div>
+          </div>
+
+          <div className="admin-metric-card admin-metric-card--revenue">
+            <span className="admin-metric-icon">💰</span>
+            <div>
+              <strong>{dashboardStats?.premiumRevenueMonth || 0} ₸</strong>
+              <span>Выручка Premium (мес)</span>
+            </div>
+          </div>
+
+          {/* Конверсия */}
+          <div className="admin-metric-card admin-metric-card--conversion">
+            <span className="admin-metric-icon">🎯</span>
+            <div>
+              <strong>{dashboardStats?.conversionRate || 0}%</strong>
+              <span>Конверсия регистрация→задание</span>
+            </div>
+          </div>
+
+          <div className="admin-metric-card admin-metric-card--courses">
+            <span className="admin-metric-icon">📚</span>
+            <div>
+              <strong>{dashboardStats?.courses || courses.length}</strong>
+              <span>Курсов в базе</span>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Воронка обучения */}
+        {dashboardStats?.funnel && dashboardStats.funnel.length > 0 && (
+          <div className="admin-funnel-section">
+            <h3>Воронка обучения по курсам</h3>
+            <div className="admin-funnel-list">
+              {dashboardStats.funnel.map((item: any) => {
+                const course = courses.find((c) => c.id === item.courseId);
+                return (
+                  <div key={item.courseId} className="admin-funnel-item">
+                    <span>{course?.title || `Курс #${item.courseId}`}</span>
+                    <strong>{item.completedUsers} завершено</strong>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Базовый блок статистики (оставлен для совместимости) */}
+      <section className="admin-stats admin-stats--compact">
+        <div>
+          <strong>{supportMessagesList.length}</strong>
+          <span>Сообщений поддержки</span>
+        </div>
+        <div>
+          <strong>{applications.length}</strong>
+          <span>Заявок</span>
+        </div>
+      </section>
 
       <section className="admin-layout">
         <div className="admin-main">
@@ -1027,17 +1428,97 @@ export default function AdminPage() {
               </button>
             </div>
 
+            {toasts.length > 0 && (
+              <div
+                className="admin-toast-zone"
+                aria-live="polite"
+                aria-relevant="additions text"
+              >
+                {toasts.map((toast, index) => (
+                  <div
+                    className={`admin-toast admin-toast--${toast.type}`}
+                    key={toast.id}
+                    role={toast.type === "error" ? "alert" : "status"}
+                    style={{ "--toast-index": index } as React.CSSProperties}
+                  >
+                    <span className="admin-toast-icon">
+                      {adminToastIcon[toast.type]}
+                    </span>
+                    <div className="admin-toast-copy">
+                      <strong>{toast.title}</strong>
+                      {toast.message && <p>{toast.message}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-toast-close"
+                      onClick={() => dismissToast(toast.id)}
+                      aria-label="Закрыть уведомление"
+                    >
+                      ×
+                    </button>
+                    <span className="admin-toast-timeline" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Панель поиска и фильтров */}
+            <div className="admin-filters-bar">
+              <div className="admin-search-wrapper">
+                <input
+                  type="text"
+                  placeholder="Поиск по имени или email..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="admin-search-input"
+                />
+              </div>
+              
+              <div className="admin-filters-group">
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value as any)}
+                  className="admin-filter-select"
+                >
+                  <option value="ALL">Все роли</option>
+                  <option value="USER">Пользователи</option>
+                  <option value="ADMIN">Админы</option>
+                </select>
+
+                <select
+                  value={userPremiumFilter}
+                  onChange={(e) => setUserPremiumFilter(e.target.value as any)}
+                  className="admin-filter-select"
+                >
+                  <option value="ALL">Все статусы</option>
+                  <option value="PREMIUM">Premium</option>
+                  <option value="FREE">Бесплатные</option>
+                </select>
+              </div>
+
+              <div className="admin-filters-count">
+                Показано: {filteredUsers.length} из {users.length}
+              </div>
+            </div>
+
             {usersLoading && (
               <p className="admin-muted">Загружаем пользователей...</p>
             )}
 
             {!usersLoading && (
               <div className="admin-users-list">
-                {users.length === 0 ? (
-                  <p className="admin-muted">Пользователей пока нет.</p>
+                {filteredUsers.length === 0 ? (
+                  <p className="admin-muted">
+                    {users.length === 0 
+                      ? "Пользователей пока нет." 
+                      : "По вашему запросу ничего не найдено."}
+                  </p>
                 ) : (
-                  users.map((user) => (
-                    <article className="admin-user-card" key={user.id}>
+                  filteredUsers.map((user) => (
+                    <article
+                      className={`admin-user-card ${isUserBlocked(user) ? "admin-user-card--blocked" : ""}`}
+                      key={user.id}
+                    >
                       <div className="admin-user-main">
                         <div className="admin-user-avatar">
                           {user.username?.charAt(0)?.toUpperCase() || "U"}
@@ -1054,6 +1535,11 @@ export default function AdminPage() {
                             >
                               {user.role}
                             </span>
+                            {(user.badges || []).map((badge) => (
+                              <span className={`admin-role admin-role--${badge.toLowerCase()}`} key={badge}>
+                                {badge}
+                              </span>
+                            ))}
                           </div>
                           <p>{user.email}</p>
                           <div className="admin-user-info">
@@ -1068,7 +1554,18 @@ export default function AdminPage() {
                             <span>
                               💬 Поддержка: {user.supportMessages?.length || 0}
                             </span>
+                            {isUserBlocked(user) && (
+                              <span className="admin-user-blocked-chip">
+                                🚫 {user.blockedUntil ? `До ${formatDate(user.blockedUntil)}` : "Заблокирован навсегда"}
+                              </span>
+                            )}
                           </div>
+                          {isUserBlocked(user) && (
+                            <div className="admin-user-blocked-note">
+                              <strong>Причина блокировки:</strong>{" "}
+                              {user.blockedReason || "Причина не указана"}
+                            </div>
+                          )}
                           <div className="admin-password-box">
                             <strong>Хеш пароля:</strong>
                             <code>{shortHash(user.password || "")}</code>
@@ -1081,6 +1578,34 @@ export default function AdminPage() {
                       </div>
 
                       <div className="admin-user-actions">
+                        {/* Управление Premium */}
+                        {(() => {
+                          const isPremium = user.premiumUntil && new Date(user.premiumUntil) > new Date();
+                          return isPremium ? (
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--danger"
+                              onClick={() => handleRevokePremium(user.id)}
+                              disabled={actionLoading}
+                            >
+                              💎 Отозвать Premium
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--premium"
+                              onClick={() => {
+                                setPremiumUserId(user.id);
+                                setPremiumAction("grant");
+                              }}
+                              disabled={actionLoading}
+                            >
+                              💎 Выдать Premium
+                            </button>
+                          );
+                        })()}
+
+                        {/* Управление ролями */}
                         {user.role === "ADMIN" ? (
                           <button
                             type="button"
@@ -1101,6 +1626,49 @@ export default function AdminPage() {
                           >
                             Сделать ADMIN
                           </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleUserBadge(user, "OWNER")}
+                          disabled={actionLoading}
+                        >
+                          {user.badges?.includes("OWNER") ? "Снять OWNER" : "Выдать OWNER"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleUserBadge(user, "DEVELOPER")}
+                          disabled={actionLoading}
+                        >
+                          {user.badges?.includes("DEVELOPER") ? "Снять DEV" : "Выдать DEV"}
+                        </button>
+                        {isUserBlocked(user) ? (
+                          <button
+                            type="button"
+                            className="admin-btn admin-btn--safe"
+                            onClick={() => handleUnblockUser(user)}
+                            disabled={actionLoading}
+                          >
+                            Разблокировать
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--warning"
+                              onClick={() => handleBlockUser(user, "days")}
+                              disabled={actionLoading || isProtectedUser(user)}
+                            >
+                              Блок 7 дней
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--danger"
+                              onClick={() => handleBlockUser(user, "forever")}
+                              disabled={actionLoading || isProtectedUser(user)}
+                            >
+                              Блок навсегда
+                            </button>
+                          </>
                         )}
                         <button
                           type="button"
@@ -1136,27 +1704,45 @@ export default function AdminPage() {
             <div className="admin-panel-head">
               <div>
                 <p className="admin-label">Заявки</p>
-                <h2>Последние заявки</h2>
+                <h2>Все заявки</h2>
               </div>
+              <button
+                className="admin-small-btn"
+                type="button"
+                onClick={() => loadApplications(true)}
+                disabled={applicationsLoading}
+              >
+                {applicationsLoading ? "..." : "Обновить"}
+              </button>
             </div>
 
             <div className="admin-table">
-              {demoApplications.map((app) => (
-                <article key={app.id}>
-                  <div>
-                    <strong>{app.name}</strong>
-                    <span>{app.email}</span>
-                  </div>
-                  <em>{app.type}</em>
-                  <p>{app.message}</p>
-                  <button
-                    type="button"
-                    onClick={() => handleApplicationReply(app)}
-                  >
-                    Ответить
-                  </button>
-                </article>
-              ))}
+              {applicationsLoading ? (
+                <div className="admin-empty">Загружаем заявки...</div>
+              ) : applications.length === 0 ? (
+                <div className="admin-empty">
+                  Реальных заявок пока нет. Новые заявки с сайта появятся здесь.
+                </div>
+              ) : (
+                applications.map((app) => (
+                  <article key={app.id}>
+                    <div>
+                      <strong>{app.name}</strong>
+                      <span>{app.email}</span>
+                      {app.phone && <span>{app.phone}</span>}
+                      <span>{formatDate(app.createdAt)}</span>
+                    </div>
+                    <em>{app.type}</em>
+                    <p>{app.message || "Без сообщения"}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleApplicationReply(app)}
+                    >
+                      Ответить
+                    </button>
+                  </article>
+                ))
+              )}
             </div>
           </section>
         </div>
@@ -1578,6 +2164,98 @@ export default function AdminPage() {
               >
                 Отмена
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно для выдачи Premium */}
+      {premiumAction === "grant" && premiumUserId && (
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal">
+            <div className="admin-modal-icon">💎</div>
+            <h2>Выдать Premium</h2>
+            <p>Выбери длительность Premium подписки:</p>
+            <select
+              value={premiumDuration}
+              onChange={(e) => setPremiumDuration(e.target.value)}
+              className="admin-modal-select"
+            >
+              <option value="7">7 дней</option>
+              <option value="30">30 дней</option>
+              <option value="90">90 дней</option>
+              <option value="180">180 дней</option>
+              <option value="365">365 дней (1 год)</option>
+            </select>
+            <div className="admin-modal-actions">
+              <button
+                type="button"
+                className="admin-modal-primary"
+                onClick={() => handleGrantPremium(premiumUserId)}
+                disabled={actionLoading}
+              >
+                Да, выдать Premium
+              </button>
+              <button
+                type="button"
+                className="admin-modal-light"
+                onClick={() => {
+                  setPremiumUserId(null);
+                  setPremiumAction(null);
+                  setPremiumDuration("30");
+                }}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Command Palette */}
+      {commandPaletteOpen && (
+        <div className="command-palette-backdrop" onClick={() => setCommandPaletteOpen(false)}>
+          <div 
+            className="command-palette" 
+            ref={commandPaletteRef}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="command-palette-header">
+              <span className="command-palette-icon">⌨️</span>
+              <input
+                type="text"
+                placeholder="Поиск команды..."
+                value={commandSearch}
+                onChange={(e) => setCommandSearch(e.target.value)}
+                autoFocus
+                className="command-palette-input"
+              />
+              <kbd className="command-palette-shortcut">ESC</kbd>
+            </div>
+            
+            <div className="command-palette-list">
+              {filteredCommands.length === 0 ? (
+                <div className="command-palette-empty">
+                  <span>🔍</span>
+                  <p>Команды не найдены</p>
+                </div>
+              ) : (
+                filteredCommands.map((command) => (
+                  <button
+                    key={command.id}
+                    className="command-palette-item"
+                    onClick={() => executeCommand(command.id)}
+                  >
+                    <span className="command-palette-item-icon">{command.icon}</span>
+                    <span className="command-palette-item-label">{command.label}</span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="command-palette-footer">
+              <kbd>⌘K</kbd>
+              <span>для быстрого доступа</span>
             </div>
           </div>
         </div>

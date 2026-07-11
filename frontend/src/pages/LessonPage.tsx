@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../services/api";
+import { createSubmission, createUploadUrl } from "../services/submissions";
 import "./LessonPage.css";
 
 type LessonType = "VIDEO" | "TEXT" | "PRACTICE" | "QUIZ";
@@ -86,6 +87,14 @@ export default function LessonPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [submissionType, setSubmissionType] = useState<"link" | "video">("link");
+  const [submissionUrl, setSubmissionUrl] = useState("");
+  const [submissionNotes, setSubmissionNotes] = useState("");
+  const [submissionPublic, setSubmissionPublic] = useState(false);
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [submissionLoading, setSubmissionLoading] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
 
   const currentLesson = useMemo(() => {
     if (!course || !lessonId) return null;
@@ -261,6 +270,76 @@ export default function LessonPage() {
     setShowCongrats(true);
   }
 
+  async function handleSubmitWork(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    if (!lessonId) return;
+
+    try {
+      setSubmissionLoading(true);
+      setSubmissionError("");
+      setSubmissionMessage("");
+
+      let finalUrl = submissionUrl.trim();
+
+      if (submissionType === "video") {
+        if (!submissionFile) {
+          setSubmissionError("Выберите видеофайл для загрузки.");
+          return;
+        }
+
+        const upload = await createUploadUrl({
+          lessonId: Number(lessonId),
+          fileName: submissionFile.name,
+          contentType: submissionFile.type,
+          size: submissionFile.size,
+        });
+
+        const uploadResponse = await fetch(upload.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": submissionFile.type,
+          },
+          body: submissionFile,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("R2 не принял видеофайл. Попробуйте ещё раз.");
+        }
+
+        finalUrl = upload.publicUrl;
+      }
+
+      if (!finalUrl) {
+        setSubmissionError("Добавьте ссылку или загрузите видео.");
+        return;
+      }
+
+      await createSubmission({
+        lessonId: Number(lessonId),
+        type: submissionType,
+        url: finalUrl,
+        notes: submissionNotes,
+        isPublic: submissionPublic,
+      });
+
+      setSubmissionMessage("Работа отправлена на проверку и сохранена в профиле.");
+      setSubmissionUrl("");
+      setSubmissionNotes("");
+      setSubmissionFile(null);
+      setSubmissionPublic(false);
+    } catch (err: any) {
+      console.error("Ошибка отправки работы:", err);
+      setSubmissionError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Не удалось отправить работу. Попробуйте ещё раз.",
+      );
+    } finally {
+      setSubmissionLoading(false);
+    }
+  }
+
   async function handleCompleteCourse() {
     if (!course) return;
 
@@ -381,7 +460,7 @@ export default function LessonPage() {
             ← Назад к курсу
           </Link>
 
-          <div className="lesson-course-box">
+          <div className="lesson-course-header">
             <span>Курс</span>
             <h2>{course.title}</h2>
             <p>
@@ -400,27 +479,30 @@ export default function LessonPage() {
             </div>
           </div>
 
-          <div className="lesson-list">
-            {sortedLessons.map((lesson, index) => {
-              const isActive = lesson.id === currentLesson.id;
-              const isDone =
-                localStorage.getItem(getLessonCompletedKey(lesson.id)) ===
-                "true";
+          <div className="lesson-lessons-box">
+            <h3>Уроки курса</h3>
+            <div className="lesson-list">
+              {sortedLessons.map((lesson, index) => {
+                const isActive = lesson.id === currentLesson.id;
+                const isDone =
+                  localStorage.getItem(getLessonCompletedKey(lesson.id)) ===
+                  "true";
 
-              return (
-                <Link
-                  key={lesson.id}
-                  to={`/courses/${course.id}/lessons/${lesson.id}`}
-                  className={
-                    isActive ? "lesson-list-item active" : "lesson-list-item"
-                  }
-                >
-                  <strong>{String(index + 1).padStart(2, "0")}</strong>
-                  <span>{lesson.title}</span>
-                  <em>{isDone ? "✅" : "○"}</em>
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={lesson.id}
+                    to={`/courses/${course.id}/lessons/${lesson.id}`}
+                    className={
+                      isActive ? "lesson-list-item active" : "lesson-list-item"
+                    }
+                  >
+                    <strong>{String(index + 1).padStart(2, "0")}</strong>
+                    <span>{lesson.title}</span>
+                    <em>{isDone ? "✅" : "○"}</em>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </aside>
 
@@ -564,6 +646,96 @@ export default function LessonPage() {
                 getPracticeText(currentLesson.type, course.category)}
             </p>
           </div>
+
+          <form className="lesson-submission-card" onSubmit={handleSubmitWork}>
+            <div className="lesson-submission-head">
+              <span>Портфолио</span>
+              <h2>Сдать практическую работу</h2>
+              <p>
+                Отправьте ссылку на работу или загрузите видео. Работа
+                сохранится в профиле и будет доступна для проверки.
+              </p>
+            </div>
+
+            {submissionMessage && (
+              <div className="lesson-submission-success">{submissionMessage}</div>
+            )}
+
+            {submissionError && (
+              <div className="lesson-submission-error">{submissionError}</div>
+            )}
+
+            <div className="lesson-submission-tabs">
+              <button
+                type="button"
+                className={submissionType === "link" ? "active" : ""}
+                onClick={() => setSubmissionType("link")}
+                disabled={submissionLoading}
+              >
+                Ссылка
+              </button>
+              <button
+                type="button"
+                className={submissionType === "video" ? "active" : ""}
+                onClick={() => setSubmissionType("video")}
+                disabled={submissionLoading}
+              >
+                Видео
+              </button>
+            </div>
+
+            {submissionType === "link" ? (
+              <label className="lesson-submission-field">
+                <span>Ссылка на работу</span>
+                <input
+                  type="url"
+                  value={submissionUrl}
+                  onChange={(e) => setSubmissionUrl(e.target.value)}
+                  placeholder="https://youtube.com/... или https://drive.google.com/..."
+                  disabled={submissionLoading}
+                />
+              </label>
+            ) : (
+              <label className="lesson-submission-field">
+                <span>Видеофайл MP4/MOV/WEBM/MKV</span>
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+                  onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                  disabled={submissionLoading}
+                />
+              </label>
+            )}
+
+            <label className="lesson-submission-field">
+              <span>Комментарий к работе</span>
+              <textarea
+                value={submissionNotes}
+                onChange={(e) => setSubmissionNotes(e.target.value)}
+                placeholder="Что получилось, где нужна обратная связь?"
+                rows={3}
+                disabled={submissionLoading}
+              />
+            </label>
+
+            <label className="lesson-submission-check">
+              <input
+                type="checkbox"
+                checked={submissionPublic}
+                onChange={(e) => setSubmissionPublic(e.target.checked)}
+                disabled={submissionLoading}
+              />
+              <span>Можно показать эту работу в публичной галерее Frame School</span>
+            </label>
+
+            <button
+              type="submit"
+              className="lesson-submission-submit"
+              disabled={submissionLoading}
+            >
+              {submissionLoading ? "Отправляем..." : "Отправить работу"}
+            </button>
+          </form>
 
           <div className="lesson-checklist">
             <h2>Чек-лист урока</h2>

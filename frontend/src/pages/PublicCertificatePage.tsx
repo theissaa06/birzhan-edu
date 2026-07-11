@@ -5,19 +5,19 @@ export default function PublicCertificatePage() {
   const [searchParams] = useSearchParams();
 
   const studentName = searchParams.get("name") || "Student";
-  const courseTitle = searchParams.get("course") || "Birzhan-Edu Course";
+  const courseTitle = searchParams.get("course") || "Frame School Course";
   const date =
     searchParams.get("date") || new Date().toLocaleDateString("ru-RU");
-  const certificateId = searchParams.get("id") || "BEDU-UNKNOWN";
+  const certificateId = searchParams.get("id") || "FRAME-UNKNOWN";
 
   return (
     <main className="public-certificate-page">
       <section className="public-certificate-card">
         <div className="public-certificate-top">
-          <div className="public-certificate-logo">B</div>
+          <div className="public-certificate-logo">F</div>
 
           <div>
-            <span>Birzhan-Edu Platform</span>
+            <span>Frame School</span>
             <p>International Video Editing Education</p>
           </div>
         </div>
@@ -39,7 +39,7 @@ export default function PublicCertificatePage() {
 
           <p className="public-certificate-description">
             This certificate confirms successful completion of the training
-            program on Birzhan-Edu Platform.
+            program on Frame School.
           </p>
         </div>
 
@@ -56,11 +56,11 @@ export default function PublicCertificatePage() {
 
           <div className="public-certificate-sign">
             <span>Verified by</span>
-            <strong>Birzhan-Edu</strong>
+            <strong>Frame School</strong>
           </div>
         </div>
 
-        <div className="public-certificate-watermark">BIRZHAN-EDU</div>
+        <div className="public-certificate-watermark">FRAME SCHOOL</div>
       </section>
 
       <div className="public-certificate-actions">

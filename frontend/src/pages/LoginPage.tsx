@@ -80,12 +80,12 @@ export default function LoginPage() {
 
           <h1>
             Вернись к обучению на{" "}
-            <span className="auth-brand">Birzhan-Edu</span>
+            <span className="auth-brand">Frame School</span>
           </h1>
 
           <p className="auth-desc">
-            Войди, чтобы продолжить курсы, отслеживать прогресс и получать
-            сертификаты после завершения обучения.
+            Войди, чтобы продолжить практические задания, отслеживать прогресс
+            и собирать портфолио монтажёра.
           </p>
 
           <ul className="auth-benefits">
@@ -146,6 +146,10 @@ export default function LoginPage() {
               {loading ? "Входим..." : "Войти"}
             </button>
           </form>
+
+          <p className="auth-footer-link">
+            <Link to="/forgot-password">Забыли пароль?</Link>
+          </p>
 
           <p className="auth-footer-link">
             Нет аккаунта?{" "}

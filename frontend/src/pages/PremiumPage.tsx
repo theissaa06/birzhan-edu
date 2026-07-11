@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  activatePremium,
+  cancelPremium,
+  getPremiumStatus,
+} from "../services/premium";
 import "./PremiumPage.css";
 
 type PremiumStatus = {
@@ -8,9 +13,14 @@ type PremiumStatus = {
   email?: string;
   role?: string;
   isPremium: boolean;
+  adminAccess?: boolean;
+  premiumStatus?: "free" | "active" | "grace" | "expired" | "admin";
+  isGracePeriod?: boolean;
   premiumPlan: string | null;
   premiumStarted: string | null;
   premiumUntil: string | null;
+  graceUntil?: string | null;
+  needsPayment?: boolean;
 };
 
 declare global {
@@ -19,15 +29,12 @@ declare global {
   }
 }
 
-const USER_ID = 1;
-
-const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003";
-const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
-
 const PAYMENT_REGION = import.meta.env.VITE_PAYMENT_REGION || "KZ";
 
 const KZ_PUBLIC_ID = import.meta.env.VITE_TIPTOPPAY_KZ_PUBLIC_ID;
 const RU_PUBLIC_ID = import.meta.env.VITE_CLOUDPAYMENTS_RU_PUBLIC_ID;
+const ALLOW_CLIENT_PAYMENT_ACTIVATION =
+  import.meta.env.VITE_ALLOW_CLIENT_PAYMENT_ACTIVATION === "true";
 
 const PAYMENT_PUBLIC_ID = PAYMENT_REGION === "RU" ? RU_PUBLIC_ID : KZ_PUBLIC_ID;
 
@@ -99,7 +106,18 @@ function removePremiumFromLocalStorage() {
 function isRealPremiumStatus(data?: PremiumStatus | null) {
   if (!data?.isPremium) return false;
   if (data.premiumPlan === "admin-demo") return false;
+  if (!data.premiumUntil) return false;
   return true;
+}
+
+function formatPremiumDate(value?: string | null) {
+  if (!value) return "дата не задана";
+
+  return new Date(value).toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default function PremiumPage() {
@@ -113,7 +131,7 @@ export default function PremiumPage() {
   const isPremiumActive = isRealPremiumStatus(premium);
 
   const paymentDescription = useMemo(() => {
-    return `Premium PRO Pack — Birzhan-Edu Platform (${PAYMENT_REGION})`;
+    return `Premium PRO Pack — Frame School (${PAYMENT_REGION})`;
   }, []);
 
   async function loadPremiumStatus() {
@@ -121,23 +139,28 @@ export default function PremiumPage() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(`${API_URL}/api/premium/status/${USER_ID}`);
-      const data = await response.json();
-
-      if (!response.ok || !data.success || !data.data) {
-        throw new Error(data.message || "Не удалось получить Premium-статус");
+      if (!localStorage.getItem("token")) {
+        setPremium(null);
+        removePremiumFromLocalStorage();
+        setError(
+          "Войдите в аккаунт, чтобы проверить Premium-статус и оформить подписку.",
+        );
+        return;
       }
 
-      setPremium(data.data);
+      const status = await getPremiumStatus();
+      setPremium(status);
 
-      if (!isRealPremiumStatus(data.data)) {
+      if (!isRealPremiumStatus(status)) {
         removePremiumFromLocalStorage();
       } else {
-        savePremiumToLocalStorage(data.data);
+        savePremiumToLocalStorage(status);
       }
     } catch (err) {
       console.error("Ошибка Premium status:", err);
-      setError("Не удалось загрузить Premium-статус. Проверь backend.");
+      setError(
+        "Войдите в аккаунт, чтобы проверить Premium-статус и оформить подписку.",
+      );
       removePremiumFromLocalStorage();
     } finally {
       setLoading(false);
@@ -145,26 +168,28 @@ export default function PremiumPage() {
   }
 
   async function activatePremiumAfterPayment(transactionId?: string) {
-    const response = await fetch(`${API_URL}/api/premium/activate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: USER_ID,
-        transactionId,
-        provider: PAYMENT_REGION === "RU" ? "cloudpayments_ru" : "tiptoppay_kz",
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success || !data.data) {
-      throw new Error(data.message || "Не удалось активировать Premium");
+    if (!ALLOW_CLIENT_PAYMENT_ACTIVATION) {
+      setSuccessMessage(
+        "Оплата принята. Premium активируется после серверного подтверждения платежа.",
+      );
+      setTimeout(() => {
+        loadPremiumStatus().catch((err) =>
+          console.error("Ошибка проверки Premium после оплаты:", err),
+        );
+      }, 3000);
+      return;
     }
 
-    setPremium(data.data);
-    savePremiumToLocalStorage(data.data);
+    const status = await activatePremium({
+      transactionId,
+      provider: PAYMENT_REGION === "RU" ? "cloudpayments_ru" : "tiptoppay_kz",
+      amount: PAYMENT_AMOUNT,
+      currency: PAYMENT_CURRENCY,
+      plan: "Premium PRO Pack",
+    });
+
+    setPremium(status);
+    savePremiumToLocalStorage(status);
     setSuccessMessage("Premium PRO успешно оплачен и активирован!");
   }
 
@@ -174,17 +199,9 @@ export default function PremiumPage() {
       setError("");
       setSuccessMessage("");
 
-      setPremium({
-        userId: premium?.userId || USER_ID,
-        username: premium?.username || "Demo User",
-        email: premium?.email || "demo@birzhan-edu.kz",
-        role: premium?.role || "USER",
-        isPremium: false,
-        premiumPlan: null,
-        premiumStarted: null,
-        premiumUntil: null,
-      });
+      const status = await cancelPremium();
 
+      setPremium(status);
       removePremiumFromLocalStorage();
       setSuccessMessage("Premium отключён для демонстрации.");
     } catch (err) {
@@ -199,9 +216,14 @@ export default function PremiumPage() {
     setError("");
     setSuccessMessage("");
 
+    if (!localStorage.getItem("token")) {
+      setError("Сначала войдите в аккаунт, чтобы Premium закрепился за вами.");
+      return;
+    }
+
     if (!PAYMENT_PUBLIC_ID) {
       setError(
-        "Public ID ещё не добавлен. Когда TipTop Pay даст Public ID, вставь его в frontend/.env.",
+        "Public ID оплаты ещё не добавлен. Вставь его в env фронтенда на Layero.",
       );
       return;
     }
@@ -222,13 +244,13 @@ export default function PremiumPage() {
         description: paymentDescription,
         amount: PAYMENT_AMOUNT,
         currency: PAYMENT_CURRENCY,
-        accountId: `user-${USER_ID}`,
-        invoiceId: `premium-${USER_ID}-${Date.now()}`,
+        accountId: `frame-school-user-${premium?.userId || "current"}`,
+        invoiceId: `frame-school-premium-${premium?.userId || "current"}-${Date.now()}`,
         skin: "modern",
         data: {
-          userId: USER_ID,
+          userId: premium?.userId,
           plan: "Premium PRO Pack",
-          project: "birzhan-edu",
+          project: "frame-school",
           region: PAYMENT_REGION,
         },
       },
@@ -245,7 +267,7 @@ export default function PremiumPage() {
           } catch (err) {
             console.error("Ошибка после оплаты:", err);
             setError(
-              "Оплата прошла, но Premium не активировался. Проверь backend.",
+              "Оплата прошла, но подтверждение Premium не обработалось. Проверь backend webhook.",
             );
           } finally {
             setPaying(false);
@@ -306,7 +328,7 @@ export default function PremiumPage() {
         <h1>Ускорь рост в монтаже с Premium PRO</h1>
 
         <p>
-          Основные курсы Birzhan-Edu доступны бесплатно. Premium PRO — это
+          Основные курсы Frame School доступны бесплатно. Premium PRO — это
           профессиональный пакет для тех, кто хочет быстрее расти: вебинары,
           разбор работ, бонусные материалы, портфолио, карьерные чек-листы и
           расширенные сертификаты.
@@ -348,7 +370,11 @@ export default function PremiumPage() {
             </button>
           ) : isPremiumActive ? (
             <div className="premium-active-box">
-              <h3>🎉 Premium PRO активен</h3>
+              <h3>
+                {premium?.isGracePeriod
+                  ? "Premium PRO в grace period"
+                  : "🎉 Premium PRO активен"}
+              </h3>
 
               <p>
                 План: <strong>{premium?.premiumPlan || "Premium PRO"}</strong>
@@ -356,12 +382,16 @@ export default function PremiumPage() {
 
               <p>
                 Действует до:{" "}
-                <strong>
-                  {premium?.premiumUntil
-                    ? new Date(premium.premiumUntil).toLocaleDateString("ru-RU")
-                    : "не указано"}
-                </strong>
+                <strong>{formatPremiumDate(premium?.premiumUntil)}</strong>
               </p>
+
+              {premium?.isGracePeriod && (
+                <p>
+                  Подписка истекла, оплатите до{" "}
+                  <strong>{formatPremiumDate(premium.graceUntil)}</strong>,
+                  чтобы сохранить доступ.
+                </p>
+              )}
 
               <button
                 type="button"
@@ -404,7 +434,9 @@ export default function PremiumPage() {
 
             <p>
               {isPremiumActive
-                ? "PRO-возможности открыты: вебинары, бонусы, проверка работ, портфолио-материалы и расширенные сертификаты."
+                ? premium?.isGracePeriod
+                  ? "Доступ ещё открыт на время grace period. Обновите оплату, чтобы Premium не отключился автоматически."
+                  : "PRO-возможности открыты: вебинары, бонусы, проверка работ, портфолио-материалы и расширенные сертификаты."
                 : "Базовое обучение уже доступно бесплатно. Premium PRO откроет дополнительные материалы для быстрого роста."}
             </p>
           </div>
