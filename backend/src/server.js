@@ -131,6 +131,8 @@ async function handleDatabaseHealth(req, res) {
 
 app.get("/health", handleDatabaseHealth);
 app.get("/ready", handleDatabaseHealth);
+app.get("/api/health", handleDatabaseHealth);
+app.get("/api/ready", handleDatabaseHealth);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", coursesRoutes);

@@ -46,7 +46,7 @@ Premium activation for CloudPayments-compatible providers is webhook-only; the b
 
 ## Health and active service
 
-Both `/health` and `/ready` verify PostgreSQL with `SELECT 1`. They return `503` when `DATABASE_URL` is wrong, migrations were not applied, or the database is down; Layero must not mark a backend with a broken database as healthy.
+`/health` and `/ready` verify PostgreSQL with `SELECT 1`. In a Layero fullstack deployment, use the public aliases `/api/health` and `/api/ready` because only `api_prefix` routes reach the backend container. They return `503` when `DATABASE_URL` is wrong, migrations were not applied, or the database is down; Layero must not mark a backend with a broken database as healthy.
 
 If the Layero plan can sleep inactive services, enable the platform's always-on option or configure an external uptime monitor to call:
 
