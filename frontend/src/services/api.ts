@@ -4,10 +4,11 @@ const RAW = String(
   import.meta.env.VITE_API_URL ||
     (import.meta.env.PROD ? window.location.origin : "http://localhost:3003"),
 ).trim();
-const BASE_URL = RAW.replace(/\/api\/?$/, "") + "/api";
+export const API_ORIGIN = RAW.replace(/\/+$/, "").replace(/\/api$/, "");
+export const API_BASE_URL = `${API_ORIGIN}/api`;
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

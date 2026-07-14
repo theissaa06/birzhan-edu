@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
-import api from "../services/api";
+import api, { API_ORIGIN } from "../services/api";
 import "./CoursesPage.css";
 
 type Lesson = {
@@ -29,11 +29,6 @@ const categories = [
   { title: "Звук", value: "sound", icon: "sound" },
   { title: "VFX", value: "vfx", icon: "spark" },
 ];
-
-const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:3003").replace(
-  /\/api\/?$/,
-  "",
-);
 
 function getCurrentUserKey() {
   try {
@@ -260,7 +255,7 @@ export default function CoursesPage() {
           <h3>Ошибка</h3>
           <p>{error}</p>
           <p>
-            Проверьте, что backend доступен по адресу <strong>{apiOrigin}</strong>
+            Проверьте, что backend доступен по адресу <strong>{API_ORIGIN}</strong>
           </p>
         </section>
       )}

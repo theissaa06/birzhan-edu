@@ -2,10 +2,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
 import TurnstileBox from "../components/TurnstileBox";
+import { API_ORIGIN } from "../services/api";
 import "./RegisterPage.css";
 
-const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003";
-const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
+const API_URL = API_ORIGIN;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const softwareOptions = [

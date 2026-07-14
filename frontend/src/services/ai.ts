@@ -1,4 +1,4 @@
-import axios from "axios";
+import api from "./api";
 
 export type AIMessage = {
   role: "user" | "assistant";
@@ -15,15 +15,12 @@ export type AIResponse = {
 
 const AI_TIMEOUT = 20000;
 
-const RAW_API_URL = String(import.meta.env.VITE_API_URL || "http://localhost:3003").trim();
-const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
-
 export async function sendAIMessage(
   message: string,
   history: AIMessage[] = [],
 ): Promise<AIResponse> {
-  const response = await axios.post<AIResponse>(
-    `${API_URL}/api/ai/chat`,
+  const response = await api.post<AIResponse>(
+    "/ai/chat",
     { message, history },
     {
       timeout: AI_TIMEOUT,
