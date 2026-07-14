@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ConfirmModal from "../components/ConfirmModal";
+import FrameIcon from "../components/FrameIcon";
 import api from "../services/api";
 import {
   getSupportMessages,
@@ -345,11 +346,11 @@ export default function AdminPage() {
 
   // Command Palette команды
   const commands = [
-    { id: "refresh-courses", label: "Обновить курсы", action: loadCourses, icon: "📚" },
+    { id: "refresh-courses", label: "Обновить курсы", action: loadCourses, icon: "Courses" },
     { id: "refresh-users", label: "Обновить пользователей", action: loadUsers, icon: "👥" },
     { id: "refresh-applications", label: "Обновить заявки", action: () => loadApplications(true), icon: "📨" },
     { id: "refresh-stats", label: "Обновить метрики", action: loadDashboardStats, icon: "📊" },
-    { id: "refresh-support", label: "Обновить поддержку", action: () => loadSupportMessages(true), icon: "💬" },
+    { id: "refresh-support", label: "Обновить поддержку", action: () => loadSupportMessages(true), icon: "Support" },
     { id: "clear-filters", label: "Очистить фильтры", action: () => {
       setUserSearchQuery("");
       setUserRoleFilter("ALL");
@@ -1134,7 +1135,7 @@ export default function AdminPage() {
         </div>
 
         <div className="admin-hero-card">
-          <div>⚙️</div>
+          <div><FrameIcon name="lens" /></div>
           <strong>Admin</strong>
           <span>панель управления</span>
         </div>
@@ -1182,7 +1183,7 @@ export default function AdminPage() {
           </div>
 
           <div className="admin-metric-card admin-metric-card--warning">
-            <span className="admin-metric-icon">✅</span>
+            <span className="admin-metric-icon"><FrameIcon name="check" /></span>
             <div>
               <strong>{dashboardStats?.completedSubmissionsMonth || 0}</strong>
               <span>Выполнено заданий (мес)</span>
@@ -1191,7 +1192,7 @@ export default function AdminPage() {
 
           {/* Premium метрики */}
           <div className="admin-metric-card admin-metric-card--premium">
-            <span className="admin-metric-icon">💎</span>
+            <span className="admin-metric-icon"><FrameIcon name="premium" /></span>
             <div>
               <strong>{dashboardStats?.premiumUsers || 0}</strong>
               <span>Premium пользователей</span>
@@ -1216,7 +1217,7 @@ export default function AdminPage() {
           </div>
 
           <div className="admin-metric-card admin-metric-card--courses">
-            <span className="admin-metric-icon">📚</span>
+            <span className="admin-metric-icon"><FrameIcon name="lessons" /></span>
             <div>
               <strong>{dashboardStats?.courses || courses.length}</strong>
               <span>Курсов в базе</span>
@@ -1546,13 +1547,13 @@ export default function AdminPage() {
                             <span>📞 {user.phone || "Телефон не указан"}</span>
                             <span>📅 {formatDate(user.createdAt)}</span>
                             <span>
-                              📚 Прогресс: {user.lessonProgress?.length || 0}
+                              Прогресс: {user.lessonProgress?.length || 0}
                             </span>
                             <span>
-                              🎁 Бонусы: {user.userBonuses?.length || 0}
+                              Бонусы: {user.userBonuses?.length || 0}
                             </span>
                             <span>
-                              💬 Поддержка: {user.supportMessages?.length || 0}
+                              Поддержка: {user.supportMessages?.length || 0}
                             </span>
                             {isUserBlocked(user) && (
                               <span className="admin-user-blocked-chip">
@@ -1588,7 +1589,7 @@ export default function AdminPage() {
                               onClick={() => handleRevokePremium(user.id)}
                               disabled={actionLoading}
                             >
-                              💎 Отозвать Premium
+                              Отозвать Premium
                             </button>
                           ) : (
                             <button
@@ -1600,7 +1601,7 @@ export default function AdminPage() {
                               }}
                               disabled={actionLoading}
                             >
-                              💎 Выдать Premium
+                              Выдать Premium
                             </button>
                           );
                         })()}
@@ -1863,7 +1864,7 @@ export default function AdminPage() {
             <form className="admin-form" onSubmit={handleSaveLesson}>
               {selectedCourse ? (
                 <div className="admin-selected-course">
-                  <div className="admin-selected-course-icon">🎬</div>
+                  <div className="admin-selected-course-icon"><FrameIcon name="frame" /></div>
                   <div>
                     <span>Выбранный курс</span>
                     <strong>{selectedCourse.title}</strong>
@@ -1875,7 +1876,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="admin-selected-course admin-selected-course--empty">
-                  <div className="admin-selected-course-icon">⚠️</div>
+                  <div className="admin-selected-course-icon"><FrameIcon name="warning" /></div>
                   <div>
                     <span>Курс не выбран</span>
                     <strong>Сначала выбери курс</strong>
@@ -1948,7 +1949,7 @@ export default function AdminPage() {
               {newLesson.videoUrl.trim() && (
                 <div className="admin-video-preview">
                   <div className="admin-video-preview-head">
-                    <span>🎬 Предпросмотр видео</span>
+                    <span><FrameIcon name="frame" />Предпросмотр видео</span>
                     <small>
                       Ссылка автоматически преобразуется в embed-формат
                     </small>
@@ -2007,8 +2008,8 @@ export default function AdminPage() {
 
             <div className="admin-support-notice">
               {supportMessagesList.length > 0
-                ? "💬 Есть активные сообщения от пользователей. Последние 12 сообщений показаны ниже."
-                : "💬 Новых сообщений пока нет. Нажми “Обновить чат”, чтобы проверить."}
+                ? "Есть активные сообщения от пользователей. Последние 12 сообщений показаны ниже."
+                : "Новых сообщений пока нет. Нажми “Обновить чат”, чтобы проверить."}
             </div>
 
             <div className="admin-support-tools">
@@ -2023,7 +2024,7 @@ export default function AdminPage() {
             <div className="admin-messages" ref={supportMessagesRef}>
               {supportMessagesList.length === 0 ? (
                 <div className="admin-support-empty">
-                  <span>💬</span>
+                  <span><FrameIcon name="lens" /></span>
                   <strong>Сообщений пока нет</strong>
                   <p>
                     Когда пользователь напишет в поддержку, сообщение появится
@@ -2104,10 +2105,10 @@ export default function AdminPage() {
           <section className="admin-panel admin-quick">
             <p className="admin-label">Быстрые действия</p>
             <h2>Навигация</h2>
-            <Link to="/bonus">🎁 Бонусы</Link>
-            <Link to="/students">👨‍🎓 Студенты</Link>
-            <Link to="/reviews">⭐ Отзывы</Link>
-            <Link to="/career-center">🚀 Центр карьеры</Link>
+            <Link to="/bonus"><FrameIcon name="premium" />Бонусы</Link>
+            <Link to="/students"><FrameIcon name="lens" />Студенты</Link>
+            <Link to="/reviews"><FrameIcon name="check" />Отзывы</Link>
+            <Link to="/career-center"><FrameIcon name="briefcase" />Центр карьеры</Link>
           </section>
         </aside>
       </section>
@@ -2126,7 +2127,7 @@ export default function AdminPage() {
       {resetUserId && (
         <div className="admin-modal-backdrop">
           <div className="admin-modal">
-            <div className="admin-modal-icon">🔐</div>
+            <div className="admin-modal-icon"><FrameIcon name="lens" /></div>
             <h2>Изменить пароль?</h2>
             <p>
               Введи новый пароль для <strong>{resetUserName}</strong>. Он будет
@@ -2173,7 +2174,7 @@ export default function AdminPage() {
       {premiumAction === "grant" && premiumUserId && (
         <div className="admin-modal-backdrop">
           <div className="admin-modal">
-            <div className="admin-modal-icon">💎</div>
+            <div className="admin-modal-icon"><FrameIcon name="premium" /></div>
             <h2>Выдать Premium</h2>
             <p>Выбери длительность Premium подписки:</p>
             <select
@@ -2221,7 +2222,7 @@ export default function AdminPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="command-palette-header">
-              <span className="command-palette-icon">⌨️</span>
+              <span className="command-palette-icon">Ctrl K</span>
               <input
                 type="text"
                 placeholder="Поиск команды..."

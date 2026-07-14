@@ -10,6 +10,8 @@ const REVEAL_SELECTOR = [
   ".home-learning-steps > div",
 ].join(",");
 
+const REVEAL_DIRECTIONS = ["rise", "slide-left", "slide-right", "iris"] as const;
+
 export default function FrameMotion() {
   useEffect(() => {
     const root = document.documentElement;
@@ -34,6 +36,7 @@ export default function FrameMotion() {
       };
     }
 
+    let revealIndex = 0;
     const observed = new Set<Element>();
     const observer = new IntersectionObserver(
       (entries) => {
@@ -48,8 +51,14 @@ export default function FrameMotion() {
     );
 
     const observe = () => {
-      document.querySelectorAll(REVEAL_SELECTOR).forEach((element) => {
+      document.querySelectorAll<HTMLElement>(REVEAL_SELECTOR).forEach((element) => {
         if (observed.has(element)) return;
+        const direction =
+          element.dataset.frameReveal ||
+          REVEAL_DIRECTIONS[revealIndex % REVEAL_DIRECTIONS.length];
+        element.dataset.frameReveal = direction;
+        element.style.setProperty("--frame-reveal-delay", `${(revealIndex % 5) * 48}ms`);
+        revealIndex += 1;
         observed.add(element);
         observer.observe(element);
       });

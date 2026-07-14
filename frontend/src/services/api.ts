@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const RAW = import.meta.env.VITE_API_URL || "http://localhost:3003";
+const RAW = String(
+  import.meta.env.VITE_API_URL ||
+    (import.meta.env.PROD ? window.location.origin : "http://localhost:3003"),
+).trim();
 const BASE_URL = RAW.replace(/\/api\/?$/, "") + "/api";
 
 const api = axios.create({
@@ -22,7 +25,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Токен истёк — чистим localStorage
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("currentUser");

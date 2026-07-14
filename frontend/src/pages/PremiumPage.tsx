@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import FrameIcon from "../components/FrameIcon";
 import {
   activatePremium,
   cancelPremium,
@@ -337,12 +338,16 @@ export default function PremiumPage() {
 
       {successMessage && (
         <div className="premium-toast premium-toast--success">
-          ✅ {successMessage}
+          <FrameIcon name="check" />
+          {successMessage}
         </div>
       )}
 
       {error && (
-        <div className="premium-toast premium-toast--error">⚠️ {error}</div>
+        <div className="premium-toast premium-toast--error">
+          <FrameIcon name="warning" />
+          {error}
+        </div>
       )}
 
       <section className="premium-layout">
@@ -356,12 +361,12 @@ export default function PremiumPage() {
           </div>
 
           <div className="premium-features">
-            <p>✅ Закрытые вебинары и записи занятий</p>
-            <p>✅ Проверка практических заданий</p>
-            <p>✅ Разбор работ и рекомендации по улучшению</p>
-            <p>✅ Бонусы: LUT, пресеты, чек-листы, AI-паки</p>
-            <p>✅ Портфолио-шаблоны и карьерные материалы</p>
-            <p>✅ Premium-сертификат с QR-проверкой</p>
+            <p><FrameIcon name="check" />Закрытые вебинары и записи занятий</p>
+            <p><FrameIcon name="check" />Проверка практических заданий</p>
+            <p><FrameIcon name="check" />Разбор работ и рекомендации по улучшению</p>
+            <p><FrameIcon name="check" />Бонусы: LUT, пресеты, чек-листы, AI-паки</p>
+            <p><FrameIcon name="check" />Портфолио-шаблоны и карьерные материалы</p>
+            <p><FrameIcon name="check" />Premium-сертификат с QR-проверкой</p>
           </div>
 
           {loading ? (
@@ -373,7 +378,7 @@ export default function PremiumPage() {
               <h3>
                 {premium?.isGracePeriod
                   ? "Premium PRO в grace period"
-                  : "🎉 Premium PRO активен"}
+                  : "Premium PRO активен"}
               </h3>
 
               <p>
@@ -412,7 +417,7 @@ export default function PremiumPage() {
                 ? "Ожидаем оплату..."
                 : !scriptLoaded
                   ? "Загружаем оплату..."
-                  : "💳 Оформить Premium PRO"}
+                  : "Оформить Premium PRO"}
             </button>
           )}
         </article>
@@ -443,13 +448,13 @@ export default function PremiumPage() {
 
           <div className="premium-benefit-grid">
             <article>
-              <strong>🎙️</strong>
+              <strong><FrameIcon name="webinar" /></strong>
               <h3>Вебинары</h3>
               <p>Закрытые эфиры, записи занятий и разборы популярных ошибок.</p>
             </article>
 
             <article>
-              <strong>🎁</strong>
+              <strong><FrameIcon name="premium" /></strong>
               <h3>PRO-бонусы</h3>
               <p>LUT, пресеты, AI-паки, чек-листы и материалы для монтажа.</p>
             </article>
@@ -463,7 +468,7 @@ export default function PremiumPage() {
             </article>
 
             <article>
-              <strong>🎓</strong>
+              <strong><FrameIcon name="certificate" /></strong>
               <h3>Premium-сертификат</h3>
               <p>Расширенный сертификат с QR-проверкой и ID документа.</p>
             </article>
@@ -484,7 +489,7 @@ export default function PremiumPage() {
 
         <div className="premium-unlock-grid">
           <article className="premium-unlock-card">
-            <div className="premium-unlock-icon">🎙️</div>
+            <div className="premium-unlock-icon"><FrameIcon name="webinar" /></div>
             <h3>Закрытые вебинары</h3>
             <p>
               Доступ к вебинарам, записям занятий, разбору ошибок и практическим
@@ -493,7 +498,7 @@ export default function PremiumPage() {
           </article>
 
           <article className="premium-unlock-card">
-            <div className="premium-unlock-icon">🎁</div>
+            <div className="premium-unlock-icon"><FrameIcon name="premium" /></div>
             <h3>Бонусные материалы</h3>
             <p>
               LUT-паки, пресеты, чек-листы, AI-паки, шаблоны и дополнительные
@@ -511,7 +516,7 @@ export default function PremiumPage() {
           </article>
 
           <article className="premium-unlock-card">
-            <div className="premium-unlock-icon">📁</div>
+            <div className="premium-unlock-icon"><FrameIcon name="folder" /></div>
             <h3>Портфолио-пак</h3>
             <p>
               Шаблоны оформления портфолио, идеи для первых работ и структура
@@ -520,7 +525,7 @@ export default function PremiumPage() {
           </article>
 
           <article className="premium-unlock-card">
-            <div className="premium-unlock-icon">💼</div>
+            <div className="premium-unlock-icon"><FrameIcon name="briefcase" /></div>
             <h3>Карьерные чек-листы</h3>
             <p>
               Материалы по первым заказам, поиску клиентов, оформлению услуг и
@@ -529,7 +534,7 @@ export default function PremiumPage() {
           </article>
 
           <article className="premium-unlock-card">
-            <div className="premium-unlock-icon">🎓</div>
+            <div className="premium-unlock-icon"><FrameIcon name="certificate" /></div>
             <h3>Premium-сертификат</h3>
             <p>
               Расширенный сертификат с QR-кодом, ID документа и красивым
@@ -552,13 +557,13 @@ export default function PremiumPage() {
 
         <div className="premium-audience-grid">
           <article>
-            <div>🎬</div>
+            <div><FrameIcon name="frame" /></div>
             <h3>Новичкам в монтаже</h3>
             <p>Чтобы не просто смотреть уроки, а получать помощь и практику.</p>
           </article>
 
           <article>
-            <div>📱</div>
+            <div><FrameIcon name="phone" /></div>
             <h3>Блогерам</h3>
             <p>
               Чтобы быстрее делать ролики для TikTok, Reels, Shorts и YouTube.
@@ -566,13 +571,13 @@ export default function PremiumPage() {
           </article>
 
           <article>
-            <div>💼</div>
+            <div><FrameIcon name="briefcase" /></div>
             <h3>Будущим фрилансерам</h3>
             <p>Чтобы собрать портфолио и увереннее выйти на первые заказы.</p>
           </article>
 
           <article>
-            <div>⚡</div>
+            <div><FrameIcon name="spark" /></div>
             <h3>Тем, кто хочет PRO-рост</h3>
             <p>
               Для тех, кто хочет разборы работ, бонусы, вебинары и карьерные

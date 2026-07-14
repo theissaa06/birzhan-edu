@@ -1,0 +1,16 @@
+{
+  "$schema": "https://layero.ru/schema/layero-v1.json",
+  "frontend": {
+    "root": "frontend",
+    "framework": "vite",
+    "build": "npm ci && npm run build",
+    "output": "dist"
+  },
+  "backend": {
+    "root": "backend",
+    "runtime": "node_web",
+    "start": "npm run start:prod",
+    "port": 3003
+  },
+  "api_prefix": "/api"
+}

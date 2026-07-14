@@ -1,5 +1,6 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import FrameIcon from "../components/FrameIcon";
 import TurnstileBox from "../components/TurnstileBox";
 import "./LoginPage.css";
 
@@ -90,7 +91,7 @@ export default function LoginPage() {
 
           <ul className="auth-benefits">
             <li>
-              <span className="auth-benefit-icon">🎬</span>
+              <span className="auth-benefit-icon"><FrameIcon name="frame" /></span>
               Продолжение уроков с места остановки
             </li>
             <li>
@@ -98,11 +99,11 @@ export default function LoginPage() {
               Прогресс по каждому курсу
             </li>
             <li>
-              <span className="auth-benefit-icon">🎁</span>
+              <span className="auth-benefit-icon"><FrameIcon name="premium" /></span>
               Доступ к бонусным материалам
             </li>
             <li>
-              <span className="auth-benefit-icon">🎓</span>
+              <span className="auth-benefit-icon"><FrameIcon name="certificate" /></span>
               Сертификаты в личном кабинете
             </li>
           </ul>

@@ -1,30 +1,31 @@
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
+import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
 import { sendSupportMessage } from "../services/support";
 import "./SupportPage.css";
 
 const helpCards = [
   {
-    icon: "🎬",
+    icon: "frame",
     title: "Проблема с уроком",
     text: "Если видео не открывается, урок не загружается или не сохраняется прогресс.",
   },
   {
-    icon: "🔐",
+    icon: "lens",
     title: "Аккаунт и вход",
     text: "Помощь со входом, регистрацией, паролем и личным кабинетом.",
   },
   {
-    icon: "🎁",
+    icon: "premium",
     title: "Бонусы",
     text: "Если бонус не открылся, не отображается или вы не можете его получить.",
   },
   {
-    icon: "💳",
+    icon: "briefcase",
     title: "Курсы и доступ",
     text: "Вопросы по курсам, доступу к материалам, программе обучения и урокам.",
   },
-];
+] satisfies Array<{ icon: FrameIconName; title: string; text: string }>;
 
 const faqItems = [
   {
@@ -142,7 +143,9 @@ export default function SupportPage() {
         </div>
 
         <div className="support-hero__visual">
-          <div className="support-main-icon">💬</div>
+          <div className="support-main-icon">
+            <FrameIcon name="lens" />
+          </div>
           <div className="support-float support-float--one">FAQ</div>
           <div className="support-float support-float--two">Помощь</div>
           <div className="support-float support-float--three">24/7</div>
@@ -181,7 +184,7 @@ export default function SupportPage() {
         <div className="support-grid">
           {helpCards.map((card) => (
             <article className="support-card" key={card.title}>
-              <div>{card.icon}</div>
+              <div><FrameIcon name={card.icon} /></div>
               <h3>{card.title}</h3>
               <p>{card.text}</p>
             </article>

@@ -19,6 +19,22 @@ const submissionsRoutes = require("./routes/submissions.routes");
 
 const app = express();
 
+function getTrustProxyValue() {
+  const configuredValue = String(process.env.TRUST_PROXY || "").trim();
+
+  if (!configuredValue) {
+    return process.env.NODE_ENV === "production" ? 1 : false;
+  }
+
+  if (configuredValue === "true") return 1;
+  if (configuredValue === "false") return false;
+
+  const numericValue = Number(configuredValue);
+  return Number.isNaN(numericValue) ? false : numericValue;
+}
+
+app.set("trust proxy", getTrustProxyValue());
+
 function getAllowedOrigins() {
   const configuredOrigins = [
     process.env.FRONTEND_URL,
@@ -81,32 +97,40 @@ app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && "body" in err) {
     return res.status(400).json({
       success: false,
-      message: "Некорректный JSON в теле запроса.",
+      message: "Invalid JSON in request body.",
     });
   }
 
   return next(err);
 });
 
-app.get("/health", async (req, res) => {
+async function handleDatabaseHealth(req, res) {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return res.json({
       success: true,
       service: "frame-school-backend",
+      status: "ok",
       database: "ok",
+      uptime: Math.round(process.uptime()),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[Health] Database check failed", error);
+    console.error("[Health] Database check failed", {
+      error: error?.stack || error?.message || error,
+    });
     return res.status(503).json({
       success: false,
       service: "frame-school-backend",
+      status: "error",
       database: "error",
-      message: "База данных недоступна.",
+      message: "Database is unavailable.",
     });
   }
-});
+}
+
+app.get("/health", handleDatabaseHealth);
+app.get("/ready", handleDatabaseHealth);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", coursesRoutes);
@@ -125,15 +149,16 @@ app.use("/api/submissions", submissionsRoutes);
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Frame School backend работает.",
+    message: "Frame School backend is running.",
     health: "/health",
+    ready: "/ready",
   });
 });
 
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: "Маршрут не найден.",
+    message: "Route not found.",
   });
 });
 
@@ -146,7 +171,7 @@ app.use((err, req, res, next) => {
 
   res.status(500).json({
     success: false,
-    message: "Внутренняя ошибка сервера.",
+    message: "Internal server error.",
   });
 });
 
@@ -167,10 +192,59 @@ async function runPremiumExpiryMaintenance() {
   }
 }
 
+function parseKeepAliveUrls() {
+  const publicBackendUrl = process.env.PUBLIC_BACKEND_URL
+    ? `${process.env.PUBLIC_BACKEND_URL.replace(/\/$/, "")}/health`
+    : "";
+
+  const urls = [publicBackendUrl, process.env.KEEP_ALIVE_URLS]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(","))
+    .map((url) => url.trim())
+    .filter(Boolean);
+
+  return [...new Set(urls)];
+}
+
+function startKeepAlivePings() {
+  const urls = parseKeepAliveUrls();
+  const intervalMs = Number(process.env.KEEP_ALIVE_INTERVAL_MS || 5 * 60 * 1000);
+
+  if (urls.length === 0 || !Number.isFinite(intervalMs) || intervalMs <= 0) {
+    return;
+  }
+
+  const ping = async () => {
+    await Promise.allSettled(
+      urls.map(async (url) => {
+        try {
+          const response = await fetch(url, { method: "GET" });
+          if (!response.ok) {
+            console.warn("[KeepAlive] Ping returned non-OK status", {
+              url,
+              status: response.status,
+            });
+          }
+        } catch (error) {
+          console.warn("[KeepAlive] Ping failed", {
+            url,
+            error: error?.message || error,
+          });
+        }
+      }),
+    );
+  };
+
+  const keepAliveTimer = setInterval(ping, intervalMs);
+  keepAliveTimer.unref?.();
+  ping();
+}
+
 app.listen(PORT, () => {
   console.log(`Frame School backend running on port ${PORT}`);
 
   runPremiumExpiryMaintenance();
+  startKeepAlivePings();
 
   if (Number.isFinite(PREMIUM_EXPIRY_INTERVAL_MS) && PREMIUM_EXPIRY_INTERVAL_MS > 0) {
     const premiumExpiryTimer = setInterval(

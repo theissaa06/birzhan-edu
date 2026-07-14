@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
 import api from "../services/api";
 import "./CoursesPage.css";
 
@@ -20,13 +21,13 @@ type Course = {
 };
 
 const categories = [
-  { title: "Все", value: "all", icon: "🌍" },
-  { title: "CapCut", value: "capcut", icon: "✂️" },
-  { title: "Premiere Pro", value: "premiere-pro", icon: "🎞️" },
-  { title: "TikTok", value: "tiktok", icon: "📱" },
-  { title: "Цветокоррекция", value: "color-correction", icon: "🎨" },
-  { title: "Звук", value: "sound", icon: "🔊" },
-  { title: "VFX", value: "vfx", icon: "⚡" },
+  { title: "Все", value: "all", icon: "all" },
+  { title: "CapCut", value: "capcut", icon: "cut" },
+  { title: "Premiere Pro", value: "premiere-pro", icon: "timeline" },
+  { title: "TikTok", value: "tiktok", icon: "phone" },
+  { title: "Цветокоррекция", value: "color-correction", icon: "lens" },
+  { title: "Звук", value: "sound", icon: "sound" },
+  { title: "VFX", value: "vfx", icon: "spark" },
 ];
 
 const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:3003").replace(
@@ -219,7 +220,7 @@ export default function CoursesPage() {
 
       <section className="courses-controls">
         <div className="courses-search">
-          <span>🔎</span>
+          <span className="courses-search-icon" aria-hidden="true" />
           <input
             type="text"
             placeholder="Найти курс..."
@@ -240,7 +241,7 @@ export default function CoursesPage() {
               }
               onClick={() => setActiveCategory(category.value)}
             >
-              <span>{category.icon}</span>
+              <FrameIcon name={category.icon as FrameIconName} />
               {category.title}
             </button>
           ))}
@@ -288,7 +289,7 @@ export default function CoursesPage() {
                         <img src={course.imageUrl} alt={course.title} />
                       ) : (
                         <div className="course-card-placeholder">
-                          {getCourseIcon(course.category)}
+                          <FrameIcon name={getCourseIcon(course.category)} />
                         </div>
                       )}
 
@@ -299,8 +300,14 @@ export default function CoursesPage() {
 
                     <div className="course-card-body">
                       <div className="course-card-meta">
-                        <span>⏱ {course.duration}</span>
-                        <span>📚 {progress.total} уроков</span>
+                        <span>
+                          <FrameIcon name="time" />
+                          {course.duration}
+                        </span>
+                        <span>
+                          <FrameIcon name="lessons" />
+                          {progress.total} уроков
+                        </span>
                       </div>
 
                       <h3>{course.title}</h3>
@@ -351,21 +358,21 @@ export default function CoursesPage() {
   );
 }
 
-function getCourseIcon(category: string) {
+function getCourseIcon(category: string): FrameIconName {
   switch (category) {
     case "capcut":
-      return "✂️";
+      return "cut";
     case "premiere-pro":
-      return "🎞️";
+      return "timeline";
     case "tiktok":
-      return "📱";
+      return "phone";
     case "color-correction":
-      return "🎨";
+      return "lens";
     case "sound":
-      return "🔊";
+      return "sound";
     case "vfx":
-      return "⚡";
+      return "spark";
     default:
-      return "🎬";
+      return "frame";
   }
 }

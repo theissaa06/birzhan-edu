@@ -21,9 +21,7 @@ export async function getPremiumStatus(): Promise<PremiumStatus> {
   const response = await api.get<PremiumApiResponse>("/premium/status");
 
   if (!response.data.success || !response.data.data) {
-    throw new Error(
-      response.data.message || "Не удалось загрузить Premium-статус",
-    );
+    throw new Error(response.data.message || "Не удалось загрузить Premium-статус");
   }
 
   return response.data.data;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
 import api from "../services/api";
 import { getMySubmissions, type AssignmentSubmission } from "../services/submissions";
 import "./ProfilePage.css";
@@ -32,7 +33,7 @@ type Certificate = {
 type CourseProgress = {
   id: number;
   title: string;
-  icon: string;
+  icon: FrameIconName;
   totalLessons: number;
   completedLessons: number;
   percent: number;
@@ -50,13 +51,13 @@ function readCertificates(userId?: number | string): Certificate[] {
   }
 }
 
-const COURSE_ICONS: Record<string, string> = {
-  capcut: "✂️",
-  "premiere-pro": "🎞️",
-  tiktok: "📱",
-  "color-correction": "🎨",
-  sound: "🔊",
-  vfx: "⚡",
+const COURSE_ICONS: Record<string, FrameIconName> = {
+  capcut: "cut",
+  "premiere-pro": "timeline",
+  tiktok: "phone",
+  "color-correction": "lens",
+  sound: "sound",
+  vfx: "spark",
 };
 
 export default function ProfilePage() {
@@ -120,7 +121,7 @@ export default function ProfilePage() {
             return {
               id: c.id,
               title: c.title,
-              icon: COURSE_ICONS[c.category] || "🎬",
+              icon: COURSE_ICONS[c.category] || "frame",
               totalLessons: total,
               completedLessons: completed,
               percent: total > 0 ? Math.round((completed / total) * 100) : 0,
@@ -173,7 +174,7 @@ export default function ProfilePage() {
     return (
       <main className="profile-page">
         <section className="profile-not-logged">
-          <div className="profile-not-logged-icon">🔐</div>
+          <div className="profile-not-logged-icon"><FrameIcon name="lens" /></div>
           <h1>Войдите в аккаунт</h1>
           <p>Чтобы видеть профиль, прогресс и сертификаты — нужно войти.</p>
           <div className="profile-not-logged-actions">
@@ -259,25 +260,25 @@ export default function ProfilePage() {
 
             <div className="profile-overview-grid">
               <div>
-                <span>🚀</span>
+                <span><FrameIcon name="timeline" /></span>
                 <strong>{loading ? "..." : activeCourses}</strong>
                 <p>курсов начато</p>
               </div>
 
               <div>
-                <span>✅</span>
+                <span><FrameIcon name="check" /></span>
                 <strong>{loading ? "..." : completedCourses}</strong>
                 <p>курсов завершено</p>
               </div>
 
               <div>
-                <span>🎓</span>
+                <span><FrameIcon name="certificate" /></span>
                 <strong>{certificates.length}</strong>
                 <p>сертификатов</p>
               </div>
 
               <div>
-                <span>💎</span>
+                <span><FrameIcon name="premium" /></span>
                 <strong>{isPremium ? "PRO" : "Free"}</strong>
                 <p>статус аккаунта</p>
               </div>
@@ -294,7 +295,7 @@ export default function ProfilePage() {
               <p className="profile-loading">Загружаем прогресс из базы данных...</p>
             ) : courses.length === 0 ? (
               <div className="profile-empty-courses">
-                <span>🎬</span>
+                <span><FrameIcon name="frame" /></span>
                 <strong>Курсов пока нет</strong>
                 <p>Начните обучение, чтобы видеть прогресс здесь.</p>
                 <Link to="/courses" className="profile-btn profile-btn--primary">
@@ -305,7 +306,7 @@ export default function ProfilePage() {
               <div className="profile-course-list">
                 {courses.map((item) => (
                   <article className="profile-course-card" key={item.id}>
-                    <div className="profile-course-icon">{item.icon}</div>
+                    <div className="profile-course-icon"><FrameIcon name={item.icon} /></div>
 
                     <div>
                       <h3>{item.title}</h3>
@@ -336,7 +337,7 @@ export default function ProfilePage() {
 
             {certificates.length === 0 ? (
               <div className="profile-empty-certificates">
-                <span>🎓</span>
+                <span><FrameIcon name="certificate" /></span>
                 <strong>Сертификатов пока нет</strong>
                 <p>
                   Завершите курс на 100%, чтобы получить первый сертификат
@@ -355,7 +356,7 @@ export default function ProfilePage() {
                     key={certificate.courseId}
                     className="profile-certificate-card"
                   >
-                    <span>🎓</span>
+                    <span><FrameIcon name="certificate" /></span>
 
                     <div>
                       <strong>{certificate.courseTitle}</strong>
@@ -380,7 +381,7 @@ export default function ProfilePage() {
               <p className="profile-loading">Загружаем работы...</p>
             ) : submissions.length === 0 ? (
               <div className="profile-empty-certificates">
-                <span>📁</span>
+                <span><FrameIcon name="folder" /></span>
                 <strong>Работ пока нет</strong>
                 <p>
                   Откройте урок, выполните практическое задание и отправьте
@@ -459,12 +460,12 @@ export default function ProfilePage() {
             <p className="profile-label">Быстрые ссылки</p>
             <h2>Навигация</h2>
 
-            <Link to="/courses">🎬 Курсы</Link>
-            <Link to="/bonus">🎁 Бонусы</Link>
-            <Link to="/my-certificates">🎓 Сертификаты</Link>
-            <Link to="/free/webinars">🎙️ Вебинары</Link>
-            <Link to="/career-center">🚀 Центр карьеры</Link>
-            <Link to="/support">💬 Поддержка</Link>
+            <Link to="/courses"><FrameIcon name="frame" />Курсы</Link>
+            <Link to="/bonus"><FrameIcon name="premium" />Бонусы</Link>
+            <Link to="/my-certificates"><FrameIcon name="certificate" />Сертификаты</Link>
+            <Link to="/free/webinars"><FrameIcon name="webinar" />Вебинары</Link>
+            <Link to="/career-center"><FrameIcon name="briefcase" />Центр карьеры</Link>
+            <Link to="/support"><FrameIcon name="lens" />Поддержка</Link>
           </section>
 
           {displayUser?.role === "ADMIN" && (

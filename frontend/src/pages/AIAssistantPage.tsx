@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import FrameIcon from "../components/FrameIcon";
 import { sendAIMessage, type AIMessage } from "../services/ai";
 import "./AIAssistantPage.css";
 
@@ -172,7 +173,9 @@ export default function AIAssistantPage() {
           <div className="ai-hero-tag ai-hero-tag--top">Учёба</div>
 
           <div className="ai-hero-center">
-            <div className="ai-bot-avatar">🤖</div>
+            <div className="ai-bot-avatar">
+              <FrameIcon name="lens" />
+            </div>
           </div>
 
           <div className="ai-hero-tag ai-hero-tag--left">Код</div>

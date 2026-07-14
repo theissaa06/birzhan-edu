@@ -15,7 +15,7 @@ export type AIResponse = {
 
 const AI_TIMEOUT = 20000;
 
-const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:3003";
+const RAW_API_URL = String(import.meta.env.VITE_API_URL || "http://localhost:3003").trim();
 const API_URL = RAW_API_URL.replace(/\/api\/?$/, "");
 
 export async function sendAIMessage(

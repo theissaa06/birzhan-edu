@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import FrameIcon from "../components/FrameIcon";
 import api from "../services/api";
 import { createSubmission, createUploadUrl } from "../services/submissions";
 import "./LessonPage.css";
@@ -442,7 +443,7 @@ export default function LessonPage() {
     <main className="lesson-page">
       {showCourseToast && (
         <div className="course-toast">
-          <div className="course-toast-icon">🎓</div>
+          <div className="course-toast-icon"><FrameIcon name="certificate" /></div>
 
           <div className="course-toast-text">
             <span>Курс завершён</span>
@@ -498,7 +499,7 @@ export default function LessonPage() {
                   >
                     <strong>{String(index + 1).padStart(2, "0")}</strong>
                     <span>{lesson.title}</span>
-                    <em>{isDone ? "✅" : "○"}</em>
+                    <em>{isDone ? <FrameIcon name="check" /> : "○"}</em>
                   </Link>
                 );
               })}
@@ -522,7 +523,7 @@ export default function LessonPage() {
               className={`lesson-save-btn ${isSaved ? 'saved' : ''}`}
               onClick={toggleSaveLesson}
             >
-              {isSaved ? '⭐ Сохранён' : '☆ Сохранить урок'}
+              {isSaved ? "Сохранён" : "Сохранить урок"}
             </button>
           </div>
 
@@ -531,11 +532,11 @@ export default function LessonPage() {
             <div className="lesson-instruction-content">
               <h3>Как пройти урок</h3>
               <ol>
-                <li>🎬 Сначала посмотри видео полностью</li>
+                <li><FrameIcon name="frame" />Сначала посмотри видео полностью</li>
                 <li>📝 Прочитай раздел "Что ты узнаешь"</li>
                 <li>👆 Следуй инструкциям в разделе "Пошагово"</li>
-                <li>✅ Выполни практическое задание</li>
-                <li>🔥 Нажми кнопку "Я выполнил задание"</li>
+                <li><FrameIcon name="check" />Выполни практическое задание</li>
+                <li><FrameIcon name="spark" />Нажми кнопку "Я выполнил задание"</li>
               </ol>
             </div>
           </div>
@@ -765,7 +766,7 @@ export default function LessonPage() {
 
           {!nextLesson && (
             <div className="course-finish-notice">
-              <div className="course-finish-notice-icon">🎓</div>
+              <div className="course-finish-notice-icon"><FrameIcon name="certificate" /></div>
 
               <div className="course-finish-notice-content">
                 <span className="course-finish-notice-badge">
@@ -801,7 +802,7 @@ export default function LessonPage() {
               onClick={handleCompleteLesson}
               disabled={completed}
             >
-              {completed ? "🔥 Урок уже пройден" : "✅ Я выполнил задание"}
+              {completed ? "Урок уже пройден" : "Я выполнил задание"}
             </button>
 
             {nextLesson ? (
@@ -824,7 +825,7 @@ export default function LessonPage() {
 
           {showCongrats && (
             <div className="lesson-congrats">
-              <h2>🎉 Отлично! Урок завершён.</h2>
+              <h2>Отлично! Урок завершён.</h2>
               <p>
                 Твой прогресс сохранён. Теперь можешь перейти к следующему
                 уроку или повторить материал.

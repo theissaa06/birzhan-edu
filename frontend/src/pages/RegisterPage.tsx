@@ -1,5 +1,6 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import FrameIcon from "../components/FrameIcon";
 import TurnstileBox from "../components/TurnstileBox";
 import "./RegisterPage.css";
 
@@ -167,7 +168,7 @@ export default function RegisterPage() {
 
           <ul className="auth-benefits">
             <li>
-              <span className="auth-benefit-icon">🎬</span>
+              <span className="auth-benefit-icon"><FrameIcon name="frame" /></span>
               Первый трек под твой редактор
             </li>
             <li>
@@ -175,11 +176,11 @@ export default function RegisterPage() {
               Практические задания вместо пассивного просмотра
             </li>
             <li>
-              <span className="auth-benefit-icon">🎁</span>
+              <span className="auth-benefit-icon"><FrameIcon name="premium" /></span>
               Работы постепенно складываются в портфолио
             </li>
             <li>
-              <span className="auth-benefit-icon">🎓</span>
+              <span className="auth-benefit-icon"><FrameIcon name="certificate" /></span>
               Сертификаты в личном кабинете
             </li>
           </ul>

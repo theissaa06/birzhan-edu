@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
 import api from "../services/api";
 import "./BonusPage.css";
 
@@ -11,7 +12,7 @@ type CourseBonus = {
 
 type BonusItem = {
   id?: number;
-  icon: string;
+  icon: FrameIconName;
   title: string;
   text: string;
   tag: string;
@@ -27,56 +28,65 @@ type ApiBonus = {
 
 const fallbackBonuses: BonusItem[] = [
   {
-    icon: "🤖",
+    icon: "lens",
     title: "AI-пак для монтажа 2026",
     text: "Готовые промпты для идей, сценариев, хуков, описаний и структуры коротких видео.",
     tag: "NEW 2026",
   },
   {
-    icon: "🎬",
+    icon: "frame",
     title: "CapCut Presets Pack",
     text: "Набор пресетов для динамичных TikTok, Reels и Shorts: переходы, зум, speed ramp и титры.",
     tag: "Для новичков",
   },
   {
-    icon: "🎨",
+    icon: "lens",
     title: "LUT-пак для цветокоррекции",
     text: "Кинематографичные цветовые настройки для видео, эдитов, travel-роликов и блогов.",
     tag: "PRO стиль",
   },
   {
-    icon: "⚡",
+    icon: "spark",
     title: "Shake / Zoom / Flash эффекты",
     text: "Гайд по самым популярным эффектам: shake, blur, flash, zoom, glitch и монтаж под бит.",
     tag: "Эдиты",
   },
   {
-    icon: "📋",
+    icon: "lessons",
     title: "Чек-лист TikTok-эдита",
     text: "Пошаговый список: хук, музыка, нарезка, переходы, текст, цвет, экспорт и публикация.",
     tag: "Практика",
   },
   {
-    icon: "📁",
+    icon: "folder",
     title: "Шаблон портфолио",
     text: "Структура портфолио для начинающего видеомонтажёра: что показать клиенту и как оформить.",
     tag: "Карьера",
   },
   {
-    icon: "🏆",
+    icon: "certificate",
     title: "Сертификат после прохождения",
     text: "После завершения курса студент получает сертификат Frame School.",
     tag: "Награда",
   },
   {
-    icon: "💼",
+    icon: "briefcase",
     title: "Мини-гайд: первые заказы",
     text: "Как найти первых клиентов, что писать заказчику и как оценивать свою работу.",
     tag: "Доход",
   },
 ];
 
-const bonusIcons = ["🤖", "🎬", "🎨", "⚡", "📋", "📁", "🏆", "💼"];
+const bonusIcons: FrameIconName[] = [
+  "lens",
+  "frame",
+  "lens",
+  "spark",
+  "lessons",
+  "folder",
+  "certificate",
+  "briefcase",
+];
 
 function mapApiBonus(bonus: ApiBonus, index: number): BonusItem {
   return {
@@ -178,7 +188,8 @@ export default function BonusPage() {
 
           <div className="bonus-actions">
             <Link to="/register" className="bonus-btn bonus-btn--primary">
-              🎁 Забрать бонусы
+              <FrameIcon name="premium" />
+              Забрать бонусы
             </Link>
 
             <Link to="/courses" className="bonus-btn bonus-btn--light">
@@ -188,7 +199,7 @@ export default function BonusPage() {
         </div>
 
         <div className="bonus-hero__card">
-          <div className="bonus-gift">🎁</div>
+          <div className="bonus-gift"><FrameIcon name="premium" /></div>
           <strong>8+</strong>
           <span>актуальных бонусов 2026</span>
         </div>
@@ -196,7 +207,7 @@ export default function BonusPage() {
 
       {courseBonus && (
         <section className="bonus-unlocked">
-          <div className="bonus-unlocked-icon">🏆</div>
+          <div className="bonus-unlocked-icon"><FrameIcon name="certificate" /></div>
 
           <div>
             <p className="bonus-label">Бонус разблокирован</p>
@@ -209,7 +220,8 @@ export default function BonusPage() {
 
           <div className="bonus-unlocked-actions">
             <Link to="/certificate" className="bonus-btn bonus-btn--primary">
-              🏆 Открыть сертификат
+              <FrameIcon name="certificate" />
+              Открыть сертификат
             </Link>
 
             <Link to="/courses" className="bonus-btn bonus-btn--light">
@@ -244,7 +256,7 @@ export default function BonusPage() {
                 key={bonus.title}
               >
                 <div className="bonus-card__top">
-                  <div className="bonus-icon">{bonus.icon}</div>
+                  <div className="bonus-icon"><FrameIcon name={bonus.icon} /></div>
                   <span>{isClaimed ? "Получено" : bonus.tag}</span>
                 </div>
 
@@ -256,7 +268,14 @@ export default function BonusPage() {
                   type="button"
                   onClick={() => handleClaimBonus(bonus)}
                 >
-                  {isClaimed ? "✅ Получено" : "Получить"}
+                  {isClaimed ? (
+                    <>
+                      <FrameIcon name="check" />
+                      Получено
+                    </>
+                  ) : (
+                    "Получить"
+                  )}
                 </button>
               </article>
             );

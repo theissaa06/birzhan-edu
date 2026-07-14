@@ -88,7 +88,7 @@ export default function Footer() {
 
             <div className="footer-contact">
               <p>📞 +7 (727) 123-45-67</p>
-              <p>✉️ hello@frameschool.kz</p>
+              <p>hello@frameschool.kz</p>
               <p>📍 Алматы, Казахстан</p>
             </div>
 

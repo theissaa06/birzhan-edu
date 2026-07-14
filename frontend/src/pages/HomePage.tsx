@@ -11,24 +11,24 @@ export default function HomePage() {
 
   const directions = [
     {
-      icon: "🎬",
+      icon: "frame",
       title: "Видеомонтаж",
-      text: "Научитесь монтировать видео для TikTok, YouTube, Reels и коммерческих проектов.",
+      text: "Собирайте историю из кадров: ритм, смысл, паузы, акценты и чистый финальный экспорт.",
     },
     {
-      icon: "✂️",
+      icon: "cut",
       title: "CapCut",
-      text: "Освойте CapCut с нуля: нарезка, переходы, эффекты, музыка и экспорт.",
+      text: "Быстрый мобильный монтаж без хаоса: нарезка, звук, переходы, титры и готовый ролик.",
     },
     {
-      icon: "🎞️",
+      icon: "timeline",
       title: "Premiere Pro",
-      text: "Профессиональный монтаж: таймлайн, цвет, звук, титры и финальный экспорт.",
+      text: "Профессиональный таймлайн: цвет, звук, титры, структура проекта и аккуратная сдача.",
     },
     {
-      icon: "⚡",
+      icon: "spark",
       title: "VFX и эдиты",
-      text: "Делайте shake, zoom, flash, glitch, speed ramp и эффектные эдиты.",
+      text: "Эффекты, которые работают на кадр: speed ramp, flash, shake, glow и выразительный темп.",
     },
   ];
 
@@ -53,24 +53,25 @@ export default function HomePage() {
 
   return (
     <main className="home-page">
-      <section className="home-hero">
+      <section className="home-hero" data-frame-reveal="iris">
         <div className="home-hero__content">
-          <p className="home-label">Frame School · 2026</p>
+          <p className="home-label">Frame School · монтажная студия обучения</p>
 
           <h1>
-            Обучение монтажу <br />с нуля до уверенного{" "}
-            <span>digital-специалиста</span>
+            Учим видеть кадр, <br />собирать ритм и делать{" "}
+            <span>монтаж уверенно</span>
           </h1>
 
           <p className="home-hero__text">
-            Образовательная платформа, где урок начинается с практического
-            задания: CapCut, Premiere Pro, цветокоррекция, звук, VFX и контент
-            для TikTok, YouTube и Reels.
+            Здесь урок начинается не с теории ради теории, а с понятного
+            результата: открыть редактор, собрать сцену, поправить звук,
+            показать работу и увидеть прогресс.
           </p>
 
           <div className="home-hero__buttons">
             <Link to="/courses" className="home-btn home-btn--primary">
-              🎬 Выбрать курс
+              <span className="fs-icon fs-icon--frame" aria-hidden="true" />
+              Выбрать курс
             </Link>
 
             <Link to="/free" className="home-btn home-btn--light">
@@ -78,36 +79,53 @@ export default function HomePage() {
             </Link>
 
             <Link to="/bonus" className="home-btn home-btn--bonus">
-              🎁 Получить бонус
+              <span className="fs-icon fs-icon--premium" aria-hidden="true" />
+              Получить стартовый пак
             </Link>
           </div>
         </div>
 
-        <div className="home-hero__visual">
-          <div className="home-video-card">
-            <div className="home-video-top">
-              <span></span>
-              <span></span>
-              <span></span>
+        <div className="home-hero__visual" aria-label="Объектив Frame School и монтажная шкала">
+          <div className="home-lens-stage">
+            <div className="home-viewfinder">
+              <span className="home-viewfinder__corner home-viewfinder__corner--tl" />
+              <span className="home-viewfinder__corner home-viewfinder__corner--tr" />
+              <span className="home-viewfinder__corner home-viewfinder__corner--bl" />
+              <span className="home-viewfinder__corner home-viewfinder__corner--br" />
+              <span className="home-viewfinder__line home-viewfinder__line--v1" />
+              <span className="home-viewfinder__line home-viewfinder__line--v2" />
+              <span className="home-viewfinder__line home-viewfinder__line--h1" />
+              <span className="home-viewfinder__line home-viewfinder__line--h2" />
             </div>
 
-            <div className="home-video-screen">
-              <div className="play-circle">▶</div>
-              <p>Практика: монтаж эдита</p>
+            <div className="home-lens">
+              <span className="home-lens__ring home-lens__ring--outer" />
+              <span className="home-lens__ring home-lens__ring--middle" />
+              <span className="home-lens__ring home-lens__ring--inner" />
+              <span className="home-lens__blade home-lens__blade--one" />
+              <span className="home-lens__blade home-lens__blade--two" />
+              <span className="home-lens__blade home-lens__blade--three" />
+              <span className="home-lens__flare" />
             </div>
 
-            <div className="home-timeline">
-              <div></div>
-              <div></div>
-              <div></div>
+            <div className="home-edit-panel">
+              <div className="home-edit-panel__top">
+                <span>Scene 04</span>
+                <strong>RHYTHM LOCK</strong>
+              </div>
+              <div className="home-edit-panel__timeline">
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+              <p>кадр, звук, цвет, экспорт</p>
             </div>
           </div>
 
-          <div className="floating-card floating-card--one">CapCut PRO</div>
-
-          <div className="floating-card floating-card--two">Premiere Pro</div>
-
-          <div className="floating-card floating-card--three">TikTok Edit</div>
+          <div className="floating-card floating-card--one">CapCut workflow</div>
+          <div className="floating-card floating-card--two">Premiere timeline</div>
+          <div className="floating-card floating-card--three">Portfolio shot</div>
         </div>
       </section>
 
@@ -133,7 +151,9 @@ export default function HomePage() {
         <div className="home-directions">
           {directions.map((item) => (
             <article className="home-direction-card" key={item.title}>
-              <div className="home-direction-icon">{item.icon}</div>
+              <div className="home-direction-icon">
+                <span className={`fs-icon fs-icon--${item.icon}`} aria-hidden="true" />
+              </div>
               <h3>{item.title}</h3>
               <p>{item.text}</p>
               <Link to="/courses">Смотреть курсы →</Link>
@@ -197,19 +217,19 @@ export default function HomePage() {
 
         <div className="home-audience-grid">
           <article>
-            <span>🎓</span>
+            <span className="fs-icon fs-icon--lens" aria-hidden="true" />
             <h3>Новичкам</h3>
             <p>Можно начать с нуля, без опыта в монтаже и сложных программ.</p>
           </article>
 
           <article>
-            <span>📱</span>
+            <span className="fs-icon fs-icon--frame" aria-hidden="true" />
             <h3>Блогерам</h3>
             <p>Для TikTok, Reels, Shorts, YouTube и личного бренда.</p>
           </article>
 
           <article>
-            <span>👨‍💻</span>
+            <span className="fs-icon fs-icon--timeline" aria-hidden="true" />
             <h3>Будущим специалистам</h3>
             <p>Чтобы собрать портфолио и подготовиться к первым заказам.</p>
           </article>
