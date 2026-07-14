@@ -1,0 +1,6 @@
+{
+  "$schema": "https://layero.ru/schema/layero-v1.json",
+  "framework": "vite",
+  "build": "cd frontend && npm ci && npm run build",
+  "output": "frontend/dist"
+}
