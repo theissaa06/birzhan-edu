@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearAuthSession } from "./authStorage";
 
 const RAW = String(
   import.meta.env.VITE_API_URL ||
@@ -26,9 +27,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("currentUser");
+      clearAuthSession();
     }
     return Promise.reject(error);
   },

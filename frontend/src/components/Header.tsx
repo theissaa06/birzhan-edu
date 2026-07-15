@@ -1,44 +1,15 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { useAuthSession } from "./AuthSessionProvider";
 import "./Header.css";
-
-type CurrentUser = {
-  id?: number;
-  username?: string;
-  email?: string;
-  role?: "USER" | "ADMIN";
-};
 
 export default function Header() {
   const navigate = useNavigate();
   const headerRef = useRef<HTMLElement | null>(null);
+  const { user, isAuthenticated, signOut } = useAuthSession();
 
-  const [user, setUser] = useState<CurrentUser | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [freeOpen, setFreeOpen] = useState(false);
-
-  useEffect(() => {
-    function loadUser() {
-      const storedUser =
-        localStorage.getItem("user") || localStorage.getItem("currentUser");
-
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch {
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    }
-
-    loadUser();
-
-    // Обновляем при логине/логауте в другой вкладке или после reload
-    window.addEventListener("storage", loadUser);
-    return () => window.removeEventListener("storage", loadUser);
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -69,10 +40,7 @@ export default function Header() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("currentUser");
-    setUser(null);
+    signOut();
     closeMenus();
     navigate("/login");
   }
@@ -186,7 +154,7 @@ export default function Header() {
               Premium
             </Link>
 
-            {user ? (
+            {isAuthenticated ? (
               <>
                 <Link
                   to="/profile"
@@ -197,7 +165,7 @@ export default function Header() {
                   {profileName}
                 </Link>
 
-                {user.role === "ADMIN" && (
+                {user?.role === "ADMIN" && (
                   <Link
                     to="/admin"
                     className="site-admin-link"

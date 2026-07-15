@@ -1,4 +1,11 @@
 import api from "./api";
+import {
+  clearAuthSession,
+  getAuthToken,
+  getStoredAuthUser,
+  saveAuthSession,
+  type AuthSessionUser,
+} from "./authStorage";
 
 export const register = (data: {
   username: string;
@@ -12,19 +19,14 @@ export const login = (data: { email: string; password: string }) =>
 
 export const getMe = () => api.get("/auth/me");
 
-export const saveAuth = (token: string, user: object) => {
-  localStorage.setItem("token", token);
-  localStorage.setItem("user", JSON.stringify(user));
+export const saveAuth = (token: string, user: AuthSessionUser) => {
+  saveAuthSession(token, user);
 };
 
 export const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+  clearAuthSession();
 };
 
-export const getUser = () => {
-  const u = localStorage.getItem("user");
-  return u ? JSON.parse(u) : null;
-};
+export const getUser = () => getStoredAuthUser();
 
-export const isLoggedIn = () => !!localStorage.getItem("token");
+export const isLoggedIn = () => Boolean(getAuthToken());

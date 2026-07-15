@@ -1,6 +1,7 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
+import { useAuthSession } from "../components/AuthSessionProvider";
 import TurnstileBox from "../components/TurnstileBox";
 import { API_ORIGIN } from "../services/api";
 import "./LoginPage.css";
@@ -9,6 +10,7 @@ const API_URL = API_ORIGIN;
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { signIn } = useAuthSession();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +52,9 @@ export default function LoginPage() {
       const token = data.token || data.data?.token;
       const user = data.user || data.data?.user;
 
-      if (token) localStorage.setItem("token", token);
+      if (!token) {
+        throw new Error("Сервер не вернул токен авторизации.");
+      }
 
       const finalUser = user || {
         email: cleanEmail,
@@ -58,11 +62,7 @@ export default function LoginPage() {
         role: "USER",
       };
 
-      localStorage.setItem("user", JSON.stringify(finalUser));
-      localStorage.setItem("currentUser", JSON.stringify(finalUser));
-
-      // Диспатчим событие чтобы Header обновился
-      window.dispatchEvent(new Event("storage"));
+      signIn(token, finalUser);
 
       navigate("/profile");
     } catch (err) {

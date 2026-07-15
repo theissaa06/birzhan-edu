@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { clearAuthSession } from "../services/authStorage";
 import "./LoginPage.css";
 
 type ResetStep = "email" | "code" | "password";
@@ -100,9 +101,7 @@ export default function ForgotPasswordPage() {
         password,
       });
 
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("currentUser");
+      clearAuthSession();
 
       setMessage(response.data.message || "Пароль обновлён.");
       setTimeout(() => navigate("/login"), 1400);

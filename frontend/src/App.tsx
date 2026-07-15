@@ -5,6 +5,7 @@ import Footer from "./components/Footer";
 import FloatingActionButton from "./components/FloatingActionButton";
 import FrameMotion from "./components/FrameMotion";
 import AdminRoute from "./components/AdminRoute";
+import { AuthSessionProvider } from "./components/AuthSessionProvider";
 
 import HomePage from "./pages/HomePage";
 import CoursesPage from "./pages/CoursesPage";
@@ -47,8 +48,9 @@ import "./styles/global.css";
 export default function App() {
   return (
     <BrowserRouter>
-      <FrameMotion />
-      <Header />
+      <AuthSessionProvider>
+        <FrameMotion />
+        <Header />
 
       <Routes>
         {/* Главная */}
@@ -125,8 +127,9 @@ export default function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 
-      <Footer />
-      <FloatingActionButton />
+        <Footer />
+        <FloatingActionButton />
+      </AuthSessionProvider>
     </BrowserRouter>
   );
 }

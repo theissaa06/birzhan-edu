@@ -939,11 +939,6 @@ export default function AdminPage() {
         `Новый пароль: ${savedPassword}`,
       );
 
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("currentUser");
-
-      window.setTimeout(() => navigate("/login"), 700);
     } catch (err) {
       console.error("Ошибка изменения пароля:", err);
       showError("Не удалось изменить пароль пользователя.");

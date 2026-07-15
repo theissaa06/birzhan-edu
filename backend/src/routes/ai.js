@@ -12,6 +12,10 @@ const MAX_MESSAGE_LENGTH = 8000;
 const MAX_HISTORY_ITEMS = 12;
 const MAX_HISTORY_TEXT_LENGTH = 1500;
 const MAX_OUTPUT_TOKENS = 900;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_API_KEY = String(process.env.GEMINI_API_KEY || "").trim();
+const ALLOW_DEMO_FALLBACK =
+  process.env.AI_ALLOW_DEMO_FALLBACK === "true";
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -25,12 +29,14 @@ const aiLimiter = rateLimit({
   },
 });
 
-const ai = process.env.GEMINI_API_KEY
-  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  : null;
+const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 if (!ai) {
-  console.warn("[Frame AI] GEMINI_API_KEY не найден в .env. Включён demo fallback.");
+  console.warn(
+    ALLOW_DEMO_FALLBACK
+      ? "[Frame AI] GEMINI_API_KEY не настроен. Разрешён явный demo fallback."
+      : "[Frame AI] GEMINI_API_KEY не настроен. Production AI недоступен до добавления ключа.",
+  );
 }
 
 const SYSTEM_PROMPT = `Ты Frame AI - помощник образовательной платформы Frame School.
@@ -147,6 +153,16 @@ function withTimeout(promise, timeoutMs) {
   });
 }
 
+router.get("/status", (req, res) => {
+  return res.json({
+    success: true,
+    provider: "gemini",
+    model: GEMINI_MODEL,
+    mode: ai ? "gemini" : ALLOW_DEMO_FALLBACK ? "demo" : "unavailable",
+    configured: Boolean(ai),
+  });
+});
+
 router.post("/chat", aiLimiter, async (req, res) => {
   try {
     const { message, history } = req.body || {};
@@ -168,6 +184,18 @@ router.post("/chat", aiLimiter, async (req, res) => {
     }
 
     if (!ai) {
+      if (!ALLOW_DEMO_FALLBACK) {
+        return res.status(503).json({
+          success: false,
+          answer: "",
+          demo: false,
+          source: "unavailable",
+          code: "AI_NOT_CONFIGURED",
+          message:
+            "Frame AI временно недоступен: Gemini не настроен на сервере.",
+        });
+      }
+
       return res.json({
         success: true,
         answer: getDemoAnswer(trimmedMessage),
@@ -179,7 +207,7 @@ router.post("/chat", aiLimiter, async (req, res) => {
 
     const response = await withTimeout(
       ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+        model: GEMINI_MODEL,
         contents: buildGeminiPrompt(trimmedMessage, history),
         config: {
           temperature: 0.4,
@@ -192,6 +220,17 @@ router.post("/chat", aiLimiter, async (req, res) => {
     const answer = response.text?.trim();
 
     if (!answer) {
+      if (!ALLOW_DEMO_FALLBACK) {
+        return res.status(502).json({
+          success: false,
+          answer: "",
+          demo: false,
+          source: "gemini",
+          code: "AI_EMPTY_RESPONSE",
+          message: "Gemini не вернул ответ. Попробуйте повторить запрос.",
+        });
+      }
+
       return res.json({
         success: true,
         answer: getDemoAnswer(trimmedMessage),
@@ -216,14 +255,27 @@ router.post("/chat", aiLimiter, async (req, res) => {
       messageLength: String(req.body?.message || "").length,
     });
 
-    return res.json({
-      success: true,
-      answer: getDemoAnswer(req.body?.message),
-      demo: true,
-      source: "demo",
+    if (ALLOW_DEMO_FALLBACK) {
+      return res.json({
+        success: true,
+        answer: getDemoAnswer(req.body?.message),
+        demo: true,
+        source: "demo",
+        message: isTimeout
+          ? "Не получилось получить ответ вовремя. Попробуй ещё раз."
+          : "Frame AI работает в резервном режиме.",
+      });
+    }
+
+    return res.status(isTimeout ? 504 : 502).json({
+      success: false,
+      answer: "",
+      demo: false,
+      source: "gemini",
+      code: isTimeout ? "AI_TIMEOUT" : "AI_PROVIDER_ERROR",
       message: isTimeout
-        ? "Не получилось получить ответ вовремя. Попробуй ещё раз."
-        : "Frame AI работает в резервном режиме.",
+        ? "Gemini не ответил вовремя. Попробуйте ещё раз."
+        : "Gemini временно недоступен. Попробуйте позже.",
     });
   }
 });

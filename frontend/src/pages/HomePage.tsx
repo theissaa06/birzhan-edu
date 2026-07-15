@@ -1,7 +1,9 @@
 ﻿import { Link } from "react-router-dom";
+import { useAuthSession } from "../components/AuthSessionProvider";
 import "./HomePage.css";
 
 export default function HomePage() {
+  const { isAuthenticated } = useAuthSession();
   const stats = [
     { number: "15 000+", label: "студентов обучаются" },
     { number: "40+", label: "курсов по монтажу" },
@@ -288,22 +290,41 @@ export default function HomePage() {
 
       <section className="home-cta">
         <div>
-          <p className="home-label">Начните бесплатно</p>
-          <h2>Сделайте первый шаг к профессии видеомонтажёра</h2>
+          <p className="home-label">
+            {isAuthenticated ? "Продолжите обучение" : "Начните бесплатно"}
+          </p>
+          <h2>
+            {isAuthenticated
+              ? "Вернитесь к следующему практическому заданию"
+              : "Сделайте первый шаг к профессии видеомонтажёра"}
+          </h2>
           <p>
-            Пройдите бесплатную профориентацию, выберите направление и получите
-            бонусные материалы для старта.
+            {isAuthenticated
+              ? "Откройте каталог, продолжите урок с места остановки или проверьте прогресс в личном кабинете."
+              : "Пройдите бесплатную профориентацию, выберите направление и получите бонусные материалы для старта."}
           </p>
         </div>
 
         <div className="home-cta__buttons">
-          <Link to="/register" className="home-btn home-btn--primary">
-            Зарегистрироваться
-          </Link>
-
-          <Link to="/bonus" className="home-btn home-btn--light">
-            Получить бонус
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link to="/courses" className="home-btn home-btn--primary">
+                Продолжить обучение
+              </Link>
+              <Link to="/profile" className="home-btn home-btn--light">
+                Открыть профиль
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/register" className="home-btn home-btn--primary">
+                Зарегистрироваться
+              </Link>
+              <Link to="/bonus" className="home-btn home-btn--light">
+                Получить бонус
+              </Link>
+            </>
+          )}
         </div>
       </section>
     </main>

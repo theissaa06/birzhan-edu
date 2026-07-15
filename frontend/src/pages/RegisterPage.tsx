@@ -1,6 +1,7 @@
 ﻿import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
+import { useAuthSession } from "../components/AuthSessionProvider";
 import TurnstileBox from "../components/TurnstileBox";
 import { API_ORIGIN } from "../services/api";
 import "./RegisterPage.css";
@@ -43,6 +44,7 @@ function getRecommendedTrack(software: string, level: string, goal: string) {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { signIn } = useAuthSession();
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -113,7 +115,9 @@ export default function RegisterPage() {
       const token = data.token || data.data?.token;
       const user = data.user || data.data?.user;
 
-      if (token) localStorage.setItem("token", token);
+      if (!token) {
+        throw new Error("Сервер не вернул токен авторизации.");
+      }
 
       const finalUser = user || {
         username: cleanUsername,
@@ -128,12 +132,8 @@ export default function RegisterPage() {
         recommendedTrack,
       };
 
-      localStorage.setItem("user", JSON.stringify(finalUser));
-      localStorage.setItem("currentUser", JSON.stringify(finalUser));
+      signIn(token, finalUser);
       localStorage.setItem("frameSchoolOnboarding", JSON.stringify(onboarding));
-
-      // Диспатчим событие чтобы Header обновился
-      window.dispatchEvent(new Event("storage"));
 
       navigate("/profile");
     } catch (err) {

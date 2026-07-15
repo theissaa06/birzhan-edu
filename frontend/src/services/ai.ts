@@ -10,7 +10,16 @@ export type AIResponse = {
   answer?: string;
   message?: string;
   demo?: boolean;
-  source?: "gemini" | "demo" | string;
+  source?: "gemini" | "demo" | "unavailable" | string;
+  code?: string;
+};
+
+export type AIStatus = {
+  success: boolean;
+  provider: "gemini" | string;
+  model: string;
+  mode: "gemini" | "demo" | "unavailable";
+  configured: boolean;
 };
 
 const AI_TIMEOUT = 20000;
@@ -30,5 +39,10 @@ export async function sendAIMessage(
     },
   );
 
+  return response.data;
+}
+
+export async function getAIStatus(): Promise<AIStatus> {
+  const response = await api.get<AIStatus>("/ai/status", { timeout: 10000 });
   return response.data;
 }

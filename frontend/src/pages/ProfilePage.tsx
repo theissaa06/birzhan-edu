@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuthSession } from "../components/AuthSessionProvider";
 import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
 import api from "../services/api";
 import { getMySubmissions, type AssignmentSubmission } from "../services/submissions";
@@ -62,9 +63,8 @@ const COURSE_ICONS: Record<string, FrameIconName> = {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-
-  const savedUser = localStorage.getItem("user");
-  const user: User | null = savedUser ? JSON.parse(savedUser) : null;
+  const { user: sessionUser, signOut } = useAuthSession();
+  const user = sessionUser as User | null;
 
   const [serverUser, setServerUser] = useState<User | null>(null);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
@@ -164,9 +164,7 @@ export default function ProfilePage() {
       : 0;
 
   function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("currentUser");
+    signOut();
     navigate("/login");
   }
 

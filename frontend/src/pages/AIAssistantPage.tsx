@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
-import { sendAIMessage, type AIMessage } from "../services/ai";
+import {
+  getAIStatus,
+  sendAIMessage,
+  type AIMessage,
+  type AIStatus,
+} from "../services/ai";
 import "./AIAssistantPage.css";
 
 type ChatMessage = {
@@ -31,12 +36,33 @@ export default function AIAssistantPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAIStatus() {
+      try {
+        const status = await getAIStatus();
+        if (active) setAIStatus(status);
+      } catch (statusError) {
+        console.error("[Frame AI] Не удалось проверить статус Gemini.", statusError);
+      }
+    }
+
+    void loadAIStatus();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const aiUnavailable = aiStatus?.mode === "unavailable";
 
   const historyForApi: AIMessage[] = useMemo(() => {
     return messages
@@ -49,7 +75,7 @@ export default function AIAssistantPage() {
 
   async function handleSend(customText?: string) {
     const text = (customText ?? input).trim();
-    if (!text || loading) return;
+    if (!text || loading || aiUnavailable) return;
 
     setError("");
     setStatusMessage("");
@@ -197,7 +223,7 @@ export default function AIAssistantPage() {
                   type="button"
                   className="ai-quick-btn"
                   onClick={() => handleQuickQuestion(question)}
-                  disabled={loading}
+                  disabled={loading || aiUnavailable}
                 >
                   {question}
                 </button>
@@ -217,7 +243,15 @@ export default function AIAssistantPage() {
         <section className="ai-chat-card">
           <div className="ai-chat-header">
             <div>
-              <span className="ai-online">ONLINE</span>
+              <span className="ai-online">
+                {aiStatus?.mode === "gemini"
+                  ? "GEMINI ONLINE"
+                  : aiStatus?.mode === "demo"
+                    ? "DEMO"
+                    : aiStatus?.mode === "unavailable"
+                      ? "НЕ НАСТРОЕН"
+                      : "ПРОВЕРЯЕМ"}
+              </span>
               <h3>Frame AI</h3>
             </div>
 
@@ -269,6 +303,12 @@ export default function AIAssistantPage() {
           </div>
 
           {error && <div className="ai-error-banner">{error}</div>}
+          {!error && aiUnavailable && (
+            <div className="ai-error-banner" role="alert">
+              Gemini не настроен на сервере. Добавьте `GEMINI_API_KEY` в
+              Layero, чтобы включить реальные ответы.
+            </div>
+          )}
           {!error && statusMessage && (
             <div className="ai-status-banner">{statusMessage}</div>
           )}
@@ -281,13 +321,13 @@ export default function AIAssistantPage() {
               placeholder="Напишите любой вопрос..."
               className="ai-input"
               rows={2}
-              disabled={loading}
+              disabled={loading || aiUnavailable}
             />
 
             <button
               type="submit"
               className="ai-send-btn"
-              disabled={loading || !input.trim()}
+              disabled={loading || aiUnavailable || !input.trim()}
             >
               {loading ? "..." : "Отправить"}
             </button>

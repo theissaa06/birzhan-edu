@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import api from "../services/api";
+import { clearAuthSession, persistAuthUser } from "../services/authStorage";
 
 type AdminRouteProps = {
   children: ReactNode;
@@ -20,21 +21,6 @@ type AuthUser = {
 };
 
 const ADMIN_BADGES = new Set(["ADMIN", "OWNER", "DEVELOPER"]);
-
-function clearStoredAuth() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  localStorage.removeItem("currentUser");
-}
-
-function persistVerifiedUser(user: AuthUser) {
-  try {
-    const stored = JSON.parse(localStorage.getItem("user") || "{}");
-    localStorage.setItem("user", JSON.stringify({ ...stored, ...user }));
-  } catch {
-    localStorage.setItem("user", JSON.stringify(user));
-  }
-}
 
 function hasAdminAccess(user: AuthUser) {
   if (String(user.role || "").toUpperCase() === "ADMIN") return true;
@@ -65,13 +51,13 @@ export default function AdminRoute({ children }: AdminRouteProps) {
           throw new Error("Backend returned an empty user profile");
         }
 
-        persistVerifiedUser(user);
+        persistAuthUser(user);
         if (active) setAccess(hasAdminAccess(user) ? "allowed" : "forbidden");
       } catch (error) {
         const status = (error as { response?: { status?: number } })?.response?.status;
 
         if (status === 401 || status === 403 || status === 404) {
-          clearStoredAuth();
+          clearAuthSession();
           if (active) setAccess("unauthenticated");
           return;
         }
