@@ -7,9 +7,10 @@
     "dev": "nodemon src/server.js",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
+    "db:seed": "node prisma/seed.js",
     "admin:grant": "node scripts/grant-privileged-user.js",
     "start": "node src/server.js",
-    "start:prod": "npm run db:migrate && node src/server.js"
+    "start:prod": "npm run db:migrate && npm run db:seed && node src/server.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1085.0",
