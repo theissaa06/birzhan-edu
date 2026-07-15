@@ -70,7 +70,7 @@ export default function RegisterPage() {
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phone.trim();
-    const cleanPassword = password.trim();
+    const cleanPassword = password;
 
     if (!cleanUsername || !cleanEmail || !cleanPassword) {
       setError("Заполни имя, email и пароль.");
@@ -100,7 +100,7 @@ export default function RegisterPage() {
           email: cleanEmail,
           phone: cleanPhone || undefined,
           password: cleanPassword,
-          turnstileToken: turnstileToken || "bypass",
+          turnstileToken: turnstileToken || undefined,
         }),
       });
 

@@ -20,7 +20,7 @@ export default function LoginPage() {
     e.preventDefault();
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+    const cleanPassword = password;
 
     if (!cleanEmail || !cleanPassword) {
       setError("Введите email и пароль.");
@@ -37,7 +37,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           email: cleanEmail,
           password: cleanPassword,
-          turnstileToken: turnstileToken || "bypass",
+          turnstileToken: turnstileToken || undefined,
         }),
       });
 

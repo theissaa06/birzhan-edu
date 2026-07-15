@@ -22,7 +22,7 @@ Required Layero variables:
 
 Feature-specific variables:
 
-- `TURNSTILE_SECRET_KEY`
+- `TURNSTILE_SECRET_KEY` and build-time `VITE_TURNSTILE_SITE_KEY` (configure both together)
 - `GEMINI_API_KEY`, `GEMINI_MODEL`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `MAX_VIDEO_UPLOAD_MB`
@@ -38,6 +38,8 @@ Optional backend variables:
 - `KEEP_ALIVE_INTERVAL_MS=300000` for a 5-minute ping interval
 - `GEMINI_MODEL`
 - `ALLOW_TURNSTILE_BYPASS=false`
+- `TURNSTILE_REQUIRED=false` keeps auth available when Turnstile keys are not configured; set it to `true` only after both keys are present
+- `TURNSTILE_TIMEOUT_MS=5000`
 - `OWNER_ID`, `OWNER_EMAIL` for admin/owner overrides
 
 Password reset emails use a 6-digit code and require working SMTP in production.
@@ -95,3 +97,4 @@ node prisma/seed.js
 ```
 
 Layero frontend variables are embedded during `npm run build`, so changing `VITE_API_URL` requires a new frontend build/deploy.
+The same applies to `VITE_TURNSTILE_SITE_KEY`. When no Turnstile keys are configured, login and registration remain protected by server-side IP rate limits. When `TURNSTILE_SECRET_KEY` is configured, the backend requires a real challenge token and rejects development bypass values.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import FrameIcon from "./FrameIcon";
 
 declare global {
   interface Window {
@@ -24,77 +25,131 @@ type TurnstileBoxProps = {
   onVerify: (token: string) => void;
 };
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
+const SITE_KEY = String(import.meta.env.VITE_TURNSTILE_SITE_KEY || "").trim();
 const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
 
 export default function TurnstileBox({ onVerify }: TurnstileBoxProps) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
-  // Если нет ключа — сразу передаём bypass-токен, форма работает без капчи
   useEffect(() => {
-    if (!SITE_KEY) {
-      onVerify("bypass-no-key");
-    }
+    if (!SITE_KEY) onVerify("");
   }, [onVerify]);
 
   useEffect(() => {
-    if (!SITE_KEY) return;
+    if (!SITE_KEY) return undefined;
 
-    const existingScript = document.querySelector(
+    let cancelled = false;
+    const markReady = () => {
+      if (!cancelled) {
+        setLoadError(false);
+        setReady(true);
+      }
+    };
+    const markFailed = () => {
+      if (!cancelled) {
+        setLoadError(true);
+        setReady(false);
+        onVerify("");
+      }
+    };
+    const existingScript = document.querySelector<HTMLScriptElement>(
       `script[src="${TURNSTILE_SRC}"]`,
     );
 
     if (existingScript) {
       if (window.turnstile) {
-        setReady(true);
+        markReady();
       } else {
-        existingScript.addEventListener("load", () => setReady(true), {
-          once: true,
-        });
+        existingScript.addEventListener("load", markReady, { once: true });
+        existingScript.addEventListener("error", markFailed, { once: true });
       }
-      return;
+
+      return () => {
+        cancelled = true;
+        existingScript.removeEventListener("load", markReady);
+        existingScript.removeEventListener("error", markFailed);
+      };
     }
 
     const script = document.createElement("script");
     script.src = TURNSTILE_SRC;
     script.async = true;
     script.defer = true;
-    script.onload = () => setReady(true);
+    script.addEventListener("load", markReady, { once: true });
+    script.addEventListener("error", markFailed, { once: true });
     document.body.appendChild(script);
-  }, []);
+
+    return () => {
+      cancelled = true;
+      script.removeEventListener("load", markReady);
+      script.removeEventListener("error", markFailed);
+    };
+  }, [onVerify]);
 
   useEffect(() => {
-    if (!SITE_KEY || !ready || !boxRef.current || !window.turnstile) return;
-    if (widgetIdRef.current) return;
+    if (!SITE_KEY || !ready || !boxRef.current || !window.turnstile) {
+      return undefined;
+    }
+    if (widgetIdRef.current) return undefined;
 
-    widgetIdRef.current = window.turnstile.render(boxRef.current, {
-      sitekey: SITE_KEY,
-      theme: "dark",
-      size: "normal",
-      callback: (token: string) => onVerify(token),
-      "expired-callback": () => onVerify(""),
-      "error-callback": () => onVerify(""),
-    });
+    try {
+      widgetIdRef.current = window.turnstile.render(boxRef.current, {
+        sitekey: SITE_KEY,
+        theme: "dark",
+        size: "normal",
+        callback: (token: string) => {
+          setLoadError(false);
+          onVerify(token);
+        },
+        "expired-callback": () => onVerify(""),
+        "error-callback": () => {
+          setLoadError(true);
+          onVerify("");
+        },
+      });
+    } catch (error) {
+      console.error("[Turnstile] Widget render failed.", error);
+      setLoadError(true);
+      onVerify("");
+    }
 
     return () => {
       if (widgetIdRef.current && window.turnstile?.remove) {
-        window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
+        try {
+          window.turnstile.remove(widgetIdRef.current);
+        } catch (error) {
+          console.warn("[Turnstile] Widget cleanup failed.", error);
+        }
       }
+      widgetIdRef.current = null;
     };
   }, [ready, onVerify]);
 
-  // Нет ключа — не показываем ничего, форма работает без капчи
   if (!SITE_KEY) {
-    return null;
+    return (
+      <div className="auth-security-status" role="status">
+        <FrameIcon name="check" />
+        <span>
+          <strong>Вход защищён</strong>
+          <small>Частые попытки блокируются на сервере.</small>
+        </span>
+      </div>
+    );
   }
 
   return (
     <div className="auth-security-box">
       <span>Проверка безопасности</span>
       <div className="auth-turnstile" ref={boxRef} />
+      {loadError && (
+        <small className="auth-security-error" role="alert">
+          Проверка не загрузилась. Разрешите challenges.cloudflare.com и
+          обновите страницу.
+        </small>
+      )}
     </div>
   );
 }

@@ -58,6 +58,23 @@ function getClientIp(req) {
   );
 }
 
+function sendTurnstileFailure(req, res, result) {
+  const isConfigurationError = result.reason === "missing-secret";
+
+  console.warn("[Auth] Security check rejected.", {
+    path: req.originalUrl,
+    reason: result.reason,
+    ip: getClientIp(req),
+  });
+
+  return res.status(isConfigurationError ? 503 : 403).json({
+    success: false,
+    message: isConfigurationError
+      ? "Вход временно недоступен: проверка безопасности не настроена. Попробуйте позже."
+      : "Проверка безопасности не пройдена. Обновите страницу и попробуйте ещё раз.",
+  });
+}
+
 function generateResetCode() {
   return String(crypto.randomInt(0, 1000000)).padStart(6, "0");
 }
@@ -154,11 +171,7 @@ router.post("/register", registerLimiter, async (req, res) => {
     );
 
     if (!turnstileResult.success) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Проверка безопасности не пройдена. Обновите страницу и попробуйте ещё раз.",
-      });
+      return sendTurnstileFailure(req, res, turnstileResult);
     }
 
     const existing = await prisma.user.findUnique({
@@ -234,11 +247,7 @@ router.post("/login", loginLimiter, async (req, res) => {
     );
 
     if (!turnstileResult.success) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Проверка безопасности не пройдена. Обновите страницу и попробуйте ещё раз.",
-      });
+      return sendTurnstileFailure(req, res, turnstileResult);
     }
 
     const user = await prisma.user.findUnique({
