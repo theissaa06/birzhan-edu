@@ -182,7 +182,10 @@ async function main() {
   const adminConfig = getAdminConfig();
 
   const result = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(728347120260711)`;
+    await tx.$queryRaw`
+      SELECT 1 AS locked
+      FROM pg_advisory_xact_lock(728347120260711)
+    `;
     const courses = await ensureDefaultCourses(tx);
     const admin = await ensureAdmin(tx, adminConfig);
     return { courses, admin };
