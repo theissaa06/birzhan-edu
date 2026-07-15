@@ -1,0 +1,115 @@
+.app-toast {
+  position: fixed;
+  z-index: 10000;
+  top: 78px;
+  right: 18px;
+  display: grid;
+  width: min(410px, calc(100vw - 28px));
+  grid-template-columns: 42px minmax(0, 1fr) 30px;
+  gap: 12px;
+  align-items: start;
+  padding: 16px 16px 18px;
+  overflow: hidden;
+  border: 1px solid rgba(94, 234, 212, 0.34);
+  border-radius: 8px;
+  color: #d6ddda;
+  background: rgba(13, 18, 16, 0.97);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(18px);
+  animation: app-toast-enter 260ms ease-out both;
+}
+
+.app-toast::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 58px;
+  height: 2px;
+  background: #ffd17b;
+}
+
+.app-toast__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(94, 234, 212, 0.34);
+  border-radius: 50%;
+  color: #5eead4;
+  background: rgba(94, 234, 212, 0.08);
+}
+
+.app-toast__icon .frame-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.app-toast__copy strong {
+  display: block;
+  color: #f7f7f2;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.app-toast__copy p {
+  margin: 5px 0 0;
+  color: #9eaba6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.app-toast > button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #91a09a;
+  background: rgba(255, 255, 255, 0.04);
+  font: inherit;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.app-toast__timeline {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  transform-origin: left;
+  background: #5eead4;
+  animation: app-toast-timeline 6200ms linear both;
+}
+
+@keyframes app-toast-enter {
+  from { opacity: 0; transform: translate3d(24px, -8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes app-toast-timeline {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@media (max-width: 620px) {
+  .app-toast {
+    top: 66px;
+    right: 14px;
+    grid-template-columns: 36px minmax(0, 1fr) 28px;
+  }
+
+  .app-toast__icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-toast,
+  .app-toast__timeline {
+    animation: none;
+  }
+}

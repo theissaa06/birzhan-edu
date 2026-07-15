@@ -43,6 +43,6 @@ export async function createSubmission(payload: {
 }
 
 export async function getMySubmissions() {
-  const response = await api.get("/submissions/me");
+  const response = await api.get("/submissions/me", { timeout: 12000 });
   return (response.data.data || []) as AssignmentSubmission[];
 }

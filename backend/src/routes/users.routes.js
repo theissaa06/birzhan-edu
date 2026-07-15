@@ -79,6 +79,43 @@ const userSelect = {
   supportMessages: true,
 };
 
+const publicUserSelect = {
+  id: true,
+  username: true,
+  role: true,
+  badges: true,
+  premiumUntil: true,
+  createdAt: true,
+};
+
+router.get("/public", async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { blockedAt: null },
+      orderBy: { createdAt: "asc" },
+      select: publicUserSelect,
+    });
+
+    return res.json({
+      success: true,
+      users: users.map((user) => ({
+        ...user,
+        isPremium: Boolean(
+          user.premiumUntil && new Date(user.premiumUntil) > new Date(),
+        ),
+      })),
+    });
+  } catch (error) {
+    console.error("[Users] Ошибка публичного списка", {
+      error: error?.message || error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Не удалось загрузить список пользователей.",
+    });
+  }
+});
+
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
@@ -100,18 +137,6 @@ router.get("/me", authMiddleware, async (req, res) => {
         createdAt: true,
         updatedAt: true,
         lessonProgress: true,
-        assignmentSubmissions: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            lesson: {
-              select: {
-                id: true,
-                title: true,
-                course: { select: { id: true, title: true } },
-              },
-            },
-          },
-        },
       },
     });
 
@@ -405,6 +430,25 @@ router.patch("/:id/reset-password", async (req, res) => {
       });
     }
 
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, badges: true },
+    });
+
+    if (!target) {
+      return res.status(404).json({
+        success: false,
+        message: "Пользователь не найден",
+      });
+    }
+
+    if (hasProtectedBadge(target)) {
+      return res.status(403).json({
+        success: false,
+        message: "Пароль владельца или разработчика нельзя менять через админку.",
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     const user = await prisma.user.update({
@@ -459,10 +503,10 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
-    if (hasProtectedBadge(user) && req.user.id !== user.id) {
+    if (hasProtectedBadge(user)) {
       return res.status(403).json({
         success: false,
-        message: "Владельца или разработчика нельзя удалить чужим админом.",
+        message: "Владельца или разработчика нельзя удалить через админку.",
       });
     }
 

@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useAuthSession } from "./AuthSessionProvider";
+import UserBadges from "./UserBadges";
 import "./Header.css";
 
 export default function Header() {
@@ -46,6 +47,14 @@ export default function Header() {
   }
 
   const profileName = user?.username || user?.email || "Профиль";
+  const normalizedBadges = (user?.badges || []).map((badge) =>
+    String(badge).toUpperCase(),
+  );
+  const canAccessAdmin =
+    user?.role === "ADMIN" ||
+    normalizedBadges.some((badge) =>
+      ["ADMIN", "OWNER", "DEVELOPER"].includes(badge),
+    );
 
   return (
     <>
@@ -57,10 +66,13 @@ export default function Header() {
       <header className="site-header" ref={headerRef}>
         <div className="site-header-container">
           <Link to="/" className="site-logo" onClick={closeMenus}>
-            <span className="site-logo-mark">F</span>
-            <span className="site-logo-text">
-              Frame<span>School</span>
-            </span>
+            <img
+              className="site-logo-image"
+              src="/frame-school-logo.svg"
+              alt="Frame School"
+              width="210"
+              height="48"
+            />
           </Link>
 
           <button
@@ -81,6 +93,10 @@ export default function Header() {
           <nav className={menuOpen ? "site-nav open" : "site-nav"}>
             <NavLink to="/courses" onClick={closeMenus}>
               Каталог
+            </NavLink>
+
+            <NavLink to="/reviews" onClick={closeMenus}>
+              Отзывы
             </NavLink>
 
             <NavLink to="/kids" onClick={closeMenus}>
@@ -139,6 +155,14 @@ export default function Header() {
 
           <div className="site-actions">
             <Link
+              to="/students"
+              className="site-community-link"
+              onClick={closeMenus}
+            >
+              Участники
+            </Link>
+
+            <Link
               to="/certificates"
               className="site-certificates-link"
               onClick={closeMenus}
@@ -165,7 +189,16 @@ export default function Header() {
                   {profileName}
                 </Link>
 
-                {user?.role === "ADMIN" && (
+                <UserBadges
+                  role={user?.role}
+                  badges={user?.badges}
+                  premiumUntil={String(user?.premiumUntil || "") || null}
+                  isPremium={user?.isPremium === true}
+                  compact
+                  className="site-user-badges"
+                />
+
+                {canAccessAdmin && (
                   <Link
                     to="/admin"
                     className="site-admin-link"

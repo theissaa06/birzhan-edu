@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ConfirmModal from "../components/ConfirmModal";
 import FrameIcon from "../components/FrameIcon";
+import UserBadges from "../components/UserBadges";
 import api from "../services/api";
 import {
   getSupportMessages,
@@ -1522,20 +1523,11 @@ export default function AdminPage() {
                         <div>
                           <div className="admin-user-title">
                             <h3>{user.username || "Без имени"}</h3>
-                            <span
-                              className={
-                                user.role === "ADMIN"
-                                  ? "admin-role admin-role--admin"
-                                  : "admin-role"
-                              }
-                            >
-                              {user.role}
-                            </span>
-                            {(user.badges || []).map((badge) => (
-                              <span className={`admin-role admin-role--${badge.toLowerCase()}`} key={badge}>
-                                {badge}
-                              </span>
-                            ))}
+                            <UserBadges
+                              role={user.role}
+                              badges={user.badges}
+                              premiumUntil={user.premiumUntil}
+                            />
                           </div>
                           <p>{user.email}</p>
                           <div className="admin-user-info">
@@ -1574,6 +1566,16 @@ export default function AdminPage() {
                       </div>
 
                       <div className="admin-user-actions">
+                        {isProtectedUser(user) ? (
+                          <div className="admin-protected-account" role="status">
+                            <FrameIcon name="check" />
+                            <div>
+                              <strong>Защищённый аккаунт</strong>
+                              <span>Роли, пароль, Premium, блокировка и удаление недоступны.</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
                         {/* Управление Premium */}
                         {(() => {
                           const isPremium = user.premiumUntil && new Date(user.premiumUntil) > new Date();
@@ -1688,6 +1690,8 @@ export default function AdminPage() {
                         >
                           Удалить
                         </button>
+                          </>
+                        )}
                       </div>
                     </article>
                   ))

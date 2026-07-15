@@ -133,11 +133,17 @@ export default function AIAssistantPage() {
         );
       }
     } catch (err: any) {
+      const backendMessage = err?.response?.data?.message;
+      const responseStatus = Number(err?.response?.status || 0);
       const failText =
-        err?.response?.data?.message ||
+        (typeof backendMessage === "string" && backendMessage.trim()
+          ? backendMessage.trim()
+          : "") ||
         (err?.code === "ECONNABORTED"
           ? "Не получилось получить ответ вовремя. Попробуй ещё раз."
-          : err?.message) ||
+          : responseStatus === 503
+            ? "Frame AI временно недоступен. Мы уже восстанавливаем подключение к Gemini."
+            : "") ||
         "AI временно недоступен. Попробуй ещё раз.";
 
       setMessages((prev) => [

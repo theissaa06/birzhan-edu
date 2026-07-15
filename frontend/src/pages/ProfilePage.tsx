@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthSession } from "../components/AuthSessionProvider";
 import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
+import UserBadges from "../components/UserBadges";
 import api from "../services/api";
 import { getMySubmissions, type AssignmentSubmission } from "../services/submissions";
 import "./ProfilePage.css";
@@ -12,6 +13,7 @@ type User = {
   name?: string;
   email?: string;
   role?: string;
+  badges?: string[];
   isPremium?: boolean;
   premiumPlan?: string | null;
   premiumUntil?: string | null;
@@ -71,89 +73,105 @@ export default function ProfilePage() {
   const [courses, setCourses] = useState<CourseProgress[]>([]);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submissionsLoading, setSubmissionsLoading] = useState(true);
+  const [submissionsError, setSubmissionsError] = useState("");
+  const displayUser = serverUser || user;
 
   const certificates = readCertificates(user?.id);
 
   const isPremium =
-    localStorage.getItem("premium") === "true" ||
-    localStorage.getItem("isPremium") === "true" ||
-    user?.isPremium === true ||
-    user?.premiumPlan === "Premium PRO";
+    displayUser?.isPremium === true ||
+    Boolean(
+      displayUser?.premiumUntil &&
+        new Date(displayUser.premiumUntil).getTime() > Date.now(),
+    );
+  const canAccessAdmin =
+    displayUser?.role === "ADMIN" ||
+    (displayUser?.badges || []).some((badge) =>
+      ["ADMIN", "OWNER", "DEVELOPER"].includes(String(badge).toUpperCase()),
+    );
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-
-        // Загружаем профиль с прогрессом из БД
-        const meRes = await api.get("/users/me");
-        const meData = meRes.data.data || meRes.data.user || meRes.data;
-        if (meData) {
-          setServerUser(meData);
-          const progress: LessonProgress[] = meData.lessonProgress || [];
-          setLessonProgress(progress);
-
-          // Обновляем localStorage
-          const updatedUser = { ...user, ...meData };
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-        }
-
-        // Загружаем курсы для отображения прогресса
-        const coursesRes = await api.get("/courses");
-        const coursesData = coursesRes.data.data || coursesRes.data.courses || coursesRes.data;
-
-        if (Array.isArray(coursesData)) {
-          const progressMap: Record<number, { completed: number; total: number }> = {};
-
-          // Считаем прогресс по курсам из lessonProgress
-          const prog: LessonProgress[] = meRes.data.data?.lessonProgress || [];
-          prog.forEach((p) => {
-            if (p.courseId) {
-              if (!progressMap[p.courseId]) progressMap[p.courseId] = { completed: 0, total: 0 };
-              if (p.completed) progressMap[p.courseId].completed++;
-            }
-          });
-
-          const courseList: CourseProgress[] = coursesData.slice(0, 4).map((c: any) => {
-            const lessons = c.lessons || [];
-            const total = lessons.length;
-            const completed = progressMap[c.id]?.completed || 0;
-            return {
-              id: c.id,
-              title: c.title,
-              icon: COURSE_ICONS[c.category] || "frame",
-              totalLessons: total,
-              completedLessons: completed,
-              percent: total > 0 ? Math.round((completed / total) * 100) : 0,
-            };
-          });
-
-          setCourses(courseList);
-        }
-
-      } catch (err) {
-        console.error("Ошибка загрузки профиля:", err);
-      } finally {
-        setLoading(false);
-      }
-
-      try {
-        const submissionList = await getMySubmissions();
-        setSubmissions(submissionList);
-      } catch (err) {
-        console.error("Ошибка загрузки практических работ:", err);
-        setSubmissions([]);
-      }
-    }
-
-    if (user) {
-      loadData();
-    } else {
-      setLoading(false);
+  const loadSubmissions = useCallback(async () => {
+    try {
+      setSubmissionsLoading(true);
+      setSubmissionsError("");
+      const submissionList = await getMySubmissions();
+      setSubmissions(submissionList);
+    } catch (error) {
+      console.error("Ошибка загрузки практических работ:", error);
+      setSubmissions([]);
+      setSubmissionsError(
+        "Не удалось загрузить работы. Проверьте соединение и повторите запрос.",
+      );
+    } finally {
+      setSubmissionsLoading(false);
     }
   }, []);
 
-  const displayUser = serverUser || user;
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      try {
+        setLoading(true);
+        const [meRes, coursesRes] = await Promise.all([
+          api.get("/users/me"),
+          api.get("/courses"),
+        ]);
+        if (!active) return;
+
+        const meData = meRes.data.data || meRes.data.user || meRes.data;
+        const progress: LessonProgress[] = meData?.lessonProgress || [];
+        if (meData) {
+          setServerUser(meData);
+          setLessonProgress(progress);
+          localStorage.setItem("user", JSON.stringify({ ...user, ...meData }));
+        }
+
+        const coursesData =
+          coursesRes.data.data || coursesRes.data.courses || coursesRes.data;
+        if (Array.isArray(coursesData)) {
+          const progressMap: Record<number, { completed: number }> = {};
+          progress.forEach((item) => {
+            if (!item.courseId) return;
+            if (!progressMap[item.courseId]) progressMap[item.courseId] = { completed: 0 };
+            if (item.completed) progressMap[item.courseId].completed += 1;
+          });
+
+          setCourses(
+            coursesData.slice(0, 4).map((course: any) => {
+              const total = Array.isArray(course.lessons) ? course.lessons.length : 0;
+              const completed = progressMap[course.id]?.completed || 0;
+              return {
+                id: course.id,
+                title: course.title,
+                icon: COURSE_ICONS[course.category] || "frame",
+                totalLessons: total,
+                completedLessons: completed,
+                percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+              };
+            }),
+          );
+        }
+      } catch (error) {
+        console.error("Ошибка загрузки профиля:", error);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    if (user?.id) {
+      void loadProfile();
+      void loadSubmissions();
+    } else {
+      setLoading(false);
+      setSubmissionsLoading(false);
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [loadSubmissions, user?.id]);
 
   const completedLessons = lessonProgress.filter((p) => p.completed).length;
   const activeCourses = courses.filter((c) => c.completedLessons > 0).length;
@@ -222,7 +240,13 @@ export default function ProfilePage() {
 
           <strong>{displayUser?.username || displayUser?.name || "Пользователь"}</strong>
           <span>{displayUser?.email || "email не указан"}</span>
-          <em>{isPremium ? "PREMIUM PRO" : displayUser?.role || "USER"}</em>
+          <UserBadges
+            role={displayUser?.role}
+            badges={displayUser?.badges}
+            premiumUntil={displayUser?.premiumUntil}
+            isPremium={isPremium}
+            className="profile-user-badges"
+          />
         </div>
       </section>
 
@@ -375,8 +399,21 @@ export default function ProfilePage() {
               <h2>Мои практические работы</h2>
             </div>
 
-            {loading ? (
+            {submissionsLoading ? (
               <p className="profile-loading">Загружаем работы...</p>
+            ) : submissionsError ? (
+              <div className="profile-empty-certificates profile-submissions-error" role="alert">
+                <span><FrameIcon name="warning" /></span>
+                <strong>Работы не загрузились</strong>
+                <p>{submissionsError}</p>
+                <button
+                  type="button"
+                  className="profile-btn profile-btn--primary"
+                  onClick={() => void loadSubmissions()}
+                >
+                  Повторить
+                </button>
+              </div>
             ) : submissions.length === 0 ? (
               <div className="profile-empty-certificates">
                 <span><FrameIcon name="folder" /></span>
@@ -466,7 +503,7 @@ export default function ProfilePage() {
             <Link to="/support"><FrameIcon name="lens" />Поддержка</Link>
           </section>
 
-          {displayUser?.role === "ADMIN" && (
+          {canAccessAdmin && (
             <section className="profile-panel profile-admin-box">
               <p className="profile-label">Admin</p>
               <h2>Управление</h2>

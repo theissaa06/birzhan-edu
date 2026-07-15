@@ -6,6 +6,7 @@ import FloatingActionButton from "./components/FloatingActionButton";
 import FrameMotion from "./components/FrameMotion";
 import AdminRoute from "./components/AdminRoute";
 import { AuthSessionProvider } from "./components/AuthSessionProvider";
+import AppToast from "./components/AppToast";
 
 import HomePage from "./pages/HomePage";
 import CoursesPage from "./pages/CoursesPage";
@@ -49,6 +50,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthSessionProvider>
+        <AppToast />
         <FrameMotion />
         <Header />
 

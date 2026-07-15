@@ -2795,6 +2795,36 @@
   margin: 30px auto 34px;
 }
 
+.admin-protected-account {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 209, 123, 0.3);
+  border-radius: 7px;
+  color: #ffd17b;
+  background: rgba(255, 209, 123, 0.07);
+}
+
+.admin-protected-account .frame-icon {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.admin-protected-account strong,
+.admin-protected-account span {
+  display: block;
+}
+
+.admin-protected-account span {
+  margin-top: 3px;
+  color: #aeb9b5;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .admin-dashboard-header {
   display: flex;
   align-items: center;

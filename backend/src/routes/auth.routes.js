@@ -7,7 +7,10 @@ const prisma = require("../config/prisma");
 const { generateToken } = require("../utils/jwt");
 const { authMiddleware } = require("../middleware/auth.middleware");
 const { verifyTurnstile } = require("../utils/verifyTurnstile");
-const { sendPasswordResetEmail } = require("../utils/mailer");
+const {
+  sendPasswordResetEmail,
+  sendPasswordChangedEmail,
+} = require("../utils/mailer");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESET_CODE_RE = /^\d{6}$/;
@@ -15,6 +18,8 @@ const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const RESET_CODE_MAX_ATTEMPTS = 5;
 const RESET_GENERIC_MESSAGE =
   "Если этот email зарегистрирован, мы отправили код восстановления.";
+const ALLOW_DEV_RESET_CODE =
+  process.env.AUTH_ALLOW_DEV_RESET_CODE === "true";
 
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -412,7 +417,7 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
         userId: user.id,
       });
 
-      if (process.env.NODE_ENV === "production") {
+      if (!ALLOW_DEV_RESET_CODE) {
         await prisma.passwordResetToken.update({
           where: { id: resetToken.id },
           data: { usedAt: new Date() },
@@ -460,7 +465,7 @@ router.post("/verify-reset-code", passwordResetLimiter, async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      select: { id: true },
+      select: { id: true, email: true },
     });
 
     if (!user) {
@@ -525,7 +530,7 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      select: { id: true },
+      select: { id: true, email: true },
     });
 
     if (!user) {
@@ -576,9 +581,24 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
       });
     });
 
+    let emailNotified = true;
+    try {
+      await sendPasswordChangedEmail({ to: user.email });
+    } catch (emailError) {
+      emailNotified = false;
+      console.error("[Auth] Ошибка уведомления о смене пароля", {
+        error: emailError?.message || emailError,
+        code: emailError?.code,
+        userId: user.id,
+      });
+    }
+
     return res.json({
       success: true,
-      message: "Пароль обновлён. Войдите заново.",
+      emailNotified,
+      message: emailNotified
+        ? "Пароль обновлён. Подтверждение отправлено на email. Войдите заново."
+        : "Пароль обновлён, но подтверждение не удалось отправить. Войдите заново.",
     });
   } catch (error) {
     console.error("[Auth] Ошибка reset-password", {

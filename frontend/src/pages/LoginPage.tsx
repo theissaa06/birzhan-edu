@@ -4,6 +4,7 @@ import FrameIcon from "../components/FrameIcon";
 import { useAuthSession } from "../components/AuthSessionProvider";
 import TurnstileBox from "../components/TurnstileBox";
 import { API_ORIGIN } from "../services/api";
+import { showLoginWelcome } from "../services/appToast";
 import "./LoginPage.css";
 
 const API_URL = API_ORIGIN;
@@ -63,6 +64,7 @@ export default function LoginPage() {
       };
 
       signIn(token, finalUser);
+      showLoginWelcome(finalUser);
 
       navigate("/profile");
     } catch (err) {

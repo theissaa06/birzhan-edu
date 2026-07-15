@@ -1,204 +1,214 @@
-﻿import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import FrameIcon from "../components/FrameIcon";
+import UserBadges, { resolveUserBadges } from "../components/UserBadges";
+import api from "../services/api";
 import "./StudentsPage.css";
 
-const students = [
-  {
-    avatar: "🎬",
-    name: "Алихан",
-    role: "Начинающий монтажёр",
-    result: "Собрал первые 5 роликов для портфолио",
-    progress: 82,
-    direction: "CapCut",
-  },
-  {
-    avatar: "📱",
-    name: "Аружан",
-    role: "TikTok / Reels creator",
-    result: "Научилась делать эдиты под бит и короткие ролики",
-    progress: 74,
-    direction: "TikTok",
-  },
-  {
-    avatar: "🎞️",
-    name: "Дамир",
-    role: "Premiere Pro student",
-    result: "Собрал первый cinematic-проект",
-    progress: 68,
-    direction: "Premiere Pro",
-  },
-];
+type PublicUser = {
+  id: number;
+  username: string;
+  role: "USER" | "ADMIN";
+  badges?: string[];
+  premiumUntil?: string | null;
+  isPremium?: boolean;
+  createdAt: string;
+};
 
-const achievements = [
-  {
-    icon: "🏆",
-    title: "Первые проекты",
-    text: "Студенты создают реальные видео уже во время обучения.",
-  },
-  {
-    icon: "📁",
-    title: "Портфолио",
-    text: "Лучшие работы можно собрать в портфолио для клиентов или комиссии.",
-  },
-  {
-    icon: "🚀",
-    title: "Рост навыков",
-    text: "От простого монтажа до эффектов, цвета, звука и структуры ролика.",
-  },
-  {
-    icon: "💼",
-    title: "Подготовка к заказам",
-    text: "Студенты понимают, как презентовать свои работы и искать первые задачи.",
-  },
-];
+type UserFilter = "ALL" | "PRIVILEGED" | "PREMIUM" | "USER";
 
-const reviews = [
-  {
-    name: "Мадина",
-    text: "Мне понравилось, что уроки понятные и сразу есть практика. Я смогла сделать свой первый эдит.",
-  },
-  {
-    name: "Ислам",
-    text: "Курсы помогли разобраться, как работает монтаж под музыку и почему важен ритм.",
-  },
-  {
-    name: "Ерасыл",
-    text: "Я начал с CapCut, а потом захотел перейти к Premiere Pro. Теперь понимаю, куда развиваться.",
-  },
-];
+function getUserRank(user: PublicUser) {
+  const badges = resolveUserBadges(user);
+  if (badges.includes("OWNER")) return 0;
+  if (badges.includes("DEVELOPER")) return 1;
+  if (badges.includes("ADMIN")) return 2;
+  if (badges.includes("PREMIUM")) return 3;
+  return 4;
+}
+
+function isProtectedUser(user: PublicUser) {
+  const badges = (user.badges || []).map((badge) => String(badge).toUpperCase());
+  return badges.includes("OWNER") || badges.includes("DEVELOPER");
+}
+
+function formatMemberSince(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Участник платформы";
+  return `С нами с ${new Intl.DateTimeFormat("ru-RU", {
+    month: "long",
+    year: "numeric",
+  }).format(date)}`;
+}
 
 export default function StudentsPage() {
+  const [users, setUsers] = useState<PublicUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<UserFilter>("ALL");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUsers() {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await api.get("/users/public");
+        const items = response.data?.users;
+        if (active) setUsers(Array.isArray(items) ? items : []);
+      } catch (loadError) {
+        console.error("[Community] Не удалось загрузить пользователей.", loadError);
+        if (active) setError("Не удалось загрузить сообщество из базы данных.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadUsers();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const counts = useMemo(() => {
+    return users.reduce(
+      (result, user) => {
+        const badges = resolveUserBadges(user);
+        if (badges.includes("OWNER") || badges.includes("DEVELOPER") || badges.includes("ADMIN")) {
+          result.privileged += 1;
+        }
+        if (badges.includes("PREMIUM")) result.premium += 1;
+        return result;
+      },
+      { privileged: 0, premium: 0 },
+    );
+  }, [users]);
+
+  const visibleUsers = useMemo(() => {
+    const cleanQuery = query.trim().toLowerCase();
+
+    return users
+      .filter((user) => {
+        if (cleanQuery && !user.username.toLowerCase().includes(cleanQuery)) return false;
+        const badges = resolveUserBadges(user);
+        if (filter === "PRIVILEGED") {
+          return badges.some((badge) => ["OWNER", "DEVELOPER", "ADMIN"].includes(badge));
+        }
+        if (filter === "PREMIUM") return badges.includes("PREMIUM");
+        if (filter === "USER") return user.role === "USER" && badges.length === 0;
+        return true;
+      })
+      .sort((left, right) => {
+        const rankDifference = getUserRank(left) - getUserRank(right);
+        return rankDifference || left.username.localeCompare(right.username, "ru");
+      });
+  }, [filter, query, users]);
+
   return (
     <main className="students-page">
       <section className="students-hero">
-        <div className="students-hero__content">
-          <p className="students-label">Студенты Frame School</p>
-
-          <h1>
-            Истории, прогресс и результаты наших <span>студентов</span>
-          </h1>
-
+        <div>
+          <p className="students-kicker">Сообщество Frame School</p>
+          <h1>Знакомьтесь с участниками Frame School</h1>
           <p>
-            На платформе студенты проходят уроки, выполняют практические
-            задания, собирают первые ролики и постепенно формируют портфолио.
+            Здесь собраны участники нашей школы: студенты, команда и авторы
+            проектов. Имена и достижения открыты, а контактные данные остаются
+            приватными.
           </p>
-
           <div className="students-actions">
-            <Link to="/courses" className="students-btn students-btn--primary">
-              Начать обучение
-            </Link>
+            <Link to="/courses" className="students-btn students-btn--primary">Каталог курсов</Link>
+            <Link to="/reviews" className="students-btn students-btn--light">Отзывы сообщества</Link>
+          </div>
+        </div>
+        <div className="students-hero-mark" aria-hidden="true">
+          <FrameIcon name="lens" />
+          <span>COMMUNITY</span>
+        </div>
+      </section>
 
-            <Link to="/reviews" className="students-btn students-btn--light">
-              Смотреть отзывы
-            </Link>
+      <section className="students-stats" aria-label="Статистика сообщества">
+        <article><strong>{users.length}</strong><span>участников</span></article>
+        <article><strong>{counts.privileged}</strong><span>участников команды</span></article>
+        <article><strong>{counts.premium}</strong><span>с Premium-доступом</span></article>
+      </section>
+
+      <section className="students-section">
+        <div className="students-section-head">
+          <p className="students-kicker">Участники платформы</p>
+          <h2>Наше сообщество</h2>
+          <p>Найдите участника по имени и посмотрите его подтверждённый статус на платформе.</p>
+        </div>
+
+        <div className="students-toolbar">
+          <label>
+            <span>Найти участника</span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Введите имя..."
+            />
+          </label>
+          <div className="students-filters" aria-label="Показать участников">
+            {([
+              ["ALL", "Все"],
+              ["PRIVILEGED", "Команда"],
+              ["PREMIUM", "Premium"],
+              ["USER", "Студенты"],
+            ] as Array<[UserFilter, string]>).map(([value, label]) => (
+              <button
+                type="button"
+                className={filter === value ? "is-active" : ""}
+                onClick={() => setFilter(value)}
+                aria-pressed={filter === value}
+                key={value}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="students-hero__visual">
-          <div className="students-main-icon">👨‍🎓</div>
-          <div className="students-float students-float--one">Портфолио</div>
-          <div className="students-float students-float--two">Практика</div>
-          <div className="students-float students-float--three">Прогресс</div>
-        </div>
-      </section>
+        {loading && <div className="students-state">Загружаем сообщество...</div>}
+        {!loading && error && <div className="students-state students-state--error" role="alert">{error}</div>}
+        {!loading && !error && visibleUsers.length === 0 && (
+          <div className="students-state">По выбранному фильтру пока никого нет.</div>
+        )}
 
-      <section className="students-stats">
-        <div>
-          <strong>15 000+</strong>
-          <span>студентов обучаются</span>
-        </div>
-        <div>
-          <strong>40+</strong>
-          <span>уроков и модулей</span>
-        </div>
-        <div>
-          <strong>87%</strong>
-          <span>начали первые проекты</span>
-        </div>
-        <div>
-          <strong>4.9</strong>
-          <span>средняя оценка платформы</span>
-        </div>
-      </section>
-
-      <section className="students-section">
-        <div className="students-section-head">
-          <p className="students-label">Примеры прогресса</p>
-          <h2>Как студенты развиваются во время обучения</h2>
-          <p>
-            Каждый студент может выбрать своё направление: CapCut, TikTok,
-            Premiere Pro, цветокоррекция, звук или VFX.
-          </p>
-        </div>
-
-        <div className="students-grid">
-          {students.map((student) => (
-            <article className="student-card" key={student.name}>
-              <div className="student-card__top">
-                <div className="student-avatar">{student.avatar}</div>
-                <span>{student.direction}</span>
-              </div>
-
-              <h3>{student.name}</h3>
-              <p className="student-role">{student.role}</p>
-              <p>{student.result}</p>
-
-              <div className="student-progress">
-                <div>
-                  <span style={{ width: `${student.progress}%` }}></span>
+        {!loading && !error && visibleUsers.length > 0 && (
+          <div className="students-grid">
+            {visibleUsers.map((user) => (
+              <article className={`student-card ${isProtectedUser(user) ? "student-card--protected" : ""}`} key={user.id}>
+                <div className="student-card__top">
+                  <div className="student-avatar" aria-hidden="true">
+                    {(user.username || "U").slice(0, 1).toUpperCase()}
+                  </div>
+                  {isProtectedUser(user) && (
+                    <span className="student-protected-mark" title="Официальный аккаунт">
+                      <FrameIcon name="check" />
+                    </span>
+                  )}
                 </div>
-                <strong>{student.progress}%</strong>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="students-dark">
-        <div>
-          <p className="students-label students-label--dark">Достижения</p>
-          <h2>Что получает студент после обучения</h2>
-          <p>
-            Главная цель — не просто пройти уроки, а получить понятный
-            результат: навыки, работы, уверенность и направление развития.
-          </p>
-        </div>
-
-        <div className="students-achievements">
-          {achievements.map((item) => (
-            <article key={item.title}>
-              <div>{item.icon}</div>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="students-section">
-        <div className="students-section-head">
-          <p className="students-label">Отзывы студентов</p>
-          <h2>Что говорят после первых уроков</h2>
-        </div>
-
-        <div className="students-reviews">
-          {reviews.map((review) => (
-            <article className="students-review-card" key={review.name}>
-              <p>“{review.text}”</p>
-              <strong>{review.name}</strong>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="students-final">
-        <h2>Хотите тоже попасть в число студентов?</h2>
-        <p>
-          Выберите курс, начните с первого урока и соберите свои первые работы.
-        </p>
-
-        <Link to="/courses" className="students-btn students-btn--primary">
-          Перейти к курсам →
-        </Link>
+                <h3>{user.username}</h3>
+                <p className="student-base-role">
+                  {user.role === "ADMIN" ? "Команда Frame School" : "Участник Frame School"}
+                </p>
+                <UserBadges
+                  role={user.role}
+                  badges={user.badges}
+                  premiumUntil={user.premiumUntil}
+                  isPremium={user.isPremium}
+                  className="student-badges"
+                />
+                <footer>
+                  <span>{formatMemberSince(user.createdAt)}</span>
+                  {isProtectedUser(user) && <strong>Официальный аккаунт</strong>}
+                </footer>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

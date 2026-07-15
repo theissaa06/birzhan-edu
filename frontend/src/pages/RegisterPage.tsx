@@ -4,6 +4,7 @@ import FrameIcon from "../components/FrameIcon";
 import { useAuthSession } from "../components/AuthSessionProvider";
 import TurnstileBox from "../components/TurnstileBox";
 import { API_ORIGIN } from "../services/api";
+import { showRegistrationWelcome } from "../services/appToast";
 import "./RegisterPage.css";
 
 const API_URL = API_ORIGIN;
@@ -133,6 +134,7 @@ export default function RegisterPage() {
       };
 
       signIn(token, finalUser);
+      showRegistrationWelcome(finalUser);
       localStorage.setItem("frameSchoolOnboarding", JSON.stringify(onboarding));
 
       navigate("/profile");

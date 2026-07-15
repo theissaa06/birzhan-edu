@@ -281,6 +281,11 @@
   backdrop-filter: blur(22px);
 }
 
+.profile-user-badges {
+  justify-content: center;
+  margin-top: 4px;
+}
+
 .profile-card::before {
   content: "";
   position: absolute;

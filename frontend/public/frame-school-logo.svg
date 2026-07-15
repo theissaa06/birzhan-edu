@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 238 52" role="img" aria-labelledby="title desc">
+  <title id="title">Frame School</title>
+  <desc id="desc">Логотип школы видеомонтажа Frame School</desc>
+  <rect x="2" y="2" width="48" height="48" rx="10" fill="#ffd17b"/>
+  <path d="M10 18v-7h7M35 11h7v7M42 35v7h-7M17 42h-7v-7" fill="none" stroke="#0b0e0d" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M17 13h21v6H24v7h11v6H24v9h-7z" fill="#0b0e0d"/>
+  <circle cx="39" cy="39" r="4" fill="#2dd4bf" stroke="#0b0e0d" stroke-width="1.8"/>
+  <text x="62" y="33" fill="#f7f7f2" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="850">Frame</text>
+  <text x="128" y="33" fill="#5eead4" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="850">School</text>
+  <path d="M63 40h153" stroke="#ffd17b" stroke-width="1.4" opacity=".55"/>
+  <path d="M220 18v16M216 22h8M216 30h8" fill="none" stroke="#5eead4" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

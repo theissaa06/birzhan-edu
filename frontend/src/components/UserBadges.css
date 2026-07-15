@@ -1,0 +1,89 @@
+.user-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.user-badge {
+  --badge-color: #9fb0bd;
+  --badge-bg: rgba(159, 176, 189, 0.1);
+  --badge-border: rgba(159, 176, 189, 0.28);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid var(--badge-border);
+  border-radius: 6px;
+  color: var(--badge-color);
+  background: var(--badge-bg);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.user-badge svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.user-badge--premium {
+  --badge-color: #ffd477;
+  --badge-bg: rgba(245, 158, 11, 0.11);
+  --badge-border: rgba(245, 158, 11, 0.36);
+}
+
+.user-badge--admin {
+  --badge-color: #5eead4;
+  --badge-bg: rgba(45, 212, 191, 0.1);
+  --badge-border: rgba(45, 212, 191, 0.32);
+}
+
+.user-badge--developer {
+  --badge-color: #8ad8ff;
+  --badge-bg: rgba(56, 189, 248, 0.1);
+  --badge-border: rgba(56, 189, 248, 0.32);
+}
+
+.user-badge--owner {
+  --badge-color: #ff9873;
+  --badge-bg: rgba(244, 101, 54, 0.1);
+  --badge-border: rgba(244, 101, 54, 0.34);
+}
+
+.user-badges--compact {
+  flex-wrap: nowrap;
+  gap: 5px;
+}
+
+.user-badges--compact .user-badge {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.user-badges--compact .user-badge > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .user-badge {
+    min-height: 26px;
+    font-size: 10px;
+  }
+}
