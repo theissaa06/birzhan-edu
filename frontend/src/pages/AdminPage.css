@@ -2795,6 +2795,11 @@
   margin: 30px auto 34px;
 }
 
+.admin-user-card--static {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 .admin-protected-account {
   display: flex;
   width: 100%;
@@ -2862,6 +2867,11 @@
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-page .admin-metric-card {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .admin-metric-card:hover {

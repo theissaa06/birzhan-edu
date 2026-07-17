@@ -187,7 +187,7 @@ export default function AdminPage() {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
-      if (e.key === "Escape" && commandPaletteOpen) {
+      if (e.key === "Escape") {
         setCommandPaletteOpen(false);
         setCommandSearch("");
       }
@@ -201,8 +201,9 @@ export default function AdminPage() {
       toastTimersRef.current = [];
       window.removeEventListener("keydown", handleKeyDown);
     };
+    // Initial data loading and background refresh must not restart with the palette.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commandPaletteOpen]);
+  }, []);
 
   function dismissToast(id: number) {
     setToasts((current) => current.filter((toast) => toast.id !== id));
@@ -1513,7 +1514,7 @@ export default function AdminPage() {
                 ) : (
                   filteredUsers.map((user) => (
                     <article
-                      className={`admin-user-card ${isUserBlocked(user) ? "admin-user-card--blocked" : ""}`}
+                      className={`admin-user-card ${isUserBlocked(user) ? "admin-user-card--blocked" : ""} admin-user-card--static`}
                       key={user.id}
                     >
                       <div className="admin-user-main">

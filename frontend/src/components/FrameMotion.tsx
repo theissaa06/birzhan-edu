@@ -12,6 +12,13 @@ const REVEAL_SELECTOR = [
 
 const REVEAL_DIRECTIONS = ["rise", "slide-left", "slide-right", "iris"] as const;
 
+function shouldStayVisible(element: HTMLElement) {
+  return (
+    element.closest(".admin-page") !== null ||
+    element.matches(".student-card, .review-card")
+  );
+}
+
 export default function FrameMotion() {
   useEffect(() => {
     const root = document.documentElement;
@@ -53,13 +60,21 @@ export default function FrameMotion() {
     const observe = () => {
       document.querySelectorAll<HTMLElement>(REVEAL_SELECTOR).forEach((element) => {
         if (observed.has(element)) return;
+        observed.add(element);
+
+        // Operational and API-rendered cards must never depend on viewport timing.
+        if (shouldStayVisible(element)) {
+          element.classList.add("is-frame-visible");
+          element.style.removeProperty("--frame-reveal-delay");
+          return;
+        }
+
         const direction =
           element.dataset.frameReveal ||
           REVEAL_DIRECTIONS[revealIndex % REVEAL_DIRECTIONS.length];
         element.dataset.frameReveal = direction;
         element.style.setProperty("--frame-reveal-delay", `${(revealIndex % 5) * 48}ms`);
         revealIndex += 1;
-        observed.add(element);
         observer.observe(element);
       });
     };

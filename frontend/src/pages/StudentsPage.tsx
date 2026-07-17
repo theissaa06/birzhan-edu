@@ -179,7 +179,10 @@ export default function StudentsPage() {
         {!loading && !error && visibleUsers.length > 0 && (
           <div className="students-grid">
             {visibleUsers.map((user) => (
-              <article className={`student-card ${isProtectedUser(user) ? "student-card--protected" : ""}`} key={user.id}>
+              <article
+                className={`student-card ${isProtectedUser(user) ? "student-card--protected" : ""} student-card--static`}
+                key={user.id}
+              >
                 <div className="student-card__top">
                   <div className="student-avatar" aria-hidden="true">
                     {(user.username || "U").slice(0, 1).toUpperCase()}

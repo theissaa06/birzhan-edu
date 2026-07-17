@@ -196,6 +196,11 @@
   background: rgba(16, 20, 19, 0.88);
 }
 
+.review-card--static {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 .review-card::after {
   content: "";
   position: absolute;

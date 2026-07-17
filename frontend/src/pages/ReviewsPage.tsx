@@ -192,7 +192,7 @@ export default function ReviewsPage() {
         {!loading && !loadError && reviews.length > 0 && (
           <div className="reviews-grid">
             {reviews.map((review) => (
-              <article className="review-card" key={review.id}>
+              <article className="review-card review-card--static" key={review.id}>
                 <header className="review-card__top">
                   <div className="review-avatar" aria-hidden="true">
                     {(review.name || "U").slice(0, 1).toUpperCase()}
