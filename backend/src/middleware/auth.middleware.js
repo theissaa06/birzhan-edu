@@ -1,130 +1,163 @@
 const jwt = require("jsonwebtoken");
 const prisma = require("../config/prisma");
+const {
+  STAFF_ROLES,
+  hasAnyRole,
+  highestRole,
+  normalizeRoles,
+  rolesFromUser,
+} = require("../utils/access");
 
-const ADMIN_BADGES = new Set(["ADMIN", "OWNER", "DEVELOPER"]);
-
-function normalizeBadges(badges) {
-  return Array.isArray(badges)
-    ? badges.map((badge) => String(badge).toUpperCase()).filter(Boolean)
-    : [];
+function apiError(res, status, code, message, extra = {}) {
+  return res.status(status).json({ success: false, code, message, ...extra });
 }
 
-function hasAdminAccess(user) {
-  const badges = normalizeBadges(user?.badges);
-  return user?.role === "ADMIN" || badges.some((badge) => ADMIN_BADGES.has(badge));
+function isActiveBan(ban, now = new Date()) {
+  if (!ban || ban.status !== "ACTIVE") return false;
+  return !ban.endsAt || new Date(ban.endsAt) > now;
 }
 
-function isBlocked(user, now = new Date()) {
-  if (!user?.blockedAt) return false;
-  if (!user.blockedUntil) return true;
-  return new Date(user.blockedUntil) > now;
+async function expireBanIfNeeded(user, now) {
+  const ban = user.bansReceived?.[0];
+  if (!ban || ban.status !== "ACTIVE" || !ban.endsAt || new Date(ban.endsAt) > now) {
+    return ban;
+  }
+
+  await prisma.$transaction([
+    prisma.userBan.update({
+      where: { id: ban.id },
+      data: { status: "EXPIRED" },
+    }),
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        blockedAt: null,
+        blockedUntil: null,
+        blockedReason: null,
+        blockedById: null,
+      },
+    }),
+  ]);
+  return null;
 }
 
 const authMiddleware = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Нет токена авторизации",
-      });
+    const authHeader = String(req.headers.authorization || "");
+    if (!authHeader.startsWith("Bearer ")) {
+      return apiError(res, 401, "AUTH_TOKEN_REQUIRED", "Требуется авторизация.");
     }
 
-    const token = authHeader.split(" ")[1];
-
+    const token = authHeader.slice(7).trim();
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     if (!decoded?.id) {
-      return res.status(401).json({
-        success: false,
-        message: "Неверный или просроченный токен",
-      });
+      return apiError(res, 401, "AUTH_TOKEN_INVALID", "Сессия недействительна.");
     }
 
+    const now = new Date();
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
+      where: { id: Number(decoded.id) },
       select: {
         id: true,
+        email: true,
         role: true,
         badges: true,
+        accountStatus: true,
+        deactivatedAt: true,
+        sessionVersion: true,
         blockedAt: true,
         blockedUntil: true,
         blockedReason: true,
-        sessionVersion: true,
+        roles: { select: { role: true } },
+        bansReceived: {
+          where: { status: "ACTIVE" },
+          orderBy: { startsAt: "desc" },
+          take: 1,
+          select: { id: true, reason: true, status: true, startsAt: true, endsAt: true },
+        },
       },
     });
 
     if (!user || Number(decoded.sessionVersion || 0) !== user.sessionVersion) {
-      return res.status(401).json({
-        success: false,
-        message: "Сессия устарела. Войдите снова.",
+      return apiError(res, 401, "AUTH_SESSION_EXPIRED", "Сессия устарела. Войдите снова.");
+    }
+
+    if (user.accountStatus === "DEACTIVATED") {
+      return apiError(
+        res,
+        403,
+        "ACCOUNT_DEACTIVATED",
+        "Аккаунт деактивирован. Его можно восстановить на странице входа.",
+        { deactivatedAt: user.deactivatedAt },
+      );
+    }
+
+    const activeBan = await expireBanIfNeeded(user, now);
+    if (isActiveBan(activeBan, now)) {
+      return apiError(res, 403, "ACCOUNT_BANNED", "Аккаунт временно заблокирован.", {
+        banned: true,
+        reason: activeBan.reason,
+        bannedUntil: activeBan.endsAt,
       });
     }
 
-    if (isBlocked(user)) {
-      return res.status(403).json({
-        success: false,
-        message: user.blockedUntil
-          ? `Аккаунт заблокирован до ${new Date(user.blockedUntil).toLocaleString("ru-RU")}.`
-          : "Аккаунт заблокирован.",
-        blocked: true,
-        blockedUntil: user.blockedUntil,
-        reason: user.blockedReason || null,
-      });
-    }
+    const roles = rolesFromUser(user);
+    req.user = {
+      id: user.id,
+      email: user.email,
+      roles,
+      primaryRole: highestRole(roles),
+      role: roles.includes("ADMIN") ? "ADMIN" : "USER",
+      isAdmin: hasAnyRole(roles, STAFF_ROLES),
+      sessionVersion: user.sessionVersion,
+    };
 
-    if (user.blockedAt && user.blockedUntil && new Date(user.blockedUntil) <= new Date()) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          blockedAt: null,
-          blockedUntil: null,
-          blockedReason: null,
-          blockedById: null,
-        },
-      });
-    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastSeenAt: now },
+    }).catch(() => undefined);
 
-    req.user = decoded;
-    req.user.role = user.role;
-    req.user.badges = normalizeBadges(user.badges);
-    req.user.isAdmin = hasAdminAccess(user);
-
-    next();
+    return next();
   } catch (error) {
-    console.error("[AuthMiddleware] Ошибка авторизации", error?.message || error);
-    return res.status(401).json({
-      success: false,
-      message: "Неверный или просроченный токен",
-    });
+    const isJwtError = ["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(error?.name);
+    if (!isJwtError) {
+      console.error("[AuthMiddleware] Authorization failed", error?.stack || error);
+    }
+    return apiError(res, 401, "AUTH_TOKEN_INVALID", "Сессия недействительна или истекла.");
   }
 };
 
-const adminMiddleware = (req, res, next) => {
-  try {
+function requireRoles(...allowed) {
+  const normalizedAllowed = normalizeRoles(allowed.flat());
+  return (req, res, next) => {
     if (!req.user) {
-      return res.status(403).json({
-        success: false,
-        message: "Пользователь не авторизован",
+      return apiError(res, 401, "AUTH_TOKEN_REQUIRED", "Требуется авторизация.");
+    }
+    if (!hasAnyRole(req.user.roles, normalizedAllowed)) {
+      return apiError(res, 403, "INSUFFICIENT_ROLE", "Недостаточно прав для этого действия.", {
+        requiredRoles: normalizedAllowed,
       });
     }
-    
-    if (!req.user.isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "Доступ только для администратора",
-      });
-    }
-    
-    next();
-  } catch (error) {
-    console.error("[AdminMiddleware] Error:", error);
-    return res.status(403).json({
-      success: false,
-      message: "Ошибка проверки прав администратора",
-    });
-  }
+    return next();
+  };
+}
+
+const adminMiddleware = requireRoles(...STAFF_ROLES);
+const privilegedMiddleware = requireRoles("DEVELOPER", "OWNER");
+const ownerMiddleware = requireRoles("OWNER");
+
+const optionalAuthMiddleware = (req, res, next) => {
+  const authHeader = String(req.headers.authorization || "");
+  return authHeader.startsWith("Bearer ") ? authMiddleware(req, res, next) : next();
 };
 
-module.exports = { authMiddleware, adminMiddleware, hasAdminAccess, normalizeBadges };
+module.exports = {
+  authMiddleware,
+  optionalAuthMiddleware,
+  adminMiddleware,
+  privilegedMiddleware,
+  ownerMiddleware,
+  requireRoles,
+  hasAdminAccess: (user) => hasAnyRole(user, STAFF_ROLES),
+  normalizeBadges: normalizeRoles,
+};

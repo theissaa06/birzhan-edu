@@ -6,7 +6,10 @@ export type AuthSessionUser = {
   name?: string;
   email?: string;
   role?: string;
+  roles?: string[];
   badges?: string[];
+  isPremium?: boolean;
+  premiumUntil?: string | null;
   [key: string]: unknown;
 };
 

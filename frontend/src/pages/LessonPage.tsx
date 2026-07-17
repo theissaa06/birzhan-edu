@@ -51,10 +51,6 @@ function getUserStorageKey(key: string) {
   return `${key}:user:${getCurrentUserKey()}`;
 }
 
-function getLessonCompletedKey(lessonId: string | number) {
-  return getUserStorageKey(`lesson-completed-${lessonId}`);
-}
-
 function normalizeList(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map(String).filter(Boolean);
@@ -80,10 +76,11 @@ export default function LessonPage() {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [serverCompletedIds, setServerCompletedIds] = useState<number[]>([]);
   const [showCongrats, setShowCongrats] = useState(false);
   const [showCourseToast, setShowCourseToast] = useState(false);
   const [hintIndex, setHintIndex] = useState(0);
-  const [visibleHintCount, setVisibleHintCount] = useState(1);
+  const [, setVisibleHintCount] = useState(1);
   const [showHelper, setShowHelper] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -117,11 +114,8 @@ export default function LessonPage() {
   }, [sortedLessons, currentLesson]);
 
   const completedLessonsCount = useMemo(() => {
-    return sortedLessons.filter(
-      (lesson) =>
-        localStorage.getItem(getLessonCompletedKey(lesson.id)) === "true",
-    ).length;
-  }, [sortedLessons, completed]);
+    return sortedLessons.filter((lesson) => serverCompletedIds.includes(lesson.id)).length;
+  }, [sortedLessons, serverCompletedIds]);
 
   const progressPercent = Math.round(
     (completedLessonsCount / Math.max(sortedLessons.length, 1)) * 100,
@@ -200,13 +194,10 @@ export default function LessonPage() {
           (p: any) => p.lessonId === Number(lessonId) && p.completed,
         );
 
+        setServerCompletedIds(progress.filter((p: any) => p.completed).map((p: any) => Number(p.lessonId)));
         setCompleted(isDone);
-
-        if (isDone && lessonId) {
-          localStorage.setItem(getLessonCompletedKey(lessonId), "true");
-        }
       } catch {
-        // Используем localStorage как fallback.
+        setServerCompletedIds([]);
       }
     }
 
@@ -218,10 +209,8 @@ export default function LessonPage() {
   useEffect(() => {
     if (!lessonId) return;
 
-    const saved = localStorage.getItem(getLessonCompletedKey(lessonId));
     const savedLesson = localStorage.getItem(`saved-lesson-${lessonId}`);
 
-    setCompleted(saved === "true");
     setIsSaved(savedLesson === "true");
     setShowCongrats(false);
     setShowCourseToast(false);
@@ -261,14 +250,13 @@ export default function LessonPage() {
 
     try {
       await api.post(`/lessons/${lessonId}/complete`);
+      setServerCompletedIds((current) => [...new Set([...current, Number(lessonId)])]);
+      setCompleted(true);
+      setShowCongrats(true);
     } catch (err) {
-      console.error("Backend не сохранил урок, сохраняем локально:", err);
+      console.error("Backend не сохранил урок:", err);
+      setSubmissionError("Не удалось сохранить завершение урока. Войдите в аккаунт и повторите попытку.");
     }
-
-    localStorage.setItem(getLessonCompletedKey(lessonId), "true");
-    localStorage.setItem(`lesson-completed-${lessonId}`, "true");
-    setCompleted(true);
-    setShowCongrats(true);
   }
 
   async function handleSubmitWork(e: React.FormEvent<HTMLFormElement>) {
@@ -347,72 +335,20 @@ export default function LessonPage() {
     try {
       if (lessonId) {
         await api.post(`/lessons/${lessonId}/complete`);
+        setServerCompletedIds((current) => [...new Set([...current, Number(lessonId)])]);
       }
     } catch (err) {
-      console.error(
-        "Backend не сохранил последний урок, сохраняем локально:",
-        err,
-      );
+      console.error("Backend не сохранил последний урок:", err);
+      setSubmissionError("Не удалось завершить курс. Повторите попытку после входа.");
+      return;
     }
-
-    course.lessons.forEach((lesson) => {
-      localStorage.setItem(getLessonCompletedKey(lesson.id), "true");
-      localStorage.setItem(`lesson-completed-${lesson.id}`, "true");
-    });
-
-    localStorage.setItem(
-      getUserStorageKey(`course-completed-${course.id}`),
-      "true",
-    );
-    localStorage.setItem(
-      getUserStorageKey(`course-certificate-${course.id}`),
-      "true",
-    );
-
-    const newCertificate = {
-      courseId: course.id,
-      courseTitle: course.title,
-      claimedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(
-      getUserStorageKey("last-course-bonus"),
-      JSON.stringify(newCertificate),
-    );
-
-    const savedCertificates = localStorage.getItem(
-      getUserStorageKey("my-certificates"),
-    );
-
-    let certificates = [];
-
-    if (savedCertificates) {
-      try {
-        certificates = JSON.parse(savedCertificates);
-      } catch {
-        certificates = [];
-      }
-    }
-
-    const alreadyExists = certificates.some(
-      (certificate: any) => certificate.courseId === course.id,
-    );
-
-    if (!alreadyExists) {
-      certificates.push(newCertificate);
-    }
-
-    localStorage.setItem(
-      getUserStorageKey("my-certificates"),
-      JSON.stringify(certificates),
-    );
 
     setCompleted(true);
     setShowCongrats(true);
     setShowCourseToast(true);
 
     setTimeout(() => {
-      window.location.href = "/certificate";
+      window.location.href = "/certificates";
     }, 2200);
   }
 
@@ -485,9 +421,7 @@ export default function LessonPage() {
             <div className="lesson-list">
               {sortedLessons.map((lesson, index) => {
                 const isActive = lesson.id === currentLesson.id;
-                const isDone =
-                  localStorage.getItem(getLessonCompletedKey(lesson.id)) ===
-                  "true";
+                const isDone = serverCompletedIds.includes(lesson.id);
 
                 return (
                   <Link

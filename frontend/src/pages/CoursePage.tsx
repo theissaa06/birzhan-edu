@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../services/api";
-import { getUserStorageKey } from "../utils/userStorage";
 import "./CoursePage.css";
 
 type Lesson = {
@@ -29,7 +28,6 @@ export default function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [progressKey, setProgressKey] = useState(0);
   const [lessonFilter, setLessonFilter] = useState<"all" | "not-completed">(
     "all",
   );
@@ -77,26 +75,12 @@ export default function CoursePage() {
           .map((p: any) => p.lessonId);
 
         setServerProgress(completedIds);
-      } catch (e) {
-        console.log("Используем localStorage как fallback");
+      } catch {
+        setServerProgress([]);
       }
     }
 
     loadProgress();
-  }, []);
-
-  useEffect(() => {
-    function updateProgress() {
-      setProgressKey((prev) => prev + 1);
-    }
-
-    window.addEventListener("storage", updateProgress);
-    window.addEventListener("focus", updateProgress);
-
-    return () => {
-      window.removeEventListener("storage", updateProgress);
-      window.removeEventListener("focus", updateProgress);
-    };
   }, []);
 
   const sortedLessons = useMemo(() => {
@@ -106,17 +90,8 @@ export default function CoursePage() {
   }, [course]);
 
   const completedLessonIds = useMemo(() => {
-    return sortedLessons
-      .filter((lesson) => {
-        const localDone =
-          localStorage.getItem(`lesson-completed-${lesson.id}`) === "true";
-
-        const serverDone = serverProgress.includes(lesson.id);
-
-        return localDone || serverDone;
-      })
-      .map((lesson) => lesson.id);
-  }, [sortedLessons, progressKey, serverProgress]);
+    return sortedLessons.filter((lesson) => serverProgress.includes(lesson.id)).map((lesson) => lesson.id);
+  }, [sortedLessons, serverProgress]);
 
   const completedCount = completedLessonIds.length;
   const totalLessons = sortedLessons.length;
@@ -221,22 +196,8 @@ export default function CoursePage() {
                 <Link
                   to="/bonus"
                   className="course-complete-btn"
-                  onClick={() => {
-                    localStorage.setItem(
-                      `course-bonus-${course.id}`,
-                      "claimed",
-                    );
-                    localStorage.setItem(
-                      "last-course-bonus",
-                      JSON.stringify({
-                        courseId: course.id,
-                        courseTitle: course.title,
-                        claimedAt: new Date().toISOString(),
-                      }),
-                    );
-                  }}
                 >
-                  🎁 Получить бонус →
+                  Открыть бонусы
                 </Link>
               </div>
             )}
@@ -247,60 +208,15 @@ export default function CoursePage() {
 
             <p>
               Пройдено {completedCount} из {totalLessons} уроков
-              {isCourseCompleted ? " — курс завершён 🎉" : ""}
+              {isCourseCompleted ? " — курс завершён" : ""}
             </p>
 
             {isCourseCompleted && (
               <Link
-                to="/certificate"
+                to="/certificates"
                 className="course-certificate-btn"
-                onClick={() => {
-                  const newCertificate = {
-                    courseId: course.id,
-                    courseTitle: course.title,
-                    claimedAt: new Date().toISOString(),
-                  };
-
-                  localStorage.setItem(
-                    "last-course-bonus",
-                    JSON.stringify(newCertificate),
-                  );
-
-                  const savedCertificates =
-                    localStorage.getItem(getUserStorageKey("my-certificates")) ||
-                    localStorage.getItem("my-certificates");
-
-                  let certificates = [];
-
-                  if (savedCertificates) {
-                    try {
-                      certificates = JSON.parse(savedCertificates);
-                    } catch {
-                      certificates = [];
-                    }
-                  }
-
-                  const alreadyExists = certificates.some(
-                    (certificate: any) => certificate.courseId === course.id,
-                  );
-
-                  if (!alreadyExists) {
-                    certificates.push(newCertificate);
-                  }
-
-                  localStorage.setItem(
-                    getUserStorageKey("my-certificates"),
-                    JSON.stringify(certificates),
-                  );
-
-                  localStorage.setItem(`course-completed-${course.id}`, "true");
-                  localStorage.setItem(
-                    `course-certificate-${course.id}`,
-                    "true",
-                  );
-                }}
               >
-                🎓 Получить сертификат
+                Открыть сертификат
               </Link>
             )}
           </div>

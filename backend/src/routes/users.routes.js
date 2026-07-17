@@ -1,530 +1,147 @@
-const router = require("express").Router();
 const bcrypt = require("bcryptjs");
+const router = require("express").Router();
 const prisma = require("../config/prisma");
-const { authMiddleware, adminMiddleware } = require("../middleware/auth.middleware");
+const { authMiddleware } = require("../middleware/auth.middleware");
+const { rolesFromUser, highestRole } = require("../utils/access");
+const { getPremiumAccess } = require("../services/premium.service");
+const { writeAudit } = require("../utils/audit");
 
-const ALLOWED_BADGES = new Set(["PREMIUM", "ADMIN", "OWNER", "DEVELOPER"]);
-const PROTECTED_BADGES = new Set(["OWNER", "DEVELOPER"]);
-
-function normalizeBadges(input) {
-  const list = Array.isArray(input) ? input : [];
-  return [...new Set(
-    list
-      .map((badge) => String(badge).trim().toUpperCase())
-      .filter((badge) => ALLOWED_BADGES.has(badge)),
-  )];
-}
-
-function hasProtectedBadge(user) {
-  const badges = Array.isArray(user?.badges) ? user.badges : [];
-  return badges.some((badge) => PROTECTED_BADGES.has(String(badge).toUpperCase()));
-}
-
-function roleFromBadges(badges, fallbackRole = "USER") {
-  return badges.some((badge) => ["ADMIN", "OWNER", "DEVELOPER"].includes(badge))
-    ? "ADMIN"
-    : fallbackRole === "ADMIN"
-      ? "ADMIN"
-      : "USER";
-}
-
-function parsePositiveInt(value) {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function parseBlockUntil(body = {}) {
-  const duration = String(body.duration || "").trim().toLowerCase();
-  const amount = Number(body.amount || body.days || 0);
-
-  if (duration === "forever" || body.forever === true) return null;
-
-  const daysByDuration = {
-    day: 1,
-    days: Number.isFinite(amount) && amount > 0 ? amount : 1,
-    week: 7,
-    weeks: Number.isFinite(amount) && amount > 0 ? amount * 7 : 7,
-    month: 30,
-    months: Number.isFinite(amount) && amount > 0 ? amount * 30 : 30,
-  };
-
-  const days =
-    Number.isFinite(amount) && amount > 0 && !duration
-      ? amount
-      : daysByDuration[duration];
-
-  if (!days || days <= 0) return new Date(Date.now() + 24 * 60 * 60 * 1000);
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-}
-
-const userSelect = {
+const profileSelect = {
   id: true,
   username: true,
   email: true,
   phone: true,
   role: true,
   badges: true,
-  blockedAt: true,
-  blockedUntil: true,
-  blockedReason: true,
-  blockedById: true,
+  accountStatus: true,
+  isPhoneVerified: true,
   premiumPlan: true,
   premiumStarted: true,
   premiumUntil: true,
-  isPhoneVerified: true,
   createdAt: true,
   updatedAt: true,
   lessonProgress: true,
-  userBonuses: true,
-  supportMessages: true,
+  roles: { select: { role: true, grantedAt: true } },
+  oauthIdentities: { select: { provider: true, createdAt: true } },
 };
 
-const publicUserSelect = {
-  id: true,
-  username: true,
-  role: true,
-  badges: true,
-  premiumUntil: true,
-  createdAt: true,
-};
+function serializeProfile(user, premium) {
+  const roles = rolesFromUser(user);
+  return {
+    ...user,
+    password: undefined,
+    roles,
+    primaryRole: highestRole(roles),
+    badges: roles,
+    isPremium: Boolean(premium?.active),
+    premiumStatus: premium?.status || "free",
+    premiumUntil: premium?.paidUntil || null,
+    graceUntil: premium?.graceUntil || null,
+  };
+}
 
 router.get("/public", async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      where: { blockedAt: null },
+      where: {
+        accountStatus: "ACTIVE",
+        bansReceived: { none: { status: "ACTIVE", OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] } },
+      },
       orderBy: { createdAt: "asc" },
-      select: publicUserSelect,
+      take: 100,
+      select: {
+        id: true,
+        username: true,
+        createdAt: true,
+        roles: { select: { role: true } },
+        certificates: { where: { status: "ACTIVE" }, select: { id: true } },
+        assignmentSubmissions: { where: { isPublic: true }, select: { id: true } },
+      },
     });
-
     return res.json({
       success: true,
       users: users.map((user) => ({
-        ...user,
-        isPremium: Boolean(
-          user.premiumUntil && new Date(user.premiumUntil) > new Date(),
-        ),
+        id: user.id,
+        username: user.username,
+        roles: rolesFromUser(user),
+        certificateCount: user.certificates.length,
+        publicWorkCount: user.assignmentSubmissions.length,
+        createdAt: user.createdAt,
       })),
     });
   } catch (error) {
-    console.error("[Users] Ошибка публичного списка", {
-      error: error?.message || error,
-    });
-    return res.status(500).json({
-      success: false,
-      message: "Не удалось загрузить список пользователей.",
-    });
+    console.error("[Users] Public list failed", error?.stack || error);
+    return res.status(500).json({ success: false, code: "USERS_LOAD_FAILED", message: "Не удалось загрузить участников." });
   }
 });
 
 router.get("/me", authMiddleware, async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        phone: true,
-        role: true,
-        badges: true,
-        blockedAt: true,
-        blockedUntil: true,
-        blockedReason: true,
-        isPhoneVerified: true,
-        premiumPlan: true,
-        premiumStarted: true,
-        premiumUntil: true,
-        createdAt: true,
-        updatedAt: true,
-        lessonProgress: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Пользователь не найден",
-      });
-    }
-
-    return res.json({
-      success: true,
-      data: user,
-      user,
-    });
-  } catch (e) {
-    console.error("[Users] Ошибка /me", {
-      error: e?.message || e,
-      userId: req.user?.id,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка загрузки профиля",
-    });
+  const [user, premium] = await Promise.all([
+    prisma.user.findUnique({ where: { id: req.user.id }, select: profileSelect }),
+    getPremiumAccess(req.user.id),
+  ]);
+  if (!user) {
+    return res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
   }
+  const data = serializeProfile(user, premium);
+  return res.json({ success: true, data, user: data });
 });
 
-router.use(authMiddleware, adminMiddleware);
-
-router.get("/", async (req, res) => {
-  try {
-    const users = await prisma.user.findMany({
-      orderBy: {
-        id: "asc",
-      },
-      select: userSelect,
-    });
-
-    res.json({
-      success: true,
-      data: users,
-    });
-  } catch (e) {
-    res.status(500).json({
-      success: false,
-      message: "Ошибка загрузки пользователей",
-      error: e.message,
-    });
+router.post("/me/password", authMiddleware, async (req, res) => {
+  const currentPassword = String(req.body?.currentPassword || "");
+  const newPassword = String(req.body?.newPassword || "");
+  if (newPassword.length < 8 || newPassword.length > 128) {
+    return res.status(400).json({ success: false, code: "PASSWORD_WEAK", message: "Новый пароль должен содержать от 8 до 128 символов." });
   }
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { id: true, password: true, oauthIdentities: { select: { id: true } } },
+  });
+  if (!user) return res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
+  if (user.password && !(await bcrypt.compare(currentPassword, user.password))) {
+    return res.status(403).json({ success: false, code: "PASSWORD_INCORRECT", message: "Текущий пароль указан неверно." });
+  }
+  const password = await bcrypt.hash(newPassword, 12);
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: user.id }, data: { password, sessionVersion: { increment: 1 } } });
+    await writeAudit(tx, { req, action: "account.password_changed", entityType: "User", entityId: user.id, targetUserId: user.id });
+  });
+  return res.json({ success: true, message: "Пароль обновлён. Войдите снова." });
 });
 
-router.patch("/:id/role", async (req, res) => {
-  try {
-    const id = parsePositiveInt(req.params.id);
-    const { role } = req.body;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Некорректный ID пользователя",
-      });
-    }
-
-    if (!["USER", "ADMIN"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Роль должна быть USER или ADMIN",
-      });
-    }
-
-    const target = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, role: true, badges: true },
-    });
-
-    if (!target) {
-      return res.status(404).json({
-        success: false,
-        message: "Пользователь не найден",
-      });
-    }
-
-    if (hasProtectedBadge(target) && req.user.id !== target.id) {
-      return res.status(403).json({
-        success: false,
-        message: "Роль владельца или разработчика нельзя изменить чужим админом.",
-      });
-    }
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: { role },
-      select: userSelect,
-    });
-
-    res.json({
-      success: true,
-      message: "Роль пользователя обновлена",
-      data: user,
-    });
-  } catch (e) {
-    res.status(500).json({
-      success: false,
-      message: "Ошибка изменения роли",
-      error: e.message,
-    });
+router.post("/me/deactivate", authMiddleware, async (req, res) => {
+  const password = String(req.body?.password || "");
+  const confirmation = String(req.body?.confirmation || "").toUpperCase();
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { id: true, password: true, accountStatus: true, roles: { select: { role: true } } },
+  });
+  if (!user) return res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
+  if (rolesFromUser(user).includes("OWNER")) {
+    return res.status(409).json({ success: false, code: "OWNER_DEACTIVATION_FORBIDDEN", message: "Сначала передайте роль Owner другому аккаунту через защищённый сценарий." });
   }
-});
-
-router.patch("/:id/badges", async (req, res) => {
-  try {
-    const id = parsePositiveInt(req.params.id);
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Некорректный ID пользователя",
-      });
+  if (user.password) {
+    if (!password || !(await bcrypt.compare(password, user.password))) {
+      return res.status(403).json({ success: false, code: "PASSWORD_INCORRECT", message: "Подтвердите действие текущим паролем." });
     }
-
-    const target = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, role: true, badges: true },
-    });
-
-    if (!target) {
-      return res.status(404).json({
-        success: false,
-        message: "Пользователь не найден",
-      });
-    }
-
-    if (hasProtectedBadge(target) && req.user.id !== target.id) {
-      return res.status(403).json({
-        success: false,
-        message: "Значки владельца или разработчика нельзя менять чужим админом.",
-      });
-    }
-
-    const badges = normalizeBadges(req.body?.badges);
-    const role = roleFromBadges(badges, target.role);
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: { badges, role },
-      select: userSelect,
-    });
-
-    return res.json({
-      success: true,
-      message: "Значки пользователя обновлены",
-      data: user,
-    });
-  } catch (e) {
-    console.error("[Users] Ошибка изменения значков", {
-      error: e?.message || e,
-      targetUserId: req.params.id,
-      adminUserId: req.user?.id,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка изменения значков",
-    });
+  } else if (confirmation !== "DEACTIVATE") {
+    return res.status(400).json({ success: false, code: "CONFIRMATION_REQUIRED", message: "Для OAuth-аккаунта введите DEACTIVATE в поле подтверждения." });
   }
-});
 
-router.patch("/:id/block", async (req, res) => {
-  try {
-    const id = parsePositiveInt(req.params.id);
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Некорректный ID пользователя",
-      });
-    }
-
-    if (id === req.user.id) {
-      return res.status(400).json({
-        success: false,
-        message: "Нельзя заблокировать собственный аккаунт.",
-      });
-    }
-
-    const target = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, badges: true },
+  const deactivatedAt = new Date();
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: { accountStatus: "DEACTIVATED", deactivatedAt, sessionVersion: { increment: 1 } },
     });
-
-    if (!target) {
-      return res.status(404).json({
-        success: false,
-        message: "Пользователь не найден",
-      });
-    }
-
-    if (hasProtectedBadge(target)) {
-      return res.status(403).json({
-        success: false,
-        message: "Владельца или разработчика нельзя заблокировать.",
-      });
-    }
-
-    const reason = String(req.body?.reason || "Нарушение правил платформы").trim().slice(0, 500);
-    const blockedUntil = parseBlockUntil(req.body);
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: {
-        blockedAt: new Date(),
-        blockedUntil,
-        blockedReason: reason,
-        blockedById: req.user.id,
-        sessionVersion: { increment: 1 },
-      },
-      select: userSelect,
-    });
-
-    return res.json({
-      success: true,
-      message: blockedUntil ? "Пользователь временно заблокирован" : "Пользователь заблокирован навсегда",
-      data: user,
-    });
-  } catch (e) {
-    console.error("[Users] Ошибка блокировки пользователя", {
-      error: e?.message || e,
-      targetUserId: req.params.id,
-      adminUserId: req.user?.id,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка блокировки пользователя",
-    });
-  }
-});
-
-router.patch("/:id/unblock", async (req, res) => {
-  try {
-    const id = parsePositiveInt(req.params.id);
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Некорректный ID пользователя",
-      });
-    }
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: {
-        blockedAt: null,
-        blockedUntil: null,
-        blockedReason: null,
-        blockedById: null,
-        sessionVersion: { increment: 1 },
-      },
-      select: userSelect,
-    });
-
-    return res.json({
-      success: true,
-      message: "Пользователь разблокирован",
-      data: user,
-    });
-  } catch (e) {
-    console.error("[Users] Ошибка разблокировки пользователя", {
-      error: e?.message || e,
-      targetUserId: req.params.id,
-      adminUserId: req.user?.id,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка разблокировки пользователя",
-    });
-  }
-});
-
-router.patch("/:id/reset-password", async (req, res) => {
-  try {
-    const id = parsePositiveInt(req.params.id);
-    const newPassword = req.body.newPassword || "12345678";
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Некорректный ID пользователя",
-      });
-    }
-
-    const target = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, badges: true },
-    });
-
-    if (!target) {
-      return res.status(404).json({
-        success: false,
-        message: "Пользователь не найден",
-      });
-    }
-
-    if (hasProtectedBadge(target)) {
-      return res.status(403).json({
-        success: false,
-        message: "Пароль владельца или разработчика нельзя менять через админку.",
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: {
-        password: hashedPassword,
-        sessionVersion: { increment: 1 },
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        badges: true,
-      },
-    });
-
-    res.json({
-      success: true,
-      message: "Пароль пользователя сброшен",
-      data: user,
-      newPassword,
-    });
-  } catch (e) {
-    res.status(500).json({
-      success: false,
-      message: "Ошибка сброса пароля",
-      error: e.message,
-    });
-  }
-});
-
-router.delete("/:id", async (req, res) => {
-  try {
-    const id = parsePositiveInt(req.params.id);
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Некорректный ID пользователя",
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Пользователь не найден",
-      });
-    }
-
-    if (hasProtectedBadge(user)) {
-      return res.status(403).json({
-        success: false,
-        message: "Владельца или разработчика нельзя удалить через админку.",
-      });
-    }
-
-    await prisma.user.delete({
-      where: { id },
-    });
-
-    res.json({
-      success: true,
-      message: "Пользователь удалён",
-    });
-  } catch (e) {
-    res.status(500).json({
-      success: false,
-      message: "Ошибка удаления пользователя",
-      error: e.message,
-    });
-  }
+    await writeAudit(tx, { req, action: "account.deactivated", entityType: "User", entityId: user.id, targetUserId: user.id });
+  });
+  return res.json({
+    success: true,
+    code: "ACCOUNT_DEACTIVATED",
+    message: "Аккаунт деактивирован. Прогресс и сертификаты сохранены.",
+    deactivatedAt,
+  });
 });
 
 module.exports = router;

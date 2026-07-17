@@ -87,7 +87,6 @@ export default function SupportPage() {
       setSent(false);
 
       await sendSupportMessage({
-        from: "user",
         text: form.message,
         name: form.name,
         email: form.email,

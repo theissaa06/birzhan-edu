@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const router = require("express").Router();
 const prisma = require("../config/prisma");
 const { authMiddleware } = require("../middleware/auth.middleware");
@@ -414,7 +415,38 @@ router.post("/:id/complete", authMiddleware, async (req, res) => {
         tx,
       );
 
-      return { progress, courseProgress };
+      let certificate = null;
+      if (courseProgress.isCompleted) {
+        certificate = await tx.certificate.findUnique({
+          where: { userId_courseId: { userId: req.user.id, courseId: lesson.courseId } },
+        });
+        if (!certificate) {
+          const [user, course] = await Promise.all([
+            tx.user.findUnique({ where: { id: req.user.id }, select: { username: true } }),
+            tx.course.findUnique({ where: { id: lesson.courseId }, select: { title: true } }),
+          ]);
+          certificate = await tx.certificate.create({
+            data: {
+              code: crypto.randomBytes(18).toString("base64url"),
+              userId: req.user.id,
+              courseId: lesson.courseId,
+              recipientName: user.username,
+              courseTitle: course.title,
+            },
+          });
+          await tx.notification.create({
+            data: {
+              userId: req.user.id,
+              type: "certificate",
+              title: "Сертификат готов",
+              message: `Вы завершили курс «${course.title}».`,
+              link: `/certificate/${certificate.code}`,
+            },
+          });
+        }
+      }
+
+      return { progress, courseProgress, certificate };
     });
 
     if (result.notFound) {
@@ -428,6 +460,15 @@ router.post("/:id/complete", authMiddleware, async (req, res) => {
       success: true,
       data: result.progress,
       courseProgress: result.courseProgress,
+      certificate: result.certificate
+        ? {
+            code: result.certificate.code,
+            recipientName: result.certificate.recipientName,
+            courseTitle: result.certificate.courseTitle,
+            issuedAt: result.certificate.issuedAt,
+            verificationUrl: `/certificate/${result.certificate.code}`,
+          }
+        : null,
     });
   } catch (e) {
     console.error("[Lessons] Ошибка завершения урока", {

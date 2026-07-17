@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import TurnstileBox from "../components/TurnstileBox";
 import api from "../services/api";
 import { clearAuthSession } from "../services/authStorage";
 import "./LoginPage.css";
@@ -17,6 +18,7 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [devResetCode, setDevResetCode] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -31,6 +33,7 @@ export default function ForgotPasswordPage() {
 
       const response = await api.post("/auth/forgot-password", {
         email: normalizedEmail,
+        turnstileToken: turnstileToken || undefined,
       });
 
       setMessage(
@@ -156,6 +159,8 @@ export default function ForgotPasswordPage() {
                   required
                 />
               </label>
+
+              <TurnstileBox onVerify={setTurnstileToken} />
 
               <button type="submit" className="auth-submit" disabled={loading}>
                 {loading ? "Отправляем..." : "Отправить код"}

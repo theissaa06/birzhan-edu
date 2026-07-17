@@ -1,52 +1,21 @@
-﻿import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
-import { useAuthSession } from "../components/AuthSessionProvider";
+import OAuthButtons from "../components/OAuthButtons";
 import TurnstileBox from "../components/TurnstileBox";
-import { API_ORIGIN } from "../services/api";
-import { showRegistrationWelcome } from "../services/appToast";
-import "./RegisterPage.css";
+import { useAuthSession } from "../components/AuthSessionProvider";
+import api from "../services/api";
+import { showRegistrationWelcome, showToast } from "../services/appToast";
+import "./LoginPage.css";
 
-const API_URL = API_ORIGIN;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const softwareOptions = [
-  { value: "capcut", label: "CapCut" },
-  { value: "premiere", label: "Premiere Pro" },
-  { value: "after-effects", label: "After Effects" },
-];
-
-const levelOptions = [
-  { value: "beginner", label: "Новичок" },
-  { value: "basic", label: "Что-то умею" },
-  { value: "advanced", label: "Хочу сильный уровень" },
-];
-
-const goalOptions = [
-  { value: "personal", label: "Для себя" },
-  { value: "blog", label: "Для блога" },
-  { value: "career", label: "Для работы" },
-];
-
-function getRecommendedTrack(software: string, level: string, goal: string) {
-  const tool =
-    softwareOptions.find((item) => item.value === software)?.label || "CapCut";
-
-  if (goal === "career") {
-    return `Профессия: видеомонтажёр — старт с ${tool}`;
-  }
-
-  if (level === "beginner") {
-    return `Первый монтаж за 10 минут в ${tool}`;
-  }
-
-  return `Практический трек ${tool}: портфолио и разборы`;
-}
+const softwareOptions = [{ value: "capcut", label: "CapCut" }, { value: "premiere", label: "Premiere Pro" }, { value: "after-effects", label: "After Effects" }];
+const levelOptions = [{ value: "beginner", label: "Новичок" }, { value: "basic", label: "Есть база" }, { value: "advanced", label: "Продвинутый" }];
+const goalOptions = [{ value: "personal", label: "Для себя" }, { value: "blog", label: "Для блога" }, { value: "career", label: "Для работы" }];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { signIn } = useAuthSession();
-
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -58,288 +27,68 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const emailIsFilled = email.trim().length > 0;
-  const emailLooksValid = !emailIsFilled || EMAIL_RE.test(email.trim());
-  const passwordIsStrongEnough = password.length >= 6;
-  const recommendedTrack = getRecommendedTrack(
-    preferredSoftware,
-    experienceLevel,
-    learningGoal,
-  );
-
-  async function handleRegister(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
+  async function handleRegister(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPhone = phone.trim();
-    const cleanPassword = password;
-
-    if (!cleanUsername || !cleanEmail || !cleanPassword) {
-      setError("Заполни имя, email и пароль.");
+    if (!cleanUsername || !EMAIL_RE.test(cleanEmail) || password.length < 8) {
+      setError("Укажите имя, корректный email и пароль не короче 8 символов.");
       return;
     }
-
-    if (!EMAIL_RE.test(cleanEmail)) {
-      setError("Введи корректный email.");
-      return;
-    }
-
-    if (cleanPassword.length < 6) {
-      setError("Пароль должен быть минимум 6 символов.");
-      return;
-    }
-
     try {
       setLoading(true);
       setError("");
-
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: cleanUsername,
-          name: cleanUsername,
-          email: cleanEmail,
-          phone: cleanPhone || undefined,
-          password: cleanPassword,
-          turnstileToken: turnstileToken || undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        throw new Error(data.message || "Не удалось зарегистрироваться.");
-      }
-
-      const token = data.token || data.data?.token;
-      const user = data.user || data.data?.user;
-
-      if (!token) {
-        throw new Error("Сервер не вернул токен авторизации.");
-      }
-
-      const finalUser = user || {
-        username: cleanUsername,
-        email: cleanEmail,
-        role: "USER",
-      };
-
-      const onboarding = {
-        preferredSoftware,
-        experienceLevel,
-        learningGoal,
-        recommendedTrack,
-      };
-
-      signIn(token, finalUser);
-      showRegistrationWelcome(finalUser);
-      localStorage.setItem("frameSchoolOnboarding", JSON.stringify(onboarding));
-
+      const { data } = await api.post("/auth/register", { username: cleanUsername, name: cleanUsername, email: cleanEmail, phone: phone.trim() || undefined, password, turnstileToken: turnstileToken || undefined });
+      if (!data?.token || !data?.user) throw new Error("Сервер не вернул данные сессии.");
+      const onboarding = { preferredSoftware, experienceLevel, learningGoal };
+      localStorage.setItem("frameSchoolOnboardingDraft", JSON.stringify(onboarding));
+      signIn(data.token, data.user);
+      showRegistrationWelcome(data.user);
       navigate("/profile");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка регистрации.");
+    } catch (requestError) {
+      const message = (requestError as { response?: { data?: { message?: string } } }).response?.data?.message || (requestError instanceof Error ? requestError.message : "Не удалось зарегистрироваться.");
+      setError(message);
+      showToast({ tone: "error", title: "Регистрация не завершена", message });
     } finally {
       setLoading(false);
     }
   }
 
+  const choiceGroup = (legend: string, options: typeof softwareOptions, value: string, setValue: (value: string) => void) => (
+    <fieldset><legend>{legend}</legend><div className="auth-choice-grid">{options.map((option) => <button key={option.value} type="button" className={value === option.value ? "auth-choice active" : "auth-choice"} aria-pressed={value === option.value} onClick={() => setValue(option.value)}>{option.label}</button>)}</div></fieldset>
+  );
+
   return (
     <main className="auth-page">
       <div className="auth-wrap">
-        {/* Левая панель — информация */}
-        <div className="auth-info">
+        <section className="auth-info" aria-labelledby="register-heading">
           <p className="auth-kicker">Создание аккаунта</p>
-
-          <h1>
-            Начни обучение на{" "}
-            <span className="auth-brand">Frame School</span>
-          </h1>
-
-          <p className="auth-desc">
-            Регистрация сразу подбирает первый практический трек: выбери софт,
-            уровень и цель, а платформа покажет, с какого задания начать.
-          </p>
-
-          <div className="auth-progress" aria-label="Прогресс регистрации">
-            <span className="active">1. Аккаунт</span>
-            <span className="active">2. Цель</span>
-            <span>3. Первый урок</span>
-          </div>
-
+          <h1 id="register-heading">Начните обучение в <span className="auth-brand">Frame School</span></h1>
+          <p className="auth-desc">Выберите редактор, уровень и цель — после регистрации вы получите подходящую стартовую траекторию.</p>
           <ul className="auth-benefits">
-            <li>
-              <span className="auth-benefit-icon"><FrameIcon name="frame" /></span>
-              Первый трек под твой редактор
-            </li>
-            <li>
-              <span className="auth-benefit-icon">📈</span>
-              Практические задания вместо пассивного просмотра
-            </li>
-            <li>
-              <span className="auth-benefit-icon"><FrameIcon name="premium" /></span>
-              Работы постепенно складываются в портфолио
-            </li>
-            <li>
-              <span className="auth-benefit-icon"><FrameIcon name="certificate" /></span>
-              Сертификаты в личном кабинете
-            </li>
+            <li><span className="auth-benefit-icon"><FrameIcon name="frame" /></span>Практический трек под ваш редактор</li>
+            <li><span className="auth-benefit-icon"><FrameIcon name="timeline" /></span>Задания вместо пассивного просмотра</li>
+            <li><span className="auth-benefit-icon"><FrameIcon name="folder" /></span>Работы складываются в портфолио</li>
+            <li><span className="auth-benefit-icon"><FrameIcon name="certificate" /></span>Проверяемые сертификаты</li>
           </ul>
-        </div>
+        </section>
 
-        {/* Правая панель — форма */}
-        <div className="auth-card">
-          <h2>Регистрация</h2>
-          <p className="auth-card-sub">
-            Создай аккаунт и выбери стартовую траекторию.
-          </p>
-
+        <section className="auth-card auth-card--wide" aria-labelledby="register-form-heading">
+          <h2 id="register-form-heading">Регистрация</h2>
+          <p className="auth-card-sub">Заполните данные или выберите сервис для быстрой регистрации.</p>
           <form className="auth-form" onSubmit={handleRegister}>
-            {error && <div className="auth-error">{error}</div>}
-
-            <label className="auth-field">
-              <span>Имя пользователя</span>
-              <input
-                type="text"
-                placeholder="Например: Islam"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                required
-              />
-            </label>
-
-            <label className="auth-field">
-              <span>Email</span>
-              <input
-                type="email"
-                placeholder="example@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                aria-invalid={!emailLooksValid}
-                required
-              />
-              {!emailLooksValid && (
-                <small className="auth-field-hint error">
-                  Email должен быть в формате name@example.com.
-                </small>
-              )}
-            </label>
-
-            <label className="auth-field">
-              <span>Телефон <em className="auth-optional">(необязательно)</em></span>
-              <input
-                type="tel"
-                placeholder="+7 777 000 00 00"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                autoComplete="tel"
-              />
-            </label>
-
-            <label className="auth-field">
-              <span>Пароль</span>
-              <input
-                type="password"
-                placeholder="Минимум 6 символов"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                required
-              />
-              <small
-                className={
-                  passwordIsStrongEnough
-                    ? "auth-field-hint success"
-                    : "auth-field-hint"
-                }
-              >
-                {passwordIsStrongEnough
-                  ? "Пароль подходит."
-                  : "Минимум 6 символов для безопасного входа."}
-              </small>
-            </label>
-
-            <div className="auth-onboarding">
-              <div className="auth-onboarding-head">
-                <span>Мини-опрос</span>
-                <strong>{recommendedTrack}</strong>
-              </div>
-
-              <fieldset>
-                <legend>Какой софт хочешь освоить?</legend>
-                <div className="auth-choice-grid">
-                  {softwareOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={
-                        preferredSoftware === option.value
-                          ? "auth-choice active"
-                          : "auth-choice"
-                      }
-                      onClick={() => setPreferredSoftware(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset>
-                <legend>Твой уровень</legend>
-                <div className="auth-choice-grid">
-                  {levelOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={
-                        experienceLevel === option.value
-                          ? "auth-choice active"
-                          : "auth-choice"
-                      }
-                      onClick={() => setExperienceLevel(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset>
-                <legend>Зачем тебе монтаж?</legend>
-                <div className="auth-choice-grid">
-                  {goalOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={
-                        learningGoal === option.value
-                          ? "auth-choice active"
-                          : "auth-choice"
-                      }
-                      onClick={() => setLearningGoal(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-
+            {error && <div className="auth-error" role="alert">{error}</div>}
+            <label className="auth-field"><span>Имя пользователя</span><input type="text" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" placeholder="Например, Ислам" required /></label>
+            <label className="auth-field"><span>Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" aria-invalid={Boolean(email) && !EMAIL_RE.test(email.trim())} placeholder="name@example.com" required /></label>
+            <label className="auth-field"><span>Телефон <em className="auth-optional">необязательно</em></span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" placeholder="+7 777 000 00 00" /></label>
+            <label className="auth-field"><span>Пароль</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} placeholder="От 8 символов" required /><small className={password.length >= 8 ? "auth-field-hint success" : "auth-field-hint"}>{password.length >= 8 ? "Длина пароля подходит." : "Используйте от 8 до 128 символов."}</small></label>
+            <div className="auth-onboarding"><div className="auth-onboarding-head"><span>Стартовая траектория</span><strong>Ответы можно изменить позже в профиле.</strong></div>{choiceGroup("Какой редактор хотите освоить?", softwareOptions, preferredSoftware, setPreferredSoftware)}{choiceGroup("Ваш уровень", levelOptions, experienceLevel, setExperienceLevel)}{choiceGroup("Зачем вам монтаж?", goalOptions, learningGoal, setLearningGoal)}</div>
             <TurnstileBox onVerify={setTurnstileToken} />
-
-            <button type="submit" className="auth-submit" disabled={loading}>
-              {loading ? "Создаём аккаунт..." : "Зарегистрироваться"}
-            </button>
+            <button type="submit" className="auth-submit" disabled={loading}>{loading ? "Создаём аккаунт…" : "Зарегистрироваться"}</button>
           </form>
-
-          <p className="auth-footer-link">
-            Уже есть аккаунт? <Link to="/login">Войти</Link>
-          </p>
-        </div>
+          <OAuthButtons action="Зарегистрироваться" />
+          <p className="auth-footer-link">Уже есть аккаунт? <Link to="/login">Войти</Link></p>
+        </section>
       </div>
     </main>
   );

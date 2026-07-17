@@ -20,11 +20,9 @@ export async function getSupportMessages() {
 
 export async function sendSupportMessage(data: {
   text: string;
-  from: "user" | "admin";
   name?: string;
   email?: string;
   topic?: string;
-  userId?: number | null;
 }) {
   const response = await api.post("/support", data);
   return response.data.data as SupportMessage;

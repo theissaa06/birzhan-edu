@@ -1,26 +1,12 @@
-# Frame School Admin Access
+# Frame School privileged access
 
-Use this only for owner/developer recovery or initial production setup.
+Routine `ADMIN` grants are synchronized only from existing confirmed accounts in `config/admins.json`. Keep candidates in `pending` until their email ownership is verified, then move the exact email to `confirmed`.
 
-1. Set backend env variables:
+The web interface follows this matrix:
 
-```bash
-ADMIN_GRANT_EMAIL=admin@birzhan-edu.com
-ADMIN_GRANT_USERNAME=Frame School Admin
-ADMIN_GRANT_PASSWORD=<strong temporary password>
-ADMIN_GRANT_BADGES=ADMIN,OWNER,DEVELOPER
-```
+- `ADMIN` moderates users, content, reviews, support, and announcements;
+- `DEVELOPER` can grant `ADMIN` and manage manual Premium overrides;
+- `OWNER` can grant `DEVELOPER`;
+- the web interface never grants or removes `OWNER`.
 
-2. Run from `backend`:
-
-```bash
-npm run admin:grant
-```
-
-3. Log in once, change the password, then remove `ADMIN_GRANT_PASSWORD` from the environment.
-
-Notes:
-
-- `OWNER` and `DEVELOPER` accounts cannot be blocked or deleted by another admin.
-- The script never removes Premium, progress, submissions, bonuses, or certificates.
-- If `ADMIN_GRANT_PASSWORD` is omitted for an existing user, only role/badges are repaired.
+For emergency `OWNER` or `DEVELOPER` recovery, follow `OWNER_ROLE_INSTRUCTIONS.md`. Never leave `ADMIN_GRANT_*` values in Layero after the command finishes.

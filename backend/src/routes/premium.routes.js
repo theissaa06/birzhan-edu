@@ -1,542 +1,258 @@
+const crypto = require("crypto");
 const express = require("express");
-const router = express.Router();
 const prisma = require("../config/prisma");
+const { authMiddleware, adminMiddleware } = require("../middleware/auth.middleware");
 const {
-  authMiddleware,
-  adminMiddleware,
-} = require("../middleware/auth.middleware");
+  getPremiumAccess,
+  reconcilePremiumForUser,
+  recordPaidSubscription,
+  runPremiumMaintenance,
+  randomIdempotencyKey,
+} = require("../services/premium.service");
+const { writeAudit } = require("../utils/audit");
 
-const PREMIUM_PLAN = "Premium PRO";
-const DEFAULT_AMOUNT = 4990;
-const DEFAULT_CURRENCY = "KZT";
-const PREMIUM_DAYS = 30;
-const PREMIUM_GRACE_DAYS = 1;
-const PAYMENT_PROVIDER = process.env.PAYMENT_PROVIDER || "cloudpayments";
+const router = express.Router();
 
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
+const PROVIDERS = Object.freeze({
+  cloudpayments: {
+    secretEnv: "CLOUDPAYMENTS_API_SECRET",
+    currency: "RUB",
+    amountEnv: "PREMIUM_AMOUNT_RUB",
+    defaultAmount: 990,
+  },
+  tiptoppay: {
+    secretEnv: "TIPTOPPAY_API_SECRET",
+    currency: "KZT",
+    amountEnv: "PREMIUM_AMOUNT_KZT",
+    defaultAmount: 4990,
+  },
+});
 
-function getPremiumWindow(user, now = new Date()) {
-  if (!user?.premiumUntil) {
-    return {
-      paidUntil: null,
-      graceUntil: null,
-      isPaidActive: false,
-      isGracePeriod: false,
-      isAccessActive: false,
-      status: "free",
-    };
-  }
-
-  const paidUntil = new Date(user.premiumUntil);
-  const graceUntil = addDays(paidUntil, PREMIUM_GRACE_DAYS);
-  const isPaidActive = paidUntil > now;
-  const isGracePeriod = !isPaidActive && graceUntil > now;
-
+function publicStatus(result) {
   return {
-    paidUntil,
-    graceUntil,
-    isPaidActive,
-    isGracePeriod,
-    isAccessActive: isPaidActive || isGracePeriod,
-    status: isPaidActive ? "active" : isGracePeriod ? "grace" : "expired",
+    userId: result.user.id,
+    username: result.user.username,
+    email: result.user.email,
+    isPremium: result.active,
+    premiumStatus: result.status,
+    source: result.source,
+    premiumPlan: result.plan,
+    premiumStarted: result.user.premiumStarted,
+    premiumUntil: result.paidUntil,
+    graceUntil: result.graceUntil,
+    needsPayment: result.status === "grace",
+    override: result.override
+      ? {
+          mode: result.override.mode,
+          validUntil: result.override.validUntil,
+          reason: result.override.reason,
+        }
+      : null,
   };
 }
 
-function hasPremiumAccess(user) {
-  if (user.role === "ADMIN") return true;
-  return getPremiumWindow(user).isAccessActive;
+function secureEqual(left, right) {
+  const a = Buffer.from(String(left || ""));
+  const b = Buffer.from(String(right || ""));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-function isPaidPremiumActive(user) {
-  if (!user.premiumUntil) return false;
-  return getPremiumWindow(user).isAccessActive;
-}
+function verifyProviderSignature(req, providerName) {
+  const provider = PROVIDERS[providerName];
+  const secret = String(process.env[provider.secretEnv] || "");
+  if (!secret) return { valid: false, reason: "missing-secret" };
 
-function toPremiumStatus(user) {
-  const window = getPremiumWindow(user);
-  const adminAccess = user.role === "ADMIN" && !user.premiumUntil;
-  const active = adminAccess ? false : window.isAccessActive;
+  const supplied = String(
+    req.headers["content-hmac"] ||
+      req.headers["x-content-hmac"] ||
+      req.headers["x-frame-signature"] ||
+      "",
+  ).trim();
+  if (!supplied) return { valid: false, reason: "missing-signature" };
 
+  const payload = req.rawBody || Buffer.from(
+    typeof req.body === "string" ? req.body : JSON.stringify(req.body || {}),
+  );
+  const expectedBase64 = crypto.createHmac("sha256", secret).update(payload).digest("base64");
+  const expectedHex = crypto.createHmac("sha256", secret).update(payload).digest("hex");
   return {
-    userId: user.id,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    isPremium: active,
-    adminAccess,
-    premiumStatus: adminAccess ? "admin" : window.status,
-    isGracePeriod: window.isGracePeriod,
-    premiumPlan: active ? user.premiumPlan || PREMIUM_PLAN : null,
-    premiumStarted: user.premiumStarted,
-    premiumUntil: user.premiumUntil,
-    graceUntil: window.graceUntil,
-    needsPayment: window.isGracePeriod,
+    valid: secureEqual(supplied, expectedBase64) || secureEqual(supplied, expectedHex),
+    reason: "signature-mismatch",
   };
 }
 
-function isOwnerOrAdmin(user, reqUser) {
-  if (reqUser?.role === "ADMIN" || user?.role === "ADMIN") return true;
-  const ownerId = Number(process.env.OWNER_ID || 0);
-  const ownerEmail = String(process.env.OWNER_EMAIL || "").trim().toLowerCase();
-  return (
-    (ownerId > 0 && user?.id === ownerId) ||
-    (ownerEmail && String(user?.email || "").toLowerCase() === ownerEmail)
-  );
-}
-
-function getCloudPaymentsUserId(body = {}) {
-  const rawData = body.Data || body.data || {};
-  const parsedData =
-    typeof rawData === "string"
-      ? (() => {
-          try {
-            return JSON.parse(rawData);
-          } catch {
-            return {};
-          }
-        })()
-      : rawData;
-
-  return Number(parsedData.userId || body.AccountId?.replace?.(/\D/g, "") || body.userId);
-}
-
-function verifyCloudPaymentsRequest(req) {
-  const secret = process.env.CLOUDPAYMENTS_API_SECRET;
-  if (!secret) return false;
-
-  const frameSecret = req.headers["x-frame-payment-secret"];
-  if (frameSecret && frameSecret === secret) return true;
-
-  const auth = String(req.headers.authorization || "");
-  if (!auth.startsWith("Basic ")) return false;
-
-  try {
-    const decoded = Buffer.from(auth.slice(6), "base64").toString("utf8");
-    const [, password] = decoded.split(":");
-    return password === secret;
-  } catch {
-    return false;
+function parseProviderPayload(body = {}) {
+  let data = body.Data || body.data || {};
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch { data = {}; }
   }
+
+  return {
+    userId: Number(data.userId || body.userId || String(body.AccountId || "").replace(/\D/g, "")),
+    transactionId: String(body.TransactionId || body.transactionId || body.InvoiceId || "").slice(0, 120),
+    amount: Number(body.Amount ?? body.amount),
+    currency: String(body.Currency || body.currency || "").toUpperCase(),
+    status: String(body.Status || body.status || "Completed").toLowerCase(),
+  };
 }
 
-function requiresWebhookActivation(provider) {
-  const normalizedProvider = String(provider || "").toLowerCase();
-  return ["cloudpayments", "tiptoppay"].some((name) =>
-    normalizedProvider.includes(name),
-  );
+async function handleProviderWebhook(req, res, providerName) {
+  const config = PROVIDERS[providerName];
+  const signature = verifyProviderSignature(req, providerName);
+  if (!signature.valid) {
+    console.warn("[Premium] Webhook rejected", { providerName, reason: signature.reason });
+    return res.status(signature.reason === "missing-secret" ? 503 : 401).json({
+      success: false,
+      code: "PAYMENT_SIGNATURE_INVALID",
+      message: "Webhook signature is invalid.",
+    });
+  }
+
+  const payload = parseProviderPayload(req.body || {});
+  const expectedAmount = Number(process.env[config.amountEnv] || config.defaultAmount);
+  if (!Number.isInteger(payload.userId) || payload.userId <= 0 || !payload.transactionId) {
+    return res.status(400).json({ success: false, code: "PAYMENT_PAYLOAD_INVALID", message: "Missing payment identifiers." });
+  }
+  if (payload.currency !== config.currency || payload.amount !== expectedAmount) {
+    return res.status(400).json({
+      success: false,
+      code: "PAYMENT_AMOUNT_MISMATCH",
+      message: "Payment amount or currency does not match the selected plan.",
+    });
+  }
+  if (!["completed", "completed_successfully", "paid", "authorized"].includes(payload.status)) {
+    return res.status(202).json({ success: true, accepted: false, message: "Payment is not completed yet." });
+  }
+
+  const result = await recordPaidSubscription({
+    userId: payload.userId,
+    provider: providerName,
+    transactionId: payload.transactionId,
+    amount: Math.round(payload.amount),
+    currency: payload.currency,
+    metadata: { event: req.body },
+  });
+  return res.json({ success: true, code: 0, reused: result.reused });
 }
 
-async function activatePremiumTransaction(tx, {
-  userId,
-  provider,
-  transactionId,
-  amount,
-  currency,
-  plan,
-  metadata,
-}) {
-  const existingTransaction = await tx.paymentTransaction.findUnique({
-    where: {
-      provider_transactionId: {
-        provider,
-        transactionId,
+router.get("/configuration", (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      kz: {
+        provider: "tiptoppay",
+        currency: "KZT",
+        amount: Number(process.env.PREMIUM_AMOUNT_KZT || 4990),
+        configured: Boolean(process.env.TIPTOPPAY_API_SECRET),
+      },
+      ru: {
+        provider: "cloudpayments",
+        currency: "RUB",
+        amount: Number(process.env.PREMIUM_AMOUNT_RUB || 990),
+        configured: Boolean(process.env.CLOUDPAYMENTS_API_SECRET),
       },
     },
   });
-
-  if (existingTransaction) {
-    const currentUser = await tx.user.findUnique({ where: { id: userId } });
-    return { user: currentUser, reused: true };
-  }
-
-  const now = new Date();
-  const currentUser = await tx.user.findUnique({
-    where: { id: userId },
-    select: { premiumUntil: true },
-  });
-  const currentUntil = currentUser?.premiumUntil
-    ? new Date(currentUser.premiumUntil)
-    : null;
-  const periodStart = currentUntil && currentUntil > now ? currentUntil : now;
-  const premiumUntil = addDays(periodStart, PREMIUM_DAYS);
-
-  await tx.paymentTransaction.create({
-    data: {
-      userId,
-      provider,
-      transactionId,
-      plan,
-      amount,
-      currency,
-      status: "paid",
-      metadata,
-    },
-  });
-
-  const user = await tx.user.update({
-    where: { id: userId },
-    data: {
-      premiumPlan: plan,
-      premiumStarted: now,
-      premiumUntil,
-    },
-  });
-
-  return { user, reused: false };
-}
-
-async function expireOverduePremiumAccess(client = prisma) {
-  const cutoff = addDays(new Date(), -PREMIUM_GRACE_DAYS);
-
-  const result = await client.user.updateMany({
-    where: {
-      premiumUntil: { lte: cutoff },
-      OR: [
-        { premiumPlan: { not: null } },
-        { premiumStarted: { not: null } },
-      ],
-    },
-    data: {
-      premiumPlan: null,
-      premiumStarted: null,
-      premiumUntil: null,
-    },
-  });
-
-  if (result.count > 0) {
-    console.log("[Premium] Expired overdue subscriptions", {
-      count: result.count,
-      cutoff: cutoff.toISOString(),
-    });
-  }
-
-  return result;
-}
-
-async function getUserOr404(userId, res) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      role: true,
-      premiumPlan: true,
-      premiumStarted: true,
-      premiumUntil: true,
-    },
-  });
-
-  if (!user) {
-    res.status(404).json({
-      success: false,
-      message: "Пользователь не найден.",
-    });
-    return null;
-  }
-
-  return user;
-}
-
-function requirePremiumAccess(req, res, next) {
-  if (req.user?.role === "ADMIN") return next();
-
-  return prisma.user
-    .findUnique({
-      where: { id: req.user.id },
-      select: { role: true, premiumUntil: true },
-    })
-    .then((user) => {
-      if (!user || !isPaidPremiumActive(user)) {
-        return res.status(402).json({
-          success: false,
-          message: "Для доступа нужен активный Premium PRO.",
-        });
-      }
-
-      return next();
-    })
-    .catch((error) => {
-      console.error("[Premium] Ошибка проверки доступа", {
-        error: error?.message || error,
-        userId: req.user?.id,
-      });
-
-      return res.status(500).json({
-        success: false,
-        message: "Ошибка проверки Premium-доступа.",
-      });
-    });
-}
+});
 
 router.get("/status", authMiddleware, async (req, res) => {
   try {
-    await expireOverduePremiumAccess();
-
-    const user = await getUserOr404(req.user.id, res);
-    if (!user) return;
-
-    return res.json({
-      success: true,
-      data: toPremiumStatus(user),
-    });
+    const result = await reconcilePremiumForUser(req.user.id);
+    if (!result) {
+      return res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
+    }
+    return res.json({ success: true, data: publicStatus(result) });
   } catch (error) {
-    console.error("[Premium] Ошибка статуса", {
-      error: error?.message || error,
-      userId: req.user?.id,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка при проверке Premium-статуса.",
-    });
+    console.error("[Premium] Status failed", error?.stack || error);
+    return res.status(500).json({ success: false, code: "PREMIUM_STATUS_FAILED", message: "Не удалось проверить Premium." });
   }
 });
 
 router.get("/status/:userId", authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    await expireOverduePremiumAccess();
-
-    const userId = Number(req.params.userId);
-
-    if (!Number.isInteger(userId) || userId <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Некорректный ID пользователя.",
-      });
-    }
-
-    const user = await getUserOr404(userId, res);
-    if (!user) return;
-
-    return res.json({
-      success: true,
-      data: toPremiumStatus(user),
-    });
-  } catch (error) {
-    console.error("[Premium] Ошибка статуса пользователя", {
-      error: error?.message || error,
-      requesterId: req.user?.id,
-      targetId: req.params.userId,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка при проверке Premium-статуса.",
-    });
+  const userId = Number(req.params.userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, code: "USER_ID_INVALID", message: "Некорректный ID пользователя." });
   }
+  const result = await reconcilePremiumForUser(userId);
+  return result
+    ? res.json({ success: true, data: publicStatus(result) })
+    : res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
 });
 
-router.post("/activate", authMiddleware, async (req, res) => {
-  try {
-    const {
-      transactionId,
-      provider = "demo",
-      amount = DEFAULT_AMOUNT,
-      currency = DEFAULT_CURRENCY,
-      plan = PREMIUM_PLAN,
-    } = req.body || {};
+router.post("/cloudpayments/pay", express.urlencoded({ extended: true }), (req, res) =>
+  handleProviderWebhook(req, res, "cloudpayments").catch((error) => {
+    console.error("[Premium] CloudPayments webhook failed", error?.stack || error);
+    res.status(500).json({ success: false, code: "PAYMENT_WEBHOOK_FAILED", message: "Webhook processing failed." });
+  }),
+);
 
-    const safeProvider = String(provider || "demo").trim().slice(0, 64);
-    const safePlan = String(plan || PREMIUM_PLAN).trim().slice(0, 80);
-    const safeCurrency = String(currency || DEFAULT_CURRENCY).trim().slice(0, 8);
-    const safeAmount = Number.isInteger(Number(amount))
-      ? Number(amount)
-      : DEFAULT_AMOUNT;
-    const safeTransactionId = String(
-      transactionId || `${safeProvider}-${req.user.id}-${Date.now()}`,
-    )
-      .trim()
-      .slice(0, 120);
-
-    const currentUser = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { id: true, email: true, role: true },
-    });
-
-    const devOverrideAllowed =
-      process.env.ALLOW_PREMIUM_DEV_OVERRIDE === "true" &&
-      isOwnerOrAdmin(currentUser, req.user);
-
-    if (
-      PAYMENT_PROVIDER === "cloudpayments" &&
-      requiresWebhookActivation(safeProvider) &&
-      !devOverrideAllowed
-    ) {
-      return res.status(202).json({
-        success: false,
-        message:
-          "Оплата должна подтверждаться серверным webhook CloudPayments. Если деньги списались, Premium активируется после подтверждения платежа.",
-      });
-    }
-
-    if (safeProvider === "demo" && !devOverrideAllowed) {
-      return res.status(403).json({
-        success: false,
-        message: "Demo-активация Premium доступна только владельцу или администратору.",
-      });
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-      return activatePremiumTransaction(tx, {
-        userId: req.user.id,
-        provider: safeProvider,
-        transactionId: safeTransactionId,
-        plan: safePlan,
-        amount: safeAmount,
-        currency: safeCurrency,
-        metadata: { source: "manual-activate" },
-      });
-    });
-
-    return res.json({
-      success: true,
-      message: result.reused
-        ? "Premium уже был активирован по этой транзакции."
-        : "Premium PRO успешно активирован.",
-      data: toPremiumStatus(result.user),
-    });
-  } catch (error) {
-    console.error("[Premium] Ошибка активации", {
-      error: error?.message || error,
-      userId: req.user?.id,
-      provider: req.body?.provider,
-      transactionId: req.body?.transactionId,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка при активации Premium.",
-    });
-  }
-});
-
-router.post("/cloudpayments/pay", express.urlencoded({ extended: true }), async (req, res) => {
-  try {
-    if (!verifyCloudPaymentsRequest(req)) {
-      return res.status(401).json({ code: 13, message: "Unauthorized webhook" });
-    }
-
-    const userId = getCloudPaymentsUserId(req.body || {});
-    const transactionId = String(
-      req.body.TransactionId ||
-        req.body.transactionId ||
-        req.body.InvoiceId ||
-        `cloudpayments-${Date.now()}`,
-    ).slice(0, 120);
-    const amount = Number(req.body.Amount || req.body.amount || DEFAULT_AMOUNT);
-    const currency = String(req.body.Currency || req.body.currency || DEFAULT_CURRENCY).slice(0, 8);
-
-    if (!Number.isInteger(userId) || userId <= 0) {
-      return res.json({ code: 10, message: "Invalid userId" });
-    }
-
-    const result = await prisma.$transaction((tx) =>
-      activatePremiumTransaction(tx, {
-        userId,
-        provider: "cloudpayments",
-        transactionId,
-        amount: Number.isFinite(amount) ? Math.round(amount) : DEFAULT_AMOUNT,
-        currency,
-        plan: PREMIUM_PLAN,
-        metadata: req.body || {},
-      }),
-    );
-
-    if (!result.user) {
-      return res.json({ code: 10, message: "User not found" });
-    }
-
-    return res.json({ code: 0 });
-  } catch (error) {
-    console.error("[Premium] CloudPayments webhook error", {
-      error: error?.message || error,
-      body: req.body,
-    });
-
-    return res.json({ code: 13, message: "Webhook processing error" });
-  }
-});
+router.post("/tiptoppay/pay", express.urlencoded({ extended: true }), (req, res) =>
+  handleProviderWebhook(req, res, "tiptoppay").catch((error) => {
+    console.error("[Premium] TipTopPay webhook failed", error?.stack || error);
+    res.status(500).json({ success: false, code: "PAYMENT_WEBHOOK_FAILED", message: "Webhook processing failed." });
+  }),
+);
 
 router.post("/cancel", authMiddleware, async (req, res) => {
-  try {
-    const user = await prisma.$transaction(async (tx) => {
-      await tx.paymentTransaction.create({
-        data: {
-          userId: req.user.id,
-          provider: "internal",
-          transactionId: `cancel-${req.user.id}-${Date.now()}`,
-          plan: PREMIUM_PLAN,
-          amount: 0,
-          currency: DEFAULT_CURRENCY,
-          status: "cancelled",
-        },
-      });
-
-      return tx.user.update({
-        where: { id: req.user.id },
-        data: {
-          premiumPlan: null,
-          premiumStarted: null,
-          premiumUntil: null,
-        },
-      });
+  const reason = String(req.body?.reason || "Отмена продления пользователем").trim().slice(0, 300);
+  const subscriptions = await prisma.subscription.findMany({
+    where: { userId: req.user.id, status: { in: ["ACTIVE", "GRACE"] } },
+  });
+  await prisma.$transaction(async (tx) => {
+    await tx.subscription.updateMany({
+      where: { userId: req.user.id, status: { in: ["ACTIVE", "GRACE"] } },
+      data: { status: "CANCELED", canceledAt: new Date() },
     });
-
-    return res.json({
-      success: true,
-      message: "Premium PRO отключён.",
-      data: toPremiumStatus(user),
+    await tx.subscriptionEvent.create({
+      data: {
+        userId: req.user.id,
+        type: "RENEWAL_CANCELLATION_REQUESTED",
+        idempotencyKey: randomIdempotencyKey(`cancel:${req.user.id}`),
+        payload: { reason, retainedUntil: subscriptions[0]?.expiresAt || null },
+      },
     });
-  } catch (error) {
-    console.error("[Premium] Ошибка отключения", {
-      error: error?.message || error,
-      userId: req.user?.id,
+    await writeAudit(tx, {
+      req,
+      action: "premium.cancel_requested",
+      entityType: "Subscription",
+      targetUserId: req.user.id,
+      metadata: { reason },
     });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка при отключении Premium.",
-    });
-  }
+  });
+  const result = await getPremiumAccess(req.user.id);
+  return res.json({
+    success: true,
+    message: "Автопродление помечено как отменённое. Оплаченный доступ сохранён до конца периода.",
+    data: publicStatus(result),
+  });
 });
 
-router.get("/features", authMiddleware, requirePremiumAccess, async (req, res) => {
+async function requirePremiumAccess(req, res, next) {
+  try {
+    const result = await reconcilePremiumForUser(req.user.id);
+    if (!result?.active) {
+      return res.status(402).json({ success: false, code: "PREMIUM_REQUIRED", message: "Для доступа нужен активный Premium." });
+    }
+    req.premium = result;
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+}
+
+router.get("/features", authMiddleware, requirePremiumAccess, (req, res) => {
   res.json({
     success: true,
-    data: {
-      webinars: true,
-      mentorReview: true,
-      portfolioPack: true,
-      verifiedCertificate: true,
-    },
+    data: { webinars: true, mentorReview: true, portfolioPack: true, verifiedCertificate: true },
   });
 });
 
 router.post("/maintenance/expire", authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    const result = await expireOverduePremiumAccess();
-    return res.json({
-      success: true,
-      expiredCount: result.count,
-    });
-  } catch (error) {
-    console.error("[Premium] Ошибка maintenance expire", {
-      error: error?.message || error,
-      adminId: req.user?.id,
-    });
-
-    return res.status(500).json({
-      success: false,
-      message: "Ошибка проверки истёкших Premium-подписок.",
-    });
-  }
+  const result = await runPremiumMaintenance();
+  return res.json({ success: true, data: result });
 });
 
-router.expireOverduePremiumAccess = expireOverduePremiumAccess;
+router.expireOverduePremiumAccess = runPremiumMaintenance;
+router.requirePremiumAccess = requirePremiumAccess;
 
 module.exports = router;

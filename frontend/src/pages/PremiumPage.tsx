@@ -47,63 +47,6 @@ const PAYMENT_WIDGET_SRC =
     ? "https://widget.cloudpayments.ru/bundles/cloudpayments.js"
     : "https://widget.tiptoppay.kz/bundles/widget.js";
 
-function savePremiumToLocalStorage(data?: PremiumStatus | null) {
-  localStorage.setItem("premium", "true");
-  localStorage.setItem("isPremium", "true");
-  localStorage.setItem("premiumPlan", data?.premiumPlan || "Premium PRO");
-
-  if (data?.premiumUntil) {
-    localStorage.setItem("premiumUntil", data.premiumUntil);
-  }
-
-  const savedUser = localStorage.getItem("user");
-
-  if (savedUser) {
-    try {
-      const user = JSON.parse(savedUser);
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...user,
-          isPremium: true,
-          premiumPlan: data?.premiumPlan || "Premium PRO",
-          premiumUntil: data?.premiumUntil || null,
-        }),
-      );
-    } catch {
-      // Если user сломан — просто не трогаем.
-    }
-  }
-}
-
-function removePremiumFromLocalStorage() {
-  localStorage.setItem("premium", "false");
-  localStorage.setItem("isPremium", "false");
-  localStorage.removeItem("premiumPlan");
-  localStorage.removeItem("premiumUntil");
-
-  const savedUser = localStorage.getItem("user");
-
-  if (savedUser) {
-    try {
-      const user = JSON.parse(savedUser);
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...user,
-          isPremium: false,
-          premiumPlan: null,
-          premiumUntil: null,
-        }),
-      );
-    } catch {
-      // Если user сломан — просто не трогаем.
-    }
-  }
-}
-
 function isRealPremiumStatus(data?: PremiumStatus | null) {
   if (!data?.isPremium) return false;
   if (data.premiumPlan === "admin-demo") return false;
@@ -142,7 +85,6 @@ export default function PremiumPage() {
 
       if (!localStorage.getItem("token")) {
         setPremium(null);
-        removePremiumFromLocalStorage();
         setError(
           "Войдите в аккаунт, чтобы проверить Premium-статус и оформить подписку.",
         );
@@ -152,17 +94,11 @@ export default function PremiumPage() {
       const status = await getPremiumStatus();
       setPremium(status);
 
-      if (!isRealPremiumStatus(status)) {
-        removePremiumFromLocalStorage();
-      } else {
-        savePremiumToLocalStorage(status);
-      }
     } catch (err) {
       console.error("Ошибка Premium status:", err);
       setError(
         "Войдите в аккаунт, чтобы проверить Premium-статус и оформить подписку.",
       );
-      removePremiumFromLocalStorage();
     } finally {
       setLoading(false);
     }
@@ -190,7 +126,6 @@ export default function PremiumPage() {
     });
 
     setPremium(status);
-    savePremiumToLocalStorage(status);
     setSuccessMessage("Premium PRO успешно оплачен и активирован!");
   }
 
@@ -203,7 +138,6 @@ export default function PremiumPage() {
       const status = await cancelPremium();
 
       setPremium(status);
-      removePremiumFromLocalStorage();
       setSuccessMessage("Premium отключён для демонстрации.");
     } catch (err) {
       console.error("Ошибка отключения Premium:", err);

@@ -49,10 +49,6 @@ function getUserStorageKey(key: string) {
   return `${key}:user:${getCurrentUserKey()}`;
 }
 
-function getLessonCompletedKey(lessonId: string | number) {
-  return getUserStorageKey(`lesson-completed-${lessonId}`);
-}
-
 function getCourseLastLessonKey(courseId: string | number) {
   return getUserStorageKey(`course-last-lesson-${courseId}`);
 }
@@ -64,7 +60,6 @@ export default function CoursesPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [progressKey, setProgressKey] = useState(0);
 
   useEffect(() => {
     async function loadProgress() {
@@ -112,20 +107,6 @@ export default function CoursesPage() {
     loadCourses();
   }, []);
 
-  useEffect(() => {
-    function updateProgress() {
-      setProgressKey((prev) => prev + 1);
-    }
-
-    window.addEventListener("storage", updateProgress);
-    window.addEventListener("focus", updateProgress);
-
-    return () => {
-      window.removeEventListener("storage", updateProgress);
-      window.removeEventListener("focus", updateProgress);
-    };
-  }, []);
-
   const filteredCourses = useMemo(() => {
     return courses.filter((course) => {
       const matchesCategory =
@@ -140,24 +121,13 @@ export default function CoursesPage() {
   }, [courses, activeCategory, search]);
 
   function getCourseProgress(course: Course) {
-    progressKey;
-
     const lessons = [...(course.lessons || [])].sort(
       (a, b) => (a.orderNumber || 0) - (b.orderNumber || 0),
     );
 
     const total = lessons.length;
 
-    const completedLessonIds = lessons
-      .filter((lesson) => {
-        const localDone =
-          localStorage.getItem(getLessonCompletedKey(lesson.id)) === "true";
-
-        const serverDone = serverProgress.includes(Number(lesson.id));
-
-        return localDone || serverDone;
-      })
-      .map((lesson) => lesson.id);
+    const completedLessonIds = lessons.filter((lesson) => serverProgress.includes(Number(lesson.id))).map((lesson) => lesson.id);
 
     const completed = completedLessonIds.length;
     const percent = total > 0 ? Math.round((completed / total) * 100) : 0;

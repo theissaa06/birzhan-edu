@@ -1,9 +1,11 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 require("dotenv").config();
 
 const prisma = require("./config/prisma");
 const authRoutes = require("./routes/auth.routes");
+const oauthRoutes = require("./routes/oauth.routes");
 const coursesRoutes = require("./routes/courses.routes");
 const lessonRoutes = require("./routes/lesson.routes");
 const userRoutes = require("./routes/users.routes");
@@ -16,124 +18,88 @@ const applicationRoutes = require("./routes/application.routes");
 const adminRoutes = require("./routes/admin.routes");
 const aiRoutes = require("./routes/ai");
 const submissionsRoutes = require("./routes/submissions.routes");
+const certificateRoutes = require("./routes/certificate.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const announcementRoutes = require("./routes/announcement.routes");
+const webinarRoutes = require("./routes/webinar.routes");
+const jobRoutes = require("./routes/job.routes");
+const publicRoutes = require("./routes/public.routes");
+const { runMaintenance } = require("./services/maintenance.service");
+const { syncAdminConfig } = require("./services/admin-config.service");
 
 const app = express();
 
 function getTrustProxyValue() {
-  const configuredValue = String(process.env.TRUST_PROXY || "").trim();
-
-  if (!configuredValue) {
-    return process.env.NODE_ENV === "production" ? 1 : false;
-  }
-
-  if (configuredValue === "true") return 1;
-  if (configuredValue === "false") return false;
-
-  const numericValue = Number(configuredValue);
-  return Number.isNaN(numericValue) ? false : numericValue;
+  const value = String(process.env.TRUST_PROXY || "").trim();
+  if (!value) return process.env.NODE_ENV === "production" ? 1 : false;
+  if (value === "true") return 1;
+  if (value === "false") return false;
+  const numeric = Number(value);
+  return Number.isNaN(numeric) ? false : numeric;
 }
 
 app.set("trust proxy", getTrustProxyValue());
+app.disable("x-powered-by");
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
-function getAllowedOrigins() {
-  const configuredOrigins = [
-    process.env.FRONTEND_URL,
-    process.env.FRONTEND_URLS,
-  ]
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  ...[process.env.FRONTEND_URL, process.env.FRONTEND_URLS]
     .filter(Boolean)
-    .flatMap((value) => value.split(","))
+    .flatMap((value) => String(value).split(","))
     .map((origin) => origin.trim().replace(/\/$/, ""))
-    .filter(Boolean);
+    .filter(Boolean),
+]);
 
-  return new Set([
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    ...configuredOrigins,
-  ]);
-}
-
-function isAllowedLocalOrigin(origin) {
+function localDevelopmentOrigin(origin) {
   try {
     const url = new URL(origin);
-    if (url.protocol !== "http:") return false;
-
-    if (["localhost", "127.0.0.1"].includes(url.hostname)) {
-      return true;
-    }
-
-    const isPrivateLanIp =
-      /^10\./.test(url.hostname) ||
-      /^192\.168\./.test(url.hostname) ||
-      /^172\.(1[6-9]|2\d|3[01])\./.test(url.hostname);
-    const isViteDevPort = ["5173", "5174", "4173"].includes(url.port);
-
-    return process.env.NODE_ENV !== "production" && isPrivateLanIp && isViteDevPort;
-  } catch (error) {
-    return false;
-  }
+    const local = ["localhost", "127.0.0.1"].includes(url.hostname) || /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\./.test(url.hostname);
+    return process.env.NODE_ENV !== "production" && url.protocol === "http:" && local && ["5173", "5174", "4173"].includes(url.port);
+  } catch { return false; }
 }
 
-const allowedOrigins = getAllowedOrigins();
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/$/, "");
+    return allowedOrigins.has(normalized) || localDevelopmentOrigin(normalized)
+      ? callback(null, true)
+      : callback(Object.assign(new Error("Origin is not allowed"), { code: "CORS_REJECTED" }));
+  },
+  credentials: true,
+}));
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) return callback(null, true);
+function captureRawBody(req, res, buffer) {
+  req.rawBody = Buffer.from(buffer);
+}
 
-      const normalizedOrigin = origin.replace(/\/$/, "");
-      if (allowedOrigins.has(normalizedOrigin) || isAllowedLocalOrigin(normalizedOrigin)) {
-        return callback(null, true);
-      }
+app.use(express.json({ limit: "1mb", verify: captureRawBody }));
+app.use(express.urlencoded({ limit: "1mb", extended: true, verify: captureRawBody }));
 
-      return callback(new Error(`CORS rejected origin: ${origin}`));
-    },
-    credentials: true,
-  }),
-);
-
-app.use(express.json({ limit: "1mb" }));
-
-app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && "body" in err) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid JSON in request body.",
-    });
-  }
-
-  return next(err);
+app.use((req, res, next) => {
+  const started = process.hrtime.bigint();
+  res.on("finish", () => {
+    const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+    if (elapsedMs > 2000) console.warn("[Performance] Slow request", { method: req.method, path: req.originalUrl, elapsedMs: Math.round(elapsedMs), status: res.statusCode });
+  });
+  next();
 });
 
-async function handleDatabaseHealth(req, res) {
+async function health(req, res) {
+  const startedAt = Date.now();
   try {
     await prisma.$queryRaw`SELECT 1`;
-    return res.json({
-      success: true,
-      service: "frame-school-backend",
-      status: "ok",
-      database: "ok",
-      uptime: Math.round(process.uptime()),
-      timestamp: new Date().toISOString(),
-    });
+    return res.json({ success: true, service: "frame-school-backend", status: "ok", database: "ok", databaseLatencyMs: Date.now() - startedAt, uptime: Math.round(process.uptime()), timestamp: new Date().toISOString() });
   } catch (error) {
-    console.error("[Health] Database check failed", {
-      error: error?.stack || error?.message || error,
-    });
-    return res.status(503).json({
-      success: false,
-      service: "frame-school-backend",
-      status: "error",
-      database: "error",
-      message: "Database is unavailable.",
-    });
+    console.error("[Health] Database check failed", error?.stack || error);
+    return res.status(503).json({ success: false, code: "DATABASE_UNAVAILABLE", service: "frame-school-backend", status: "error", database: "error", message: "Database is unavailable." });
   }
 }
 
-app.get("/health", handleDatabaseHealth);
-app.get("/ready", handleDatabaseHealth);
-app.get("/api/health", handleDatabaseHealth);
-app.get("/api/ready", handleDatabaseHealth);
-
+app.get(["/health", "/ready", "/api/health", "/api/ready"], health);
+app.use("/api/auth/oauth", oauthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", coursesRoutes);
 app.use("/api/lessons", lessonRoutes);
@@ -147,112 +113,52 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/submissions", submissionsRoutes);
+app.use("/api/certificates", certificateRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/announcements", announcementRoutes);
+app.use("/api/webinars", webinarRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/public", publicRoutes);
 
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "Frame School backend is running.",
-    health: "/health",
-    ready: "/ready",
-  });
+app.get("/", (req, res) => res.json({ success: true, message: "Frame School backend is running.", health: "/api/health" }));
+app.use((req, res) => res.status(404).json({ success: false, code: "ROUTE_NOT_FOUND", message: "Route not found." }));
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  if (error instanceof SyntaxError && "body" in error) return res.status(400).json({ success: false, code: "JSON_INVALID", message: "Invalid JSON in request body." });
+  console.error("[Server] Unhandled error", { error: error?.stack || error, path: req.originalUrl, method: req.method });
+  return res.status(error?.code === "CORS_REJECTED" ? 403 : 500).json({ success: false, code: error?.code || "INTERNAL_ERROR", message: error?.code === "CORS_REJECTED" ? "Origin is not allowed." : "Internal server error." });
 });
-
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found.",
-  });
-});
-
-app.use((err, req, res, next) => {
-  console.error("[Server] Unhandled error", {
-    error: err?.stack || err?.message || err,
-    path: req.originalUrl,
-    method: req.method,
-  });
-
-  res.status(500).json({
-    success: false,
-    message: "Internal server error.",
-  });
-});
-
-const PORT = process.env.PORT || 3003;
-const PREMIUM_EXPIRY_INTERVAL_MS = Number(
-  process.env.PREMIUM_EXPIRY_INTERVAL_MS || 60 * 60 * 1000,
-);
-
-async function runPremiumExpiryMaintenance() {
-  if (typeof premiumRoutes.expireOverduePremiumAccess !== "function") return;
-
-  try {
-    await premiumRoutes.expireOverduePremiumAccess();
-  } catch (error) {
-    console.error("[Premium] Scheduled expiry check failed", {
-      error: error?.stack || error?.message || error,
-    });
-  }
-}
-
-function parseKeepAliveUrls() {
-  const publicBackendUrl = process.env.PUBLIC_BACKEND_URL
-    ? `${process.env.PUBLIC_BACKEND_URL.replace(/\/$/, "")}/health`
-    : "";
-
-  const urls = [publicBackendUrl, process.env.KEEP_ALIVE_URLS]
-    .filter(Boolean)
-    .flatMap((value) => String(value).split(","))
-    .map((url) => url.trim())
-    .filter(Boolean);
-
-  return [...new Set(urls)];
-}
 
 function startKeepAlivePings() {
-  const urls = parseKeepAliveUrls();
+  const backend = process.env.PUBLIC_BACKEND_URL ? `${process.env.PUBLIC_BACKEND_URL.replace(/\/$/, "")}/health` : "";
+  const urls = [...new Set([backend, process.env.KEEP_ALIVE_URLS].filter(Boolean).flatMap((value) => String(value).split(",")).map((url) => url.trim()).filter(Boolean))];
   const intervalMs = Number(process.env.KEEP_ALIVE_INTERVAL_MS || 5 * 60 * 1000);
-
-  if (urls.length === 0 || !Number.isFinite(intervalMs) || intervalMs <= 0) {
-    return;
-  }
-
-  const ping = async () => {
-    await Promise.allSettled(
-      urls.map(async (url) => {
-        try {
-          const response = await fetch(url, { method: "GET" });
-          if (!response.ok) {
-            console.warn("[KeepAlive] Ping returned non-OK status", {
-              url,
-              status: response.status,
-            });
-          }
-        } catch (error) {
-          console.warn("[KeepAlive] Ping failed", {
-            url,
-            error: error?.message || error,
-          });
-        }
-      }),
-    );
-  };
-
-  const keepAliveTimer = setInterval(ping, intervalMs);
-  keepAliveTimer.unref?.();
+  if (!urls.length || !Number.isFinite(intervalMs) || intervalMs <= 0) return;
+  const ping = () => Promise.allSettled(urls.map((url) => fetch(url).then((response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); }).catch((error) => console.warn("[KeepAlive] Ping failed", { url, message: error.message }))));
+  const timer = setInterval(ping, intervalMs);
+  timer.unref?.();
   ping();
 }
 
-app.listen(PORT, () => {
-  console.log(`Frame School backend running on port ${PORT}`);
+async function runScheduledMaintenance() {
+  try { await runMaintenance(); } catch (error) { console.error("[Maintenance] Failed", error?.stack || error); }
+}
 
-  runPremiumExpiryMaintenance();
-  startKeepAlivePings();
+function startServer() {
+  const port = Number(process.env.PORT || 3003);
+  return app.listen(port, () => {
+    console.log(`Frame School backend running on port ${port}`);
+    syncAdminConfig().catch((error) => console.error("[AdminConfig] Sync failed", error?.stack || error));
+    runScheduledMaintenance();
+    startKeepAlivePings();
+    const intervalMs = Number(process.env.MAINTENANCE_INTERVAL_MS || 60 * 60 * 1000);
+    if (Number.isFinite(intervalMs) && intervalMs > 0) {
+      const timer = setInterval(runScheduledMaintenance, intervalMs);
+      timer.unref?.();
+    }
+  });
+}
 
-  if (Number.isFinite(PREMIUM_EXPIRY_INTERVAL_MS) && PREMIUM_EXPIRY_INTERVAL_MS > 0) {
-    const premiumExpiryTimer = setInterval(
-      runPremiumExpiryMaintenance,
-      PREMIUM_EXPIRY_INTERVAL_MS,
-    );
-    premiumExpiryTimer.unref?.();
-  }
-});
+if (require.main === module) startServer();
+
+module.exports = { app, startServer };

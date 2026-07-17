@@ -12,6 +12,62 @@ enum Role {
   ADMIN
 }
 
+enum SystemRole {
+  ADMIN
+  DEVELOPER
+  OWNER
+}
+
+enum AccountStatus {
+  ACTIVE
+  DEACTIVATED
+}
+
+enum BanStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum PremiumOverrideMode {
+  FORCE_ENABLED
+  FORCE_DISABLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  GRACE
+  CANCELED
+  EXPIRED
+  PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+}
+
+enum OAuthProvider {
+  GOOGLE
+  APPLE
+  TELEGRAM
+  VK
+}
+
+enum CertificateStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum AnnouncementAudience {
+  ALL
+  USERS
+  PREMIUM
+  STAFF
+}
+
 enum LessonType {
   VIDEO
   TEXT
@@ -19,31 +75,278 @@ enum LessonType {
 }
 
 model User {
-  id               Int              @id @default(autoincrement())
+  id               Int           @id @default(autoincrement())
   username         String
-  email            String           @unique
-  password         String
+  email            String        @unique
+  password         String?
   phone            String?
-  role             Role             @default(USER)
-  badges           String[]         @default([])
+  role             Role          @default(USER)
+  badges           String[]      @default([])
+  accountStatus    AccountStatus @default(ACTIVE)
+  deactivatedAt    DateTime?
   blockedAt        DateTime?
   blockedUntil     DateTime?
   blockedReason    String?
   blockedById      Int?
-  isPhoneVerified  Boolean          @default(false)
-  sessionVersion   Int              @default(0)
+  isPhoneVerified  Boolean       @default(false)
+  sessionVersion   Int           @default(0)
+  isPremium        Boolean       @default(false)
   premiumPlan      String?
   premiumStarted   DateTime?
   premiumUntil     DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  lessonProgress   LessonProgress[]
-  userBonuses      UserBonus[]
-  supportMessages  SupportMessage[]
-  paymentTransactions PaymentTransaction[]
-  passwordResetTokens PasswordResetToken[]
+  lastSeenAt       DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  lessonProgress        LessonProgress[]
+  userBonuses           UserBonus[]
+  supportMessages       SupportMessage[]
+  paymentTransactions   PaymentTransaction[]
+  passwordResetTokens   PasswordResetToken[]
   assignmentSubmissions AssignmentSubmission[]
-  reviews          Review[]
+  reviews               Review[]
+  subscriptions         Subscription[]
+  payments              Payment[]
+  roles                 UserRole[]             @relation("UserRoles")
+  rolesGranted          UserRole[]             @relation("UserRoleGrantor")
+  bansReceived          UserBan[]              @relation("BanTarget")
+  bansIssued            UserBan[]              @relation("BanActor")
+  bansRevoked           UserBan[]              @relation("BanRevoker")
+  auditEntries          AuditLog[]             @relation("AuditActor")
+  auditTargets          AuditLog[]             @relation("AuditTarget")
+  notifications         Notification[]
+  announcementsCreated  Announcement[]         @relation("AnnouncementCreator")
+  announcementReads     AnnouncementRead[]
+  premiumOverride       PremiumOverride?
+  premiumActions        PremiumOverride[]      @relation("PremiumOverrideActor")
+  subscriptionEvents    SubscriptionEvent[]    @relation("SubscriptionEventUser")
+  subscriptionActions   SubscriptionEvent[]    @relation("SubscriptionEventActor")
+  oauthIdentities       OAuthIdentity[]
+  oauthAttempts         OAuthLoginAttempt[]
+  certificates          Certificate[]
+  reviewComments        ReviewComment[]
+  officialReplies       ReviewOfficialReply[]
+  jobApplications       JobApplication[]
+
+  @@index([accountStatus])
+  @@index([blockedUntil])
+}
+
+model UserRole {
+  id          Int        @id @default(autoincrement())
+  userId      Int
+  role        SystemRole
+  grantedById Int?
+  grantedAt   DateTime   @default(now())
+  user        User       @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy   User?      @relation("UserRoleGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, role])
+  @@index([role])
+}
+
+model UserBan {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  actorId     Int?
+  revokedById Int?
+  reason      String
+  status      BanStatus @default(ACTIVE)
+  startsAt    DateTime  @default(now())
+  endsAt      DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation("BanTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?     @relation("BanActor", fields: [actorId], references: [id], onDelete: SetNull)
+  revokedBy   User?     @relation("BanRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([status, endsAt])
+}
+
+model AuditLog {
+  id           BigInt   @id @default(autoincrement())
+  actorId      Int?
+  targetUserId Int?
+  action       String
+  entityType   String
+  entityId     String?
+  before       Json?
+  after        Json?
+  metadata     Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+  actor        User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUser   User?    @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([action, createdAt])
+  @@index([targetUserId, createdAt])
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  type      String
+  title     String
+  message   String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model Announcement {
+  id        Int                  @id @default(autoincrement())
+  title     String
+  message   String
+  audience  AnnouncementAudience @default(ALL)
+  activeFrom DateTime             @default(now())
+  activeUntil DateTime?
+  createdById Int?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  createdBy User?                 @relation("AnnouncementCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reads     AnnouncementRead[]
+
+  @@index([activeFrom, activeUntil])
+}
+
+model AnnouncementRead {
+  id             Int          @id @default(autoincrement())
+  announcementId Int
+  userId         Int
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+}
+
+model Subscription {
+  id          Int                @id @default(autoincrement())
+  userId      Int
+  plan        String
+  price       Int
+  currency    String             @default("KZT")
+  status      SubscriptionStatus @default(PENDING)
+  startedAt   DateTime?
+  expiresAt   DateTime?
+  graceUntil  DateTime?
+  canceledAt  DateTime?
+  provider    String?
+  providerId  String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+  events      SubscriptionEvent[]
+
+  @@unique([provider, providerId])
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+model Payment {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  subscriptionId Int?
+  amount         Int
+  currency       String        @default("KZT")
+  status         PaymentStatus @default(PENDING)
+  provider       String?
+  providerId     String?
+  description    String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model PremiumOverride {
+  id         Int                 @id @default(autoincrement())
+  userId     Int                 @unique
+  mode       PremiumOverrideMode
+  validUntil DateTime?
+  reason     String
+  actorId    Int?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actor      User?               @relation("PremiumOverrideActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([mode, validUntil])
+}
+
+model SubscriptionEvent {
+  id             BigInt        @id @default(autoincrement())
+  subscriptionId Int?
+  userId         Int
+  actorId        Int?
+  type           String
+  idempotencyKey String        @unique
+  payload        Json?
+  createdAt      DateTime      @default(now())
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  user           User          @relation("SubscriptionEventUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor          User?         @relation("SubscriptionEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+model OAuthIdentity {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  provider       OAuthProvider
+  providerUserId String
+  emailSnapshot  String?
+  displayName    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+}
+
+model OAuthLoginAttempt {
+  id               Int           @id @default(autoincrement())
+  provider         OAuthProvider
+  stateHash        String        @unique
+  nonceHash        String?
+  codeVerifier     String?
+  exchangeCodeHash String?       @unique
+  redirectPath     String?
+  userId           Int?
+  expiresAt        DateTime
+  usedAt           DateTime?
+  exchangedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  user             User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([provider, expiresAt])
+}
+
+model Certificate {
+  id             Int               @id @default(autoincrement())
+  code           String            @unique
+  userId         Int
+  courseId       Int
+  recipientName  String
+  courseTitle    String
+  status         CertificateStatus @default(ACTIVE)
+  issuedAt       DateTime          @default(now())
+  revokedAt      DateTime?
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course         Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, courseId])
+  @@index([status, issuedAt])
 }
 
 model Course {
@@ -59,6 +362,7 @@ model Course {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lessons     Lesson[]
+  certificates Certificate[]
 }
 
 model Lesson {
@@ -124,15 +428,43 @@ model UserBonus {
 }
 
 model Review {
+  id            Int                   @id @default(autoincrement())
+  name          String
+  text          String
+  rating        Int
+  direction     String?
+  userId        Int?                  @unique
+  isHidden      Boolean               @default(false)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  comments      ReviewComment[]
+  officialReply ReviewOfficialReply?
+}
+
+model ReviewComment {
   id        Int      @id @default(autoincrement())
-  name      String
+  reviewId  Int
+  authorId  Int
   text      String
-  rating    Int
-  direction String?
-  userId    Int?     @unique
+  isHidden  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, createdAt])
+}
+
+model ReviewOfficialReply {
+  id        Int      @id @default(autoincrement())
+  reviewId  Int      @unique
+  authorId  Int
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
 }
 
 model MediaArticle {
@@ -146,13 +478,69 @@ model MediaArticle {
   createdAt   DateTime @default(now())
 }
 
+model Webinar {
+  id              Int      @id @default(autoincrement())
+  title           String
+  description     String
+  startsAt        DateTime
+  durationMinutes Int      @default(60)
+  registrationUrl String?
+  imageUrl         String?
+  isPublished      Boolean @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isPublished, startsAt])
+}
+
+model JobPosting {
+  id             Int      @id @default(autoincrement())
+  title          String
+  company        String
+  location       String
+  employmentType String
+  description    String
+  salary         String?
+  isPublished    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  applications   JobApplication[]
+
+  @@index([isPublished, createdAt])
+}
+
+model JobApplication {
+  id        Int        @id @default(autoincrement())
+  jobId     Int
+  userId    Int?
+  name      String
+  email     String
+  phone     String?
+  message   String?
+  status    String     @default("new")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  job       JobPosting @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([jobId, status])
+  @@index([userId])
+}
+
 model SupportMessage {
   id        Int      @id @default(autoincrement())
   text      String
   from      String
+  name      String?
+  email     String?
+  topic     String?
+  status    String   @default("open")
   userId    Int?
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model Application {
@@ -191,8 +579,7 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -211,9 +598,8 @@ model AssignmentSubmission {
   isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([lessonId])

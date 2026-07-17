@@ -16,6 +16,7 @@ type AccessState =
 
 type AuthUser = {
   role?: string;
+  roles?: string[];
   badges?: string[];
   [key: string]: unknown;
 };
@@ -25,7 +26,11 @@ const ADMIN_BADGES = new Set(["ADMIN", "OWNER", "DEVELOPER"]);
 function hasAdminAccess(user: AuthUser) {
   if (String(user.role || "").toUpperCase() === "ADMIN") return true;
 
-  return (Array.isArray(user.badges) ? user.badges : []).some((badge) =>
+  const roles = [
+    ...(Array.isArray(user.roles) ? user.roles : []),
+    ...(Array.isArray(user.badges) ? user.badges : []),
+  ];
+  return roles.some((badge) =>
     ADMIN_BADGES.has(String(badge).toUpperCase()),
   );
 }

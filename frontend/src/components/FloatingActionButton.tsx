@@ -70,7 +70,6 @@ export default function FloatingActionButton() {
     try {
       const newMessage = await sendSupportMessage({
         text,
-        from: "user",
       });
 
       setMessages((prev) => [...prev, newMessage]);

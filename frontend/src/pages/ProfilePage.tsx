@@ -1,521 +1,94 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import FrameIcon from "../components/FrameIcon";
 import { useAuthSession } from "../components/AuthSessionProvider";
-import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
-import UserBadges from "../components/UserBadges";
-import api from "../services/api";
-import { getMySubmissions, type AssignmentSubmission } from "../services/submissions";
+import api, { API_BASE_URL } from "../services/api";
+import { showToast } from "../services/appToast";
 import "./ProfilePage.css";
 
-type User = {
-  id?: number;
-  username?: string;
-  name?: string;
-  email?: string;
-  role?: string;
-  badges?: string[];
-  isPremium?: boolean;
-  premiumPlan?: string | null;
-  premiumUntil?: string | null;
-};
+type Identity = { provider: "GOOGLE" | "APPLE" | "TELEGRAM" | "VK"; createdAt: string };
+type Progress = { id: number; completed?: boolean; completedAt?: string | null; courseId: number; lessonId: number };
+type Profile = { id: number; username: string; email: string; phone?: string | null; roles?: string[]; primaryRole?: string; isPremium?: boolean; premiumStatus?: string; premiumUntil?: string | null; graceUntil?: string | null; accountStatus?: string; createdAt: string; lessonProgress?: Progress[]; oauthIdentities?: Identity[] };
+type ProviderName = "google" | "apple" | "telegram" | "vk";
+type TelegramUser = { id: number; first_name?: string; last_name?: string; username?: string; photo_url?: string; auth_date: number; hash: string };
 
-type LessonProgress = {
-  id: number;
-  lessonId: number;
-  courseId?: number | null;
-  completed: boolean;
-  started: boolean;
-};
+declare global { interface Window { frameSchoolTelegramLink?: (user: TelegramUser) => void } }
 
-type Certificate = {
-  courseId: number;
-  courseTitle: string;
-  claimedAt: string;
-};
-
-type CourseProgress = {
-  id: number;
-  title: string;
-  icon: FrameIconName;
-  totalLessons: number;
-  completedLessons: number;
-  percent: number;
-};
-
-function readCertificates(userId?: number | string): Certificate[] {
-  const key = userId ? `my-certificates:user:${userId}` : "my-certificates";
-  const saved = localStorage.getItem(key) || localStorage.getItem("my-certificates");
-  if (!saved) return [];
-  try {
-    const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-const COURSE_ICONS: Record<string, FrameIconName> = {
-  capcut: "cut",
-  "premiere-pro": "timeline",
-  tiktok: "phone",
-  "color-correction": "lens",
-  sound: "sound",
-  vfx: "spark",
-};
+const providerLabels: Record<ProviderName, string> = { google: "Google", apple: "Apple ID", telegram: "Telegram", vk: "VK" };
 
 export default function ProfilePage() {
-  const navigate = useNavigate();
-  const { user: sessionUser, signOut } = useAuthSession();
-  const user = sessionUser as User | null;
-
-  const [serverUser, setServerUser] = useState<User | null>(null);
-  const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
-  const [courses, setCourses] = useState<CourseProgress[]>([]);
-  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
+  const { isAuthenticated, checking, signOut, refreshSession } = useAuthSession();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [certificates, setCertificates] = useState(0);
+  const [providers, setProviders] = useState<Record<string, {configured:boolean;botName?:string|null}>>({});
+  const [telegramOpen, setTelegramOpen] = useState(false);
+  const telegramHost = useRef<HTMLDivElement>(null);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "" });
+  const [deactivation, setDeactivation] = useState({ password: "", confirmation: "" });
+  const [farewell, setFarewell] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [submissionsLoading, setSubmissionsLoading] = useState(true);
-  const [submissionsError, setSubmissionsError] = useState("");
-  const displayUser = serverUser || user;
 
-  const certificates = readCertificates(user?.id);
-
-  const isPremium =
-    displayUser?.isPremium === true ||
-    Boolean(
-      displayUser?.premiumUntil &&
-        new Date(displayUser.premiumUntil).getTime() > Date.now(),
-    );
-  const canAccessAdmin =
-    displayUser?.role === "ADMIN" ||
-    (displayUser?.badges || []).some((badge) =>
-      ["ADMIN", "OWNER", "DEVELOPER"].includes(String(badge).toUpperCase()),
-    );
-
-  const loadSubmissions = useCallback(async () => {
+  async function load() {
     try {
-      setSubmissionsLoading(true);
-      setSubmissionsError("");
-      const submissionList = await getMySubmissions();
-      setSubmissions(submissionList);
+      const [me, certificateData, providerData] = await Promise.all([api.get("/users/me"), api.get("/certificates/me"), api.get("/auth/oauth/providers")]);
+      setProfile(me.data?.data || me.data?.user);
+      setCertificates((certificateData.data?.certificates || []).length);
+      setProviders(providerData.data?.data || {});
     } catch (error) {
-      console.error("Ошибка загрузки практических работ:", error);
-      setSubmissions([]);
-      setSubmissionsError(
-        "Не удалось загрузить работы. Проверьте соединение и повторите запрос.",
-      );
-    } finally {
-      setSubmissionsLoading(false);
-    }
-  }, []);
+      showToast({ tone: "error", title: "Профиль", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Не удалось загрузить профиль." });
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { if (isAuthenticated) void load(); else setLoading(false); }, [isAuthenticated]);
+  const connected = useMemo(() => new Set((profile?.oauthIdentities || []).map((identity) => identity.provider.toLowerCase())), [profile]);
+  const completed = (profile?.lessonProgress || []).filter((item) => item.completed).length;
 
   useEffect(() => {
-    let active = true;
-
-    async function loadProfile() {
-      try {
-        setLoading(true);
-        const [meRes, coursesRes] = await Promise.all([
-          api.get("/users/me"),
-          api.get("/courses"),
-        ]);
-        if (!active) return;
-
-        const meData = meRes.data.data || meRes.data.user || meRes.data;
-        const progress: LessonProgress[] = meData?.lessonProgress || [];
-        if (meData) {
-          setServerUser(meData);
-          setLessonProgress(progress);
-          localStorage.setItem("user", JSON.stringify({ ...user, ...meData }));
-        }
-
-        const coursesData =
-          coursesRes.data.data || coursesRes.data.courses || coursesRes.data;
-        if (Array.isArray(coursesData)) {
-          const progressMap: Record<number, { completed: number }> = {};
-          progress.forEach((item) => {
-            if (!item.courseId) return;
-            if (!progressMap[item.courseId]) progressMap[item.courseId] = { completed: 0 };
-            if (item.completed) progressMap[item.courseId].completed += 1;
-          });
-
-          setCourses(
-            coursesData.slice(0, 4).map((course: any) => {
-              const total = Array.isArray(course.lessons) ? course.lessons.length : 0;
-              const completed = progressMap[course.id]?.completed || 0;
-              return {
-                id: course.id,
-                title: course.title,
-                icon: COURSE_ICONS[course.category] || "frame",
-                totalLessons: total,
-                completedLessons: completed,
-                percent: total > 0 ? Math.round((completed / total) * 100) : 0,
-              };
-            }),
-          );
-        }
-      } catch (error) {
-        console.error("Ошибка загрузки профиля:", error);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    if (user?.id) {
-      void loadProfile();
-      void loadSubmissions();
-    } else {
-      setLoading(false);
-      setSubmissionsLoading(false);
-    }
-
-    return () => {
-      active = false;
+    const host = telegramHost.current;
+    const telegram = providers.telegram;
+    if (!telegramOpen || !telegram?.configured || !telegram.botName || !host) return;
+    window.frameSchoolTelegramLink = async (user) => {
+      try { await api.post("/auth/oauth/telegram/link", user); showToast({ tone: "success", title: "Telegram подключён", message: "Теперь его можно использовать для входа." }); setTelegramOpen(false); await load(); }
+      catch (error) { showToast({ tone: "error", title: "Telegram", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Не удалось подключить аккаунт." }); }
     };
-  }, [loadSubmissions, user?.id]);
+    host.replaceChildren();
+    const script = document.createElement("script");
+    script.async = true; script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-login", telegram.botName); script.setAttribute("data-size", "large"); script.setAttribute("data-userpic", "false"); script.setAttribute("data-radius", "4"); script.setAttribute("data-request-access", "write"); script.setAttribute("data-onauth", "frameSchoolTelegramLink(user)");
+    host.appendChild(script);
+    return () => { delete window.frameSchoolTelegramLink; };
+  }, [providers.telegram?.botName, providers.telegram?.configured, telegramOpen]);
 
-  const completedLessons = lessonProgress.filter((p) => p.completed).length;
-  const activeCourses = courses.filter((c) => c.completedLessons > 0).length;
-  const completedCourses = courses.filter((c) => c.percent >= 100).length;
-  const totalPercent =
-    courses.length > 0
-      ? Math.round(courses.reduce((s, c) => s + c.percent, 0) / courses.length)
-      : 0;
-
-  function logout() {
-    signOut();
-    navigate("/login");
+  function connect(provider: ProviderName) {
+    if (!providers[provider]?.configured) { showToast({ tone: "warning", title: `${providerLabels[provider]} не настроен`, message: "Добавьте ключи провайдера в Layero." }); return; }
+    if (provider === "telegram") { setTelegramOpen((value) => !value); return; }
+    window.location.assign(`${API_BASE_URL}/auth/oauth/${provider}/link`);
   }
 
-  if (!user) {
-    return (
-      <main className="profile-page">
-        <section className="profile-not-logged">
-          <div className="profile-not-logged-icon"><FrameIcon name="lens" /></div>
-          <h1>Войдите в аккаунт</h1>
-          <p>Чтобы видеть профиль, прогресс и сертификаты — нужно войти.</p>
-          <div className="profile-not-logged-actions">
-            <Link to="/login" className="profile-btn profile-btn--primary">Войти</Link>
-            <Link to="/register" className="profile-btn profile-btn--light">Регистрация</Link>
-          </div>
-        </section>
-      </main>
-    );
+  async function disconnect(provider: ProviderName) {
+    try { await api.delete(`/auth/oauth/${provider}`); showToast({ tone: "success", title: "Способ входа отключён", message: providerLabels[provider] }); await load(); }
+    catch (error) { showToast({ tone: "error", title: "Нельзя отключить", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Сначала добавьте другой способ входа." }); }
   }
 
-  return (
-    <main className="profile-page">
-      <section className="profile-hero">
-        <div className="profile-hero__content">
-          <p className="profile-label">Личный кабинет</p>
+  async function changePassword(event: FormEvent) {
+    event.preventDefault();
+    try { const { data } = await api.post("/users/me/password", passwordForm); showToast({ tone: "success", title: "Пароль обновлён", message: data.message }); signOut(); }
+    catch (error) { showToast({ tone: "error", title: "Пароль не изменён", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Проверьте пароль." }); }
+  }
 
-          <h1>
-            Добро пожаловать,{" "}
-            <span>{displayUser?.username || displayUser?.name || "студент"}</span>
-          </h1>
+  async function deactivate(event: FormEvent) {
+    event.preventDefault();
+    try { await api.post("/users/me/deactivate", deactivation); setFarewell(true); signOut(); }
+    catch (error) { showToast({ tone: "error", title: "Аккаунт не деактивирован", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Действие не подтверждено." }); }
+  }
 
-          <p>
-            Здесь отображается ваш прогресс обучения, бонусы, сертификаты,
-            Premium-статус и быстрые ссылки платформы.
-          </p>
+  if (farewell) return <main className="profile-page"><section className="profile-farewell"><span className="timecode">SESSION CLOSED</span><FrameIcon name="frame" /><h1>До встречи в Frame School</h1><p>Аккаунт деактивирован только после подтверждения сервера. Прогресс и сертификаты сохранены; восстановить доступ можно при следующем входе.</p><Link to="/login">Перейти ко входу</Link></section></main>;
+  if (checking || loading) return <main className="profile-page"><div className="profile-state" aria-live="polite">Загружаем профиль…</div></main>;
+  if (!isAuthenticated || !profile) return <main className="profile-page"><section className="profile-state"><h1>Войдите в аккаунт</h1><p>Профиль, прогресс и сертификаты хранятся на сервере.</p><Link to="/login">Войти</Link></section></main>;
 
-          <div className="profile-actions">
-            <Link to="/courses" className="profile-btn profile-btn--primary">
-              Продолжить обучение
-            </Link>
-
-            <Link to="/my-certificates" className="profile-btn profile-btn--light">
-              Мои сертификаты
-            </Link>
-
-            <button className="profile-btn profile-btn--light" onClick={logout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-
-        <div className="profile-card">
-          <div className="profile-avatar">
-            {(displayUser?.username || displayUser?.name || "U").slice(0, 1).toUpperCase()}
-          </div>
-
-          <strong>{displayUser?.username || displayUser?.name || "Пользователь"}</strong>
-          <span>{displayUser?.email || "email не указан"}</span>
-          <UserBadges
-            role={displayUser?.role}
-            badges={displayUser?.badges}
-            premiumUntil={displayUser?.premiumUntil}
-            isPremium={isPremium}
-            className="profile-user-badges"
-          />
-        </div>
-      </section>
-
-      <section className="profile-stats">
-        <div>
-          <strong>{loading ? "..." : activeCourses}</strong>
-          <span>активных курса</span>
-        </div>
-
-        <div>
-          <strong>{loading ? "..." : completedLessons}</strong>
-          <span>пройденных уроков</span>
-        </div>
-
-        <div>
-          <strong>{certificates.length}</strong>
-          <span>сертификатов</span>
-        </div>
-
-        <div>
-          <strong>{loading ? "..." : `${totalPercent}%`}</strong>
-          <span>общий прогресс</span>
-        </div>
-      </section>
-
-      <section className="profile-layout">
-        <div className="profile-main">
-          <section className="profile-panel profile-overview-panel">
-            <div className="profile-panel-head">
-              <p className="profile-label">Обзор</p>
-              <h2>Состояние обучения</h2>
-            </div>
-
-            <div className="profile-overview-grid">
-              <div>
-                <span><FrameIcon name="timeline" /></span>
-                <strong>{loading ? "..." : activeCourses}</strong>
-                <p>курсов начато</p>
-              </div>
-
-              <div>
-                <span><FrameIcon name="check" /></span>
-                <strong>{loading ? "..." : completedCourses}</strong>
-                <p>курсов завершено</p>
-              </div>
-
-              <div>
-                <span><FrameIcon name="certificate" /></span>
-                <strong>{certificates.length}</strong>
-                <p>сертификатов</p>
-              </div>
-
-              <div>
-                <span><FrameIcon name="premium" /></span>
-                <strong>{isPremium ? "PRO" : "Free"}</strong>
-                <p>статус аккаунта</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="profile-panel">
-            <div className="profile-panel-head">
-              <p className="profile-label">Прогресс</p>
-              <h2>Мои курсы</h2>
-            </div>
-
-            {loading ? (
-              <p className="profile-loading">Загружаем прогресс из базы данных...</p>
-            ) : courses.length === 0 ? (
-              <div className="profile-empty-courses">
-                <span><FrameIcon name="frame" /></span>
-                <strong>Курсов пока нет</strong>
-                <p>Начните обучение, чтобы видеть прогресс здесь.</p>
-                <Link to="/courses" className="profile-btn profile-btn--primary">
-                  Выбрать курс
-                </Link>
-              </div>
-            ) : (
-              <div className="profile-course-list">
-                {courses.map((item) => (
-                  <article className="profile-course-card" key={item.id}>
-                    <div className="profile-course-icon"><FrameIcon name={item.icon} /></div>
-
-                    <div>
-                      <h3>{item.title}</h3>
-                      <p>{item.completedLessons} из {item.totalLessons} уроков</p>
-
-                      <div className="profile-progress">
-                        <div>
-                          <span style={{ width: `${item.percent}%` }}></span>
-                        </div>
-                        <strong>{item.percent}%</strong>
-                      </div>
-                    </div>
-
-                    <Link to={`/courses/${item.id}`}>
-                      {item.percent > 0 ? "Продолжить" : "Открыть"}
-                    </Link>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="profile-panel">
-            <div className="profile-panel-head">
-              <p className="profile-label">Сертификаты</p>
-              <h2>Мои достижения</h2>
-            </div>
-
-            {certificates.length === 0 ? (
-              <div className="profile-empty-certificates">
-                <span><FrameIcon name="certificate" /></span>
-                <strong>Сертификатов пока нет</strong>
-                <p>
-                  Завершите курс на 100%, чтобы получить первый сертификат
-                  Frame School.
-                </p>
-
-                <Link to="/courses" className="profile-btn profile-btn--primary">
-                  Перейти к курсам
-                </Link>
-              </div>
-            ) : (
-              <div className="profile-certificate-list">
-                {certificates.map((certificate) => (
-                  <Link
-                    to="/certificate"
-                    key={certificate.courseId}
-                    className="profile-certificate-card"
-                  >
-                    <span><FrameIcon name="certificate" /></span>
-
-                    <div>
-                      <strong>{certificate.courseTitle}</strong>
-                      <p>
-                        Получен:{" "}
-                        {new Date(certificate.claimedAt).toLocaleDateString("ru-RU")}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="profile-panel">
-            <div className="profile-panel-head">
-              <p className="profile-label">Портфолио</p>
-              <h2>Мои практические работы</h2>
-            </div>
-
-            {submissionsLoading ? (
-              <p className="profile-loading">Загружаем работы...</p>
-            ) : submissionsError ? (
-              <div className="profile-empty-certificates profile-submissions-error" role="alert">
-                <span><FrameIcon name="warning" /></span>
-                <strong>Работы не загрузились</strong>
-                <p>{submissionsError}</p>
-                <button
-                  type="button"
-                  className="profile-btn profile-btn--primary"
-                  onClick={() => void loadSubmissions()}
-                >
-                  Повторить
-                </button>
-              </div>
-            ) : submissions.length === 0 ? (
-              <div className="profile-empty-certificates">
-                <span><FrameIcon name="folder" /></span>
-                <strong>Работ пока нет</strong>
-                <p>
-                  Откройте урок, выполните практическое задание и отправьте
-                  ссылку или видео на проверку.
-                </p>
-                <Link to="/courses" className="profile-btn profile-btn--primary">
-                  Перейти к урокам
-                </Link>
-              </div>
-            ) : (
-              <div className="profile-submission-list">
-                {submissions.slice(0, 6).map((submission) => (
-                  <article className="profile-submission-card" key={submission.id}>
-                    <div>
-                      <span>{submission.status}</span>
-                      <strong>{submission.lesson?.title || "Практическая работа"}</strong>
-                      <p>
-                        {submission.lesson?.course?.title || "Frame School"} ·{" "}
-                        {new Date(submission.createdAt).toLocaleDateString("ru-RU")}
-                      </p>
-                    </div>
-                    <a href={submission.url} target="_blank" rel="noreferrer">
-                      Открыть
-                    </a>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-
-        <aside className="profile-sidebar">
-          <section className="profile-panel profile-premium-box">
-            <p className="profile-label">Premium</p>
-            <h2>{isPremium ? "Premium активен" : "Free аккаунт"}</h2>
-
-            <p>
-              {isPremium
-                ? "У вас открыт Premium PRO: бонусы, закрытые материалы и расширенные возможности."
-                : "Подключите Premium, чтобы открыть расширенные материалы, бонусы и дополнительные возможности."}
-            </p>
-
-            <Link to="/premium" className="profile-btn profile-btn--primary">
-              {isPremium ? "Управлять Premium" : "Открыть Premium"}
-            </Link>
-          </section>
-
-          <section className="profile-panel">
-            <p className="profile-label">Аккаунт</p>
-            <h2>Данные</h2>
-
-            <div className="profile-info-list">
-              <div>
-                <span>Имя</span>
-                <strong>{displayUser?.username || displayUser?.name || "Не указано"}</strong>
-              </div>
-
-              <div>
-                <span>Email</span>
-                <strong>{displayUser?.email || "Не указано"}</strong>
-              </div>
-
-              <div>
-                <span>Роль</span>
-                <strong>{displayUser?.role || "USER"}</strong>
-              </div>
-
-              <div>
-                <span>Статус</span>
-                <strong>{isPremium ? "Premium PRO" : "Free"}</strong>
-              </div>
-            </div>
-          </section>
-
-          <section className="profile-panel profile-quick">
-            <p className="profile-label">Быстрые ссылки</p>
-            <h2>Навигация</h2>
-
-            <Link to="/courses"><FrameIcon name="frame" />Курсы</Link>
-            <Link to="/bonus"><FrameIcon name="premium" />Бонусы</Link>
-            <Link to="/my-certificates"><FrameIcon name="certificate" />Сертификаты</Link>
-            <Link to="/free/webinars"><FrameIcon name="webinar" />Вебинары</Link>
-            <Link to="/career-center"><FrameIcon name="briefcase" />Центр карьеры</Link>
-            <Link to="/support"><FrameIcon name="lens" />Поддержка</Link>
-          </section>
-
-          {canAccessAdmin && (
-            <section className="profile-panel profile-admin-box">
-              <p className="profile-label">Admin</p>
-              <h2>Управление</h2>
-              <p>У вас есть доступ к админ-панели.</p>
-
-              <Link to="/admin" className="profile-btn profile-btn--primary">
-                Открыть админку
-              </Link>
-            </section>
-          )}
-        </aside>
-      </section>
-    </main>
-  );
+  return <main className="profile-page"><header className="profile-hero"><div><span className="timecode">USER / {profile.id}</span><h1>{profile.username}</h1><p>{profile.email}</p></div><button type="button" onClick={() => { signOut(); void refreshSession(); }}>Выйти</button></header><section className="profile-metrics"><article><FrameIcon name="lessons"/><span>Завершённые уроки</span><strong>{completed}</strong></article><article><FrameIcon name="certificate"/><span>Сертификаты</span><strong>{certificates}</strong></article><article><FrameIcon name="premium"/><span>Premium</span><strong>{profile.isPremium ? profile.premiumStatus || "active" : "free"}</strong></article><article><FrameIcon name="all"/><span>Роли</span><strong>{(profile.roles || []).join(" / ") || "USER"}</strong></article></section>
+    <section className="profile-grid"><article className="profile-panel"><h2>Способы входа</h2><p>Новый сервис не связывается с существующим аккаунтом только по совпавшему email.</p><div className="profile-connections">{(Object.keys(providerLabels) as ProviderName[]).map((provider) => <div key={provider}><strong>{providerLabels[provider]}</strong><span>{connected.has(provider) ? "подключён" : providers[provider]?.configured ? "доступен" : "нужна настройка"}</span>{connected.has(provider) ? <button onClick={() => void disconnect(provider)}>Отключить</button> : <button onClick={() => connect(provider)}>Подключить</button>}</div>)}</div>{telegramOpen && <div className="profile-telegram"><p>Подтвердите аккаунт Telegram.</p><div ref={telegramHost}/></div>}</article>
+      <article className="profile-panel"><h2>Пароль</h2><p>{profile.oauthIdentities?.length ? "OAuth-аккаунт может задать пароль после входа." : "После изменения все прежние сессии завершатся."}</p><form onSubmit={changePassword}><label>Текущий пароль<input type="password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm({...passwordForm,currentPassword:event.target.value})}/></label><label>Новый пароль<input type="password" minLength={8} maxLength={128} value={passwordForm.newPassword} onChange={(event) => setPasswordForm({...passwordForm,newPassword:event.target.value})} required/></label><button>Обновить пароль</button></form></article>
+      <article className="profile-panel profile-danger"><h2>Деактивация</h2><p>Профиль станет скрытым, сессии завершатся. Прогресс и сертификаты останутся в базе.</p><form onSubmit={deactivate}><label>Текущий пароль<input type="password" value={deactivation.password} onChange={(event) => setDeactivation({...deactivation,password:event.target.value})}/></label><label>Для OAuth-only аккаунта введите DEACTIVATE<input value={deactivation.confirmation} onChange={(event) => setDeactivation({...deactivation,confirmation:event.target.value})}/></label><button>Деактивировать аккаунт</button></form></article>
+      <article className="profile-panel"><h2>Быстрые ссылки</h2><nav><Link to="/courses">Курсы</Link><Link to="/certificates">Сертификаты</Link><Link to="/reviews">Отзывы</Link><Link to="/support">Поддержка</Link></nav></article></section></main>;
 }

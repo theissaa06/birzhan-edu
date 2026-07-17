@@ -1,239 +1,47 @@
+import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
 import { useAuthSession } from "./AuthSessionProvider";
-import UserBadges from "./UserBadges";
+import FrameIcon from "./FrameIcon";
+import { showToast } from "../services/appToast";
 import "./Header.css";
 
+const links = [
+  ["Курсы", "/courses"], ["Студентам", "/students"], ["Отзывы", "/reviews"],
+  ["Вебинары", "/webinars"], ["Медиа", "/media"], ["Карьера", "/career-center"],
+] as const;
+
 export default function Header() {
-  const navigate = useNavigate();
-  const headerRef = useRef<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
   const { user, isAuthenticated, signOut } = useAuthSession();
+  const navigate = useNavigate();
+  const roles = (user?.roles || user?.badges || []).map((role) => String(role).toUpperCase());
+  const staff = roles.some((role) => ["ADMIN", "DEVELOPER", "OWNER"].includes(role));
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [freeOpen, setFreeOpen] = useState(false);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (!headerRef.current?.contains(event.target as Node)) {
-        setFreeOpen(false);
-      }
-    }
-
-    function handleEsc(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setFreeOpen(false);
-        setMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEsc);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEsc);
-    };
-  }, []);
-
-  function closeMenus() {
-    setMenuOpen(false);
-    setFreeOpen(false);
-  }
-
-  function handleLogout() {
+  const logout = () => {
+    showToast({ tone: "info", title: "До связи", message: "Прогресс сохранён. Возвращайтесь к монтажу в любое время." });
     signOut();
-    closeMenus();
-    navigate("/login");
-  }
-
-  const profileName = user?.username || user?.email || "Профиль";
-  const normalizedBadges = (user?.badges || []).map((badge) =>
-    String(badge).toUpperCase(),
-  );
-  const canAccessAdmin =
-    user?.role === "ADMIN" ||
-    normalizedBadges.some((badge) =>
-      ["ADMIN", "OWNER", "DEVELOPER"].includes(badge),
-    );
+    setOpen(false);
+    navigate("/");
+  };
 
   return (
-    <>
-      <div className="top-sale-banner">
-        Стартовый доступ к курсам по монтажу: промокод{" "}
-        <strong>FRAME30</strong>
-      </div>
-
-      <header className="site-header" ref={headerRef}>
-        <div className="site-header-container">
-          <Link to="/" className="site-logo" onClick={closeMenus}>
-            <img
-              className="site-logo-image"
-              src="/frame-school-logo.svg"
-              alt="Frame School"
-              width="210"
-              height="48"
-            />
-          </Link>
-
-          <button
-            className={menuOpen ? "site-burger open" : "site-burger"}
-            type="button"
-            onClick={() => {
-              setMenuOpen((prev) => !prev);
-              setFreeOpen(false);
-            }}
-            aria-label="Открыть меню"
-            aria-expanded={menuOpen}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-
-          <nav className={menuOpen ? "site-nav open" : "site-nav"}>
-            <NavLink to="/courses" onClick={closeMenus}>
-              Каталог
-            </NavLink>
-
-            <NavLink to="/reviews" onClick={closeMenus}>
-              Отзывы
-            </NavLink>
-
-            <NavLink to="/kids" onClick={closeMenus}>
-              Детям
-            </NavLink>
-
-            <NavLink to="/online-college" onClick={closeMenus}>
-              Колледж
-            </NavLink>
-
-            <div className={`site-dropdown ${freeOpen ? "open" : ""}`}>
-              <button
-                type="button"
-                className="site-dropdown-btn"
-                onClick={() => setFreeOpen((prev) => !prev)}
-                aria-expanded={freeOpen}
-              >
-                Бесплатно <span>▾</span>
-              </button>
-
-              <div className="site-dropdown-menu">
-                <NavLink to="/free" onClick={closeMenus}>
-                  Бесплатный раздел
-                </NavLink>
-
-                <NavLink to="/free/career-test" onClick={closeMenus}>
-                  Тест профессии
-                </NavLink>
-
-                <NavLink to="/free/webinars" onClick={closeMenus}>
-                  Вебинары
-                </NavLink>
-
-                <NavLink to="/free/media" onClick={closeMenus}>
-                  Медиа
-                </NavLink>
-
-                <NavLink to="/free/ai" onClick={closeMenus}>
-                  AI помощник
-                </NavLink>
-              </div>
-            </div>
-
-            <NavLink to="/support" onClick={closeMenus}>
-              Поддержка
-            </NavLink>
-
-            <NavLink to="/ai" onClick={closeMenus} title="AI помощник">
-              AI
-            </NavLink>
-
-            <NavLink to="/bonus" onClick={closeMenus}>
-              Бонус
-            </NavLink>
-          </nav>
-
-          <div className="site-actions">
-            <Link
-              to="/students"
-              className="site-community-link"
-              onClick={closeMenus}
-            >
-              Участники
-            </Link>
-
-            <Link
-              to="/certificates"
-              className="site-certificates-link"
-              onClick={closeMenus}
-            >
-              Сертификаты
-            </Link>
-
-            <Link
-              to="/premium"
-              className="site-premium-link"
-              onClick={closeMenus}
-            >
-              Premium
-            </Link>
-
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/profile"
-                  className="site-user"
-                  onClick={closeMenus}
-                  title={profileName}
-                >
-                  {profileName}
-                </Link>
-
-                <UserBadges
-                  role={user?.role}
-                  badges={user?.badges}
-                  premiumUntil={String(user?.premiumUntil || "") || null}
-                  isPremium={user?.isPremium === true}
-                  compact
-                  className="site-user-badges"
-                />
-
-                {canAccessAdmin && (
-                  <Link
-                    to="/admin"
-                    className="site-admin-link"
-                    onClick={closeMenus}
-                  >
-                    Админ
-                  </Link>
-                )}
-
-                <button
-                  type="button"
-                  className="site-logout"
-                  onClick={handleLogout}
-                >
-                  Выйти
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="site-login" onClick={closeMenus}>
-                  Войти
-                </Link>
-
-                <Link
-                  to="/register"
-                  className="site-register"
-                  onClick={closeMenus}
-                >
-                  Регистрация
-                </Link>
-              </>
-            )}
-          </div>
+    <header className="site-header">
+      <div className="site-header-inner">
+        <Link to="/" className="site-logo" onClick={() => setOpen(false)} aria-label="Frame School — главная">
+          <span className="site-logo-mark"><FrameIcon name="frame" /></span>
+          <span className="site-logo-text">FRAME <span>SCHOOL</span></span>
+        </Link>
+        <button type="button" className="site-menu-toggle" aria-expanded={open} aria-label="Открыть меню" onClick={() => setOpen((value) => !value)}><span /><span /><span /></button>
+        <nav className={`site-nav ${open ? "open" : ""}`} aria-label="Основная навигация">
+          {links.map(([label, to]) => <NavLink key={to} to={to} onClick={() => setOpen(false)}>{label}</NavLink>)}
+          <NavLink to="/ai" onClick={() => setOpen(false)}>Frame AI</NavLink>
+        </nav>
+        <div className="site-actions">
+          <Link to="/premium" className="site-premium-link"><FrameIcon name="premium" />Premium</Link>
+          {staff && <Link to="/admin" className="site-admin-link">Admin</Link>}
+          {isAuthenticated ? <><Link to="/profile" className="site-profile-link">{user?.username || "Профиль"}</Link><button type="button" className="site-logout" onClick={logout}>Выйти</button></> : <><Link to="/login" className="site-login">Войти</Link><Link to="/register" className="site-register">Начать</Link></>}
         </div>
-      </header>
-    </>
+      </div>
+    </header>
   );
 }
