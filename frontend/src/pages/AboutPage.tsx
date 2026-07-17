@@ -1,24 +1,26 @@
 ﻿import { Link } from "react-router-dom";
 import "./AboutPage.css";
+import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
+import usePublicStats from "../hooks/usePublicStats";
 
 const values = [
   {
-    icon: "🎬",
+    icon: "frame" as FrameIconName,
     title: "Обучение через практику",
     text: "Каждый урок построен так, чтобы студент не просто смотрел, а сразу повторял действия и создавал свои работы.",
   },
   {
-    icon: "🌍",
+    icon: "all" as FrameIconName,
     title: "Международный подход",
     text: "Платформа создаётся как современная EdTech-система для обучения видеомонтажу, digital-навыкам и контенту.",
   },
   {
-    icon: "🚀",
+    icon: "timeline" as FrameIconName,
     title: "Рост до профессии",
     text: "Наша цель — помочь новичку пройти путь от первого видео до портфолио и первых заказов.",
   },
   {
-    icon: "💬",
+    icon: "sound" as FrameIconName,
     title: "Поддержка студентов",
     text: "Пользователь может получать помощь, задавать вопросы и двигаться по обучению без ощущения, что он один.",
   },
@@ -33,14 +35,14 @@ const features = [
   "Карьерное развитие и подготовка портфолио",
 ];
 
-const stats = [
-  { value: "40+", label: "курсов и уроков" },
-  { value: "15 000+", label: "потенциальных студентов" },
-  { value: "8+", label: "бонусов 2026" },
-  { value: "4.9", label: "целевая оценка платформы" },
-];
-
 export default function AboutPage() {
+  const { stats: publicStats, isLoading } = usePublicStats();
+  const stats = [
+    { value: publicStats.courses, label: "опубликованных курсов" },
+    { value: publicStats.students, label: "активных участников" },
+    { value: publicStats.reviews, label: "опубликованных отзывов" },
+    { value: publicStats.certificates, label: "выданных сертификатов" },
+  ];
   return (
     <main className="about-page">
       <section className="about-hero">
@@ -70,7 +72,7 @@ export default function AboutPage() {
         </div>
 
         <div className="about-hero__visual">
-          <div className="about-big-icon">🎥</div>
+          <div className="about-big-icon"><FrameIcon name="lens" title="Объектив Frame School" /></div>
           <div className="about-floating-card about-floating-card--one">
             CapCut PRO
           </div>
@@ -83,10 +85,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="about-stats">
+      <section className="about-stats" aria-busy={isLoading} aria-label="Актуальная статистика платформы">
         {stats.map((item) => (
           <div className="about-stat-card" key={item.label}>
-            <strong>{item.value}</strong>
+            <strong>{isLoading ? "—" : item.value.toLocaleString("ru-RU")}</strong>
             <span>{item.label}</span>
           </div>
         ))}
@@ -107,7 +109,7 @@ export default function AboutPage() {
         <div className="about-values">
           {values.map((item) => (
             <article className="about-value-card" key={item.title}>
-              <div>{item.icon}</div>
+              <div><FrameIcon name={item.icon} /></div>
               <h3>{item.title}</h3>
               <p>{item.text}</p>
             </article>

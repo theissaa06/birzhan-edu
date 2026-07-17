@@ -1,27 +1,29 @@
 ﻿import { Link } from "react-router-dom";
 import "./CareerCenterPage.css";
+import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
+import usePublicStats from "../hooks/usePublicStats";
 
 const paths = [
   {
-    icon: "🎬",
+    icon: "frame" as FrameIconName,
     title: "Видеомонтажёр",
     text: "Монтаж роликов для блогеров, YouTube, TikTok, Reels, Shorts и рекламных проектов.",
     income: "от первых заказов до стабильного дохода",
   },
   {
-    icon: "📱",
+    icon: "phone" as FrameIconName,
     title: "Shorts / Reels editor",
     text: "Создание коротких динамичных видео: хуки, бит, склейки, тренды и удержание внимания.",
     income: "подходит для быстрого старта",
   },
   {
-    icon: "🎞️",
+    icon: "timeline" as FrameIconName,
     title: "Premiere Pro специалист",
     text: "Работа с более сложными проектами: блоги, интервью, обзоры, рекламные видео и YouTube.",
     income: "путь к профессиональному монтажу",
   },
   {
-    icon: "🎨",
+    icon: "spark" as FrameIconName,
     title: "Специалист по цвету",
     text: "Цветокоррекция, стиль картинки, LUT, свет, контраст и cinematic-настроение.",
     income: "услуга для улучшения качества видео",
@@ -61,6 +63,7 @@ const steps = [
 ];
 
 export default function CareerCenterPage() {
+  const { stats: publicStats, isLoading } = usePublicStats();
   return (
     <main className="career-page">
       <section className="career-hero">
@@ -89,29 +92,29 @@ export default function CareerCenterPage() {
         </div>
 
         <div className="career-hero__visual">
-          <div className="career-main-icon">🚀</div>
+          <div className="career-main-icon"><FrameIcon name="briefcase" title="Центр карьеры" /></div>
           <div className="career-float career-float--one">Портфолио</div>
           <div className="career-float career-float--two">Заказы</div>
           <div className="career-float career-float--three">Digital</div>
         </div>
       </section>
 
-      <section className="career-stats">
+      <section className="career-stats" aria-busy={isLoading} aria-label="Актуальная статистика платформы">
         <div>
-          <strong>5–10</strong>
-          <span>работ для стартового портфолио</span>
+          <strong>{isLoading ? "—" : publicStats.students.toLocaleString("ru-RU")}</strong>
+          <span>активных участников</span>
         </div>
         <div>
-          <strong>4</strong>
-          <span>основных карьерных пути</span>
+          <strong>{isLoading ? "—" : publicStats.courses.toLocaleString("ru-RU")}</strong>
+          <span>опубликованных курсов</span>
         </div>
         <div>
-          <strong>87%</strong>
-          <span>студентов начинают проекты</span>
+          <strong>{isLoading ? "—" : publicStats.lessonsCompleted.toLocaleString("ru-RU")}</strong>
+          <span>завершённых уроков</span>
         </div>
         <div>
-          <strong>2026</strong>
-          <span>актуальные digital-навыки</span>
+          <strong>{isLoading ? "—" : publicStats.certificates.toLocaleString("ru-RU")}</strong>
+          <span>выданных сертификатов</span>
         </div>
       </section>
 
@@ -128,7 +131,7 @@ export default function CareerCenterPage() {
         <div className="career-paths">
           {paths.map((path) => (
             <article className="career-path-card" key={path.title}>
-              <div className="career-path-icon">{path.icon}</div>
+              <div className="career-path-icon"><FrameIcon name={path.icon} /></div>
               <h3>{path.title}</h3>
               <p>{path.text}</p>
 
@@ -155,7 +158,7 @@ export default function CareerCenterPage() {
         <div className="career-skills">
           {skills.map((skill) => (
             <div key={skill}>
-              <span>✓</span>
+              <FrameIcon name="check" />
               <p>{skill}</p>
             </div>
           ))}
@@ -191,11 +194,11 @@ export default function CareerCenterPage() {
         </div>
 
         <div className="career-portfolio-list">
-          <div>🎬 TikTok / Reels эдит</div>
-          <div>🎞 YouTube-нарезка</div>
-          <div>🎨 Цветокоррекция до/после</div>
-          <div>🔊 Монтаж под музыку</div>
-          <div>⚡ Видео с эффектами</div>
+          <div>TikTok / Reels эдит</div>
+          <div>YouTube-нарезка</div>
+          <div>Цветокоррекция до/после</div>
+          <div>Монтаж под музыку</div>
+          <div>Видео с эффектами</div>
         </div>
       </section>
 

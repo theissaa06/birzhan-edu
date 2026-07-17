@@ -1,27 +1,30 @@
 ﻿import { Link } from "react-router-dom";
 import "./OnlineCollegePage.css";
+import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
+import usePublicStats from "../hooks/usePublicStats";
 
 export default function OnlineCollegePage() {
+  const { stats: publicStats, isLoading } = usePublicStats();
   const directions = [
     {
       title: "Видеомонтаж",
       text: "Монтаж для TikTok, Reels, YouTube Shorts, рекламы и портфолио.",
-      icon: "🎬",
+      icon: "frame" as FrameIconName,
     },
     {
       title: "CapCut и Premiere Pro",
       text: "Популярные инструменты монтажа: от первого видео до уверенного уровня.",
-      icon: "✂️",
+      icon: "cut" as FrameIconName,
     },
     {
       title: "Дизайн и контент",
       text: "Обложки, визуальный стиль, оформление роликов и digital-контент.",
-      icon: "🎨",
+      icon: "spark" as FrameIconName,
     },
     {
       title: "Карьера в digital",
       text: "Портфолио, первые заказы, фриланс и подготовка к работе с клиентами.",
-      icon: "🚀",
+      icon: "briefcase" as FrameIconName,
     },
   ];
 
@@ -85,25 +88,25 @@ export default function OnlineCollegePage() {
 
         <div className="college-hero__card">
           <div className="college-card-badge">2026</div>
-          <div className="college-main-icon">🎓</div>
+          <div className="college-main-icon"><FrameIcon name="lessons" title="Онлайн-обучение" /></div>
 
           <h3>Старт обучения</h3>
           <p>Онлайн-формат, практика и портфолио</p>
 
           <div className="college-mini-stats">
             <div>
-              <strong>40+</strong>
+              <strong>{isLoading ? "—" : publicStats.courses.toLocaleString("ru-RU")}</strong>
               <span>курсов</span>
             </div>
 
             <div>
-              <strong>15K+</strong>
-              <span>студентов</span>
+              <strong>{isLoading ? "—" : publicStats.students.toLocaleString("ru-RU")}</strong>
+              <span>участников</span>
             </div>
 
             <div>
-              <strong>87%</strong>
-              <span>нашли клиентов</span>
+              <strong>{isLoading ? "—" : publicStats.certificates.toLocaleString("ru-RU")}</strong>
+              <span>сертификатов</span>
             </div>
           </div>
         </div>
@@ -142,7 +145,7 @@ export default function OnlineCollegePage() {
         </div>
 
         <div className="college-info-card">
-          <div className="college-diploma">🎓</div>
+          <div className="college-diploma"><FrameIcon name="certificate" title="Результат обучения" /></div>
 
           <div>
             <h3>Что получает студент</h3>
@@ -173,7 +176,7 @@ export default function OnlineCollegePage() {
         <div className="college-directions">
           {directions.map((item) => (
             <article className="college-direction-card" key={item.title}>
-              <div className="college-direction-icon">{item.icon}</div>
+              <div className="college-direction-icon"><FrameIcon name={item.icon} /></div>
               <h3>{item.title}</h3>
               <p>{item.text}</p>
               <Link to="/courses">Подробнее →</Link>

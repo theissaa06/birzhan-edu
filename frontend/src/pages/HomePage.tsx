@@ -1,34 +1,40 @@
 ﻿import { Link } from "react-router-dom";
 import { useAuthSession } from "../components/AuthSessionProvider";
+import usePublicStats from "../hooks/usePublicStats";
 import "./HomePage.css";
 
 export default function HomePage() {
   const { isAuthenticated } = useAuthSession();
+  const { stats: publicStats, isLoading: statsLoading } = usePublicStats();
   const stats = [
-    { number: "15 000+", label: "студентов обучаются" },
-    { number: "40+", label: "курсов по монтажу" },
-    { number: "87%", label: "нашли первых клиентов" },
-    { number: "4.9", label: "средняя оценка платформы" },
+    { number: publicStats.students, label: "активных участников" },
+    { number: publicStats.courses, label: "опубликованных курсов" },
+    { number: publicStats.lessonsCompleted, label: "завершённых уроков" },
+    { number: publicStats.certificates, label: "выданных сертификатов" },
   ];
 
   const directions = [
     {
       icon: "frame",
+      href: "/courses?category=video",
       title: "Видеомонтаж",
       text: "Собирайте историю из кадров: ритм, смысл, паузы, акценты и чистый финальный экспорт.",
     },
     {
       icon: "cut",
+      href: "/courses?category=capcut",
       title: "CapCut",
       text: "Быстрый мобильный монтаж без хаоса: нарезка, звук, переходы, титры и готовый ролик.",
     },
     {
       icon: "timeline",
+      href: "/courses?category=premiere",
       title: "Premiere Pro",
       text: "Профессиональный таймлайн: цвет, звук, титры, структура проекта и аккуратная сдача.",
     },
     {
       icon: "spark",
+      href: "/courses?category=vfx",
       title: "VFX и эдиты",
       text: "Эффекты, которые работают на кадр: speed ramp, flash, shake, glow и выразительный темп.",
     },
@@ -131,10 +137,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="home-stats">
+      <section className="home-stats" aria-busy={statsLoading} aria-label="Актуальная статистика платформы">
         {stats.map((item) => (
           <div className="home-stat-card" key={item.label}>
-            <strong>{item.number}</strong>
+            <strong>{statsLoading ? "—" : item.number.toLocaleString("ru-RU")}</strong>
             <span>{item.label}</span>
           </div>
         ))}
@@ -158,7 +164,7 @@ export default function HomePage() {
               </div>
               <h3>{item.title}</h3>
               <p>{item.text}</p>
-              <Link to="/courses">Смотреть курсы →</Link>
+              <Link to={item.href}>Смотреть курсы →</Link>
             </article>
           ))}
         </div>
