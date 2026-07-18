@@ -18,4 +18,13 @@
 | `/admin/support` | Admin+ | support/reply | session-bound author, protected reply | public form has no overflow | syntax/typecheck passed | public support page passed; admin flow blocked | public support page passed; admin flow blocked |
 | `/premium` | User | regional config/status/webhooks | KZ/RU, missing key, invalid/replay webhook | required | syntax tests passed | blocked: KZ/RU sandbox keys absent | blocked: KZ/RU sandbox keys absent |
 
+## Regression pass for TZ (22), 2026-07-19
+
+| Defect | Automated evidence | Local production build | Layero preview | Layero production |
+|---|---|---|---|---|
+| Premium SVG expanded into black circles | frontend lint/typecheck/test/build passed | passed: 18–25 px, `fill: none`, inherited stroke; pictographic teacher emoji replaced | pending deploy | pending deploy |
+| Admin access check treated backend failure as invalid JWT | backend auth middleware + frontend retry tests passed | fail-closed 503 state and working retry passed | pending deploy | pending deploy |
+| Google button could activate with an incomplete production redirect setup | OAuth production-configuration test passed; secret absent from provider response | button remains unavailable until credentials and public origins are complete | external Google credentials required | external Google credentials required |
+| Review success toast could disagree with the public list | backend create/list/update/failure test and frontend confirmed-list/false-success tests passed | production API currently exposes 1 persisted review; fresh-list confirmation added | pending deploy | pending deploy |
+
 Browser smoke was recorded on 2026-07-17 after Layero reported Ready. External OAuth and payment rows cannot be marked passed without real provider credentials and sandbox accounts. Production console inspection returned no warnings or errors on the exercised public routes.

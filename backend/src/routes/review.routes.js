@@ -10,7 +10,15 @@ const writeLimiter = rateLimit({
   max: 12,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, code: "REVIEW_RATE_LIMIT", message: "Слишком много действий. Повторите позже." },
+  handler: (req, res) => {
+    console.warn("[Reviews] Write rate limited", {
+      endpoint: `${req.method} ${req.originalUrl || req.url}`,
+      userId: req.user?.id || null,
+      timestamp: new Date().toISOString(),
+      reason: "rate_limit",
+    });
+    return res.status(429).json({ success: false, code: "REVIEW_RATE_LIMIT", message: "Слишком много действий. Повторите позже." });
+  },
 });
 
 const authorSelect = {
@@ -75,6 +83,9 @@ function serialize(review) {
 
 router.get("/", optionalAuthMiddleware, async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store, max-age=0");
+    res.set("Surrogate-Control", "no-store");
+    res.vary("Authorization");
     const direction = String(req.query.direction || "").trim();
     const sort = req.query.sort === "rating" ? { rating: "desc" } : { createdAt: "desc" };
     const includeHidden = req.query.includeHidden === "true" && rolesFromUser(req.user).length > 0;
@@ -92,26 +103,58 @@ router.get("/", optionalAuthMiddleware, async (req, res) => {
 });
 
 router.post("/", authMiddleware, writeLimiter, async (req, res) => {
-  const text = String(req.body?.text || "").trim();
-  const rating = Number(req.body?.rating);
-  const direction = String(req.body?.direction || "").trim().slice(0, 120) || null;
-  if (text.length < 20 || text.length > 1500 || !Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return res.status(400).json({ success: false, code: "REVIEW_INVALID", message: "Напишите от 20 до 1500 символов и поставьте оценку от 1 до 5." });
-  }
-  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, username: true } });
-  if (!user) return res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
-  const previous = await prisma.review.findUnique({ where: { userId: user.id } });
-  const review = await prisma.$transaction(async (tx) => {
-    const saved = await tx.review.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id, name: user.username, text, rating, direction },
-      update: { name: user.username, text, rating, direction, isHidden: false },
-      include: reviewInclude,
+  const timestamp = new Date().toISOString();
+  try {
+    const text = String(req.body?.text || "").trim();
+    const rating = Number(req.body?.rating);
+    const direction = String(req.body?.direction || "").trim().slice(0, 120) || null;
+    if (text.length < 20 || text.length > 1500 || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+      console.warn("[Reviews] Write rejected", { endpoint: "POST /api/reviews", userId: req.user.id, timestamp, reason: "validation_failed" });
+      return res.status(400).json({ success: false, code: "REVIEW_INVALID", message: "Напишите от 20 до 1500 символов и поставьте оценку от 1 до 5." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, username: true } });
+    if (!user) {
+      console.warn("[Reviews] Write rejected", { endpoint: "POST /api/reviews", userId: req.user.id, timestamp, reason: "user_not_found" });
+      return res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const previous = await tx.review.findUnique({ where: { userId: user.id } });
+      const review = await tx.review.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, name: user.username, text, rating, direction },
+        update: { name: user.username, text, rating, direction, isHidden: false },
+        include: reviewInclude,
+      });
+      const operation = previous ? "updated" : "created";
+      await writeAudit(tx, { req, action: `review.${operation}`, entityType: "Review", entityId: review.id, targetUserId: user.id, before: previous || undefined, after: { text, rating, direction } });
+      return { review, operation };
     });
-    await writeAudit(tx, { req, action: previous ? "review.updated" : "review.created", entityType: "Review", entityId: saved.id, targetUserId: user.id, before: previous || undefined, after: { text, rating, direction } });
-    return saved;
-  });
-  return res.status(previous ? 200 : 201).json({ success: true, message: previous ? "Отзыв обновлён." : "Отзыв опубликован.", review: serialize(review) });
+
+    console.info("[Reviews] Write succeeded", {
+      endpoint: "POST /api/reviews",
+      userId: user.id,
+      reviewId: result.review.id,
+      operation: result.operation,
+      timestamp,
+    });
+    return res.status(result.operation === "updated" ? 200 : 201).json({
+      success: true,
+      operation: result.operation,
+      message: result.operation === "updated" ? "Отзыв обновлён." : "Отзыв опубликован.",
+      review: serialize(result.review),
+    });
+  } catch (error) {
+    console.error("[Reviews] Write failed", {
+      endpoint: "POST /api/reviews",
+      userId: req.user?.id || null,
+      timestamp,
+      reason: error?.message || String(error),
+      stack: error?.stack,
+    });
+    return res.status(500).json({ success: false, code: "REVIEW_SAVE_FAILED", message: "Не удалось сохранить отзыв. Повторите попытку позже." });
+  }
 });
 
 router.post("/:id/comments", authMiddleware, writeLimiter, async (req, res) => {

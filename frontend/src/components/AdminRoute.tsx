@@ -14,6 +14,12 @@ type AccessState =
   | "forbidden"
   | "error";
 
+type AccessFailure = {
+  title: string;
+  message: string;
+  retryable: boolean;
+};
+
 type AuthUser = {
   role?: string;
   roles?: string[];
@@ -38,6 +44,8 @@ function hasAdminAccess(user: AuthUser) {
 export default function AdminRoute({ children }: AdminRouteProps) {
   const location = useLocation();
   const [access, setAccess] = useState<AccessState>("checking");
+  const [failure, setFailure] = useState<AccessFailure | null>(null);
+  const [checkAttempt, setCheckAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -57,21 +65,53 @@ export default function AdminRoute({ children }: AdminRouteProps) {
         }
 
         persistAuthUser(user);
+        if (active) setFailure(null);
         if (active) setAccess(hasAdminAccess(user) ? "allowed" : "forbidden");
       } catch (error) {
-        const status = (error as { response?: { status?: number } })?.response?.status;
+        const response = (error as {
+          response?: { status?: number; data?: { code?: string; message?: string } };
+        })?.response;
+        const status = response?.status;
+        const code = response?.data?.code;
+        const serverMessage = response?.data?.message;
 
-        if (status === 401 || status === 403 || status === 404) {
+        if (status === 401 || status === 404) {
           clearAuthSession();
           if (active) setAccess("unauthenticated");
           return;
         }
 
+        if (status === 403) {
+          if (active) {
+            setFailure({
+              title: "Доступ к аккаунту ограничен",
+              message: serverMessage || "Сервер отклонил доступ к аккаунту.",
+              retryable: false,
+            });
+            setAccess("error");
+          }
+          return;
+        }
+
         console.error("[AdminRoute] Failed to verify admin access", {
+          endpoint: "/api/auth/me",
           status: status || null,
+          code: code || null,
+          timestamp: new Date().toISOString(),
           message: error instanceof Error ? error.message : String(error),
         });
-        if (active) setAccess("error");
+        if (active) {
+          setFailure({
+            title: "Не удалось проверить права доступа",
+            message:
+              serverMessage ||
+              (status
+                ? "Сервис проверки доступа временно недоступен. Повторите попытку."
+                : "Не удалось связаться с сервисом проверки доступа. Проверьте соединение и повторите попытку."),
+            retryable: true,
+          });
+          setAccess("error");
+        }
       }
     }
 
@@ -79,7 +119,7 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [checkAttempt]);
 
   if (access === "unauthenticated") {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -93,8 +133,20 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     return (
       <main className="admin-page">
         <section className="error-state" role="alert">
-          <h1>Не удалось проверить права доступа</h1>
-          <p>Backend временно недоступен. Обновите страницу и повторите попытку.</p>
+          <h1>{failure?.title || "Не удалось проверить права доступа"}</h1>
+          <p>{failure?.message || "Повторите попытку позже."}</p>
+          {failure?.retryable && (
+            <button
+              type="button"
+              className="access-retry-button"
+              onClick={() => {
+                setAccess("checking");
+                setCheckAttempt((current) => current + 1);
+              }}
+            >
+              Повторить проверку
+            </button>
+          )}
         </section>
       </main>
     );
@@ -104,7 +156,7 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     return (
       <main className="admin-page">
         <section className="loading-state" aria-live="polite">
-          Проверяем права администратора...
+          Проверяем права администратора…
         </section>
       </main>
     );

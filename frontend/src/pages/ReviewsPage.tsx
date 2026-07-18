@@ -21,12 +21,25 @@ export default function ReviewsPage() {
   const [comments, setComments] = useState<Record<number, string>>({});
   const [sending, setSending] = useState(false);
 
-  const load = useCallback(async () => {
-    try { const { data } = await api.get("/reviews"); setReviews(data.reviews || data.data || []); }
-    catch (error) { showToast({ tone: "error", title: "Отзывы", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Не удалось загрузить отзывы." }); }
-    finally { setLoading(false); }
+  const fetchReviews = useCallback(async (cacheBust = false) => {
+    const { data } = await api.get("/reviews", cacheBust ? { params: { refresh: Date.now() } } : undefined);
+    const next = data.reviews ?? data.data;
+    if (data.success === false || !Array.isArray(next)) {
+      throw new Error("Сервер вернул некорректный список отзывов.");
+    }
+    return next as Review[];
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    void fetchReviews()
+      .then((next) => { if (active) setReviews(next); })
+      .catch((error) => {
+        if (!active) return;
+        showToast({ tone: "error", title: "Отзывы", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || (error instanceof Error ? error.message : "Не удалось загрузить отзывы.") });
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [fetchReviews]);
 
   const ownReview = reviews.find((review) => review.userId === user?.id);
   useEffect(() => { if (ownReview) { setRating(ownReview.rating); setDirection(ownReview.direction || directions[0]); setText(ownReview.text); } }, [ownReview?.id]);
@@ -35,16 +48,42 @@ export default function ReviewsPage() {
   async function submitReview(event: FormEvent) {
     event.preventDefault();
     if (text.trim().length < 20) { showToast({ tone: "warning", title: "Отзыв слишком короткий", message: "Напишите не менее 20 символов." }); return; }
-    try { setSending(true); const { data } = await api.post("/reviews", { rating, direction, text: text.trim() }); showToast({ tone: "success", title: ownReview ? "Отзыв обновлён" : "Отзыв опубликован", message: data.message }); await load(); }
-    catch (error) { showToast({ tone: "error", title: "Отзыв не сохранён", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Повторите позже." }); }
+    try {
+      setSending(true);
+      const { data } = await api.post("/reviews", { rating, direction, text: text.trim() });
+      const saved = data.review as Review | undefined;
+      if (data.success !== true || !saved?.id || saved.userId !== user?.id) {
+        throw new Error("Сервер не подтвердил сохранение отзыва.");
+      }
+
+      const refreshed = await fetchReviews(true);
+      const confirmed = refreshed.find((review) => review.id === saved.id);
+      if (!confirmed || confirmed.text !== saved.text || confirmed.rating !== saved.rating) {
+        throw new Error("Отзыв сохранён, но не появился в опубликованном списке. Повторите попытку позже.");
+      }
+      setReviews(refreshed);
+      const updated = data.operation === "updated";
+      showToast({ tone: "success", title: updated ? "Отзыв обновлён" : "Отзыв опубликован", message: data.message || (updated ? "Изменения сохранены на сервере." : "Отзыв сохранён на сервере.") });
+    }
+    catch (error) { showToast({ tone: "error", title: "Отзыв не сохранён", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || (error instanceof Error ? error.message : "Повторите позже.") }); }
     finally { setSending(false); }
   }
 
   async function submitComment(reviewId: number) {
     const value = comments[reviewId]?.trim();
     if (!value) return;
-    try { await api.post(`/reviews/${reviewId}/comments`, { text: value }); setComments((current) => ({ ...current, [reviewId]: "" })); showToast({ tone: "success", title: "Комментарий опубликован", message: "Автор отзыва получит уведомление." }); await load(); }
-    catch (error) { showToast({ tone: "error", title: "Комментарий не сохранён", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || "Повторите позже." }); }
+    try {
+      const { data } = await api.post(`/reviews/${reviewId}/comments`, { text: value });
+      if (data.success !== true || !data.comment?.id) throw new Error("Сервер не подтвердил сохранение комментария.");
+      const refreshed = await fetchReviews(true);
+      if (!refreshed.find((review) => review.id === reviewId)?.comments?.some((comment) => comment.id === data.comment.id)) {
+        throw new Error("Комментарий сохранён, но не появился в списке.");
+      }
+      setReviews(refreshed);
+      setComments((current) => ({ ...current, [reviewId]: "" }));
+      showToast({ tone: "success", title: "Комментарий опубликован", message: "Автор отзыва получит уведомление." });
+    }
+    catch (error) { showToast({ tone: "error", title: "Комментарий не сохранён", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || (error instanceof Error ? error.message : "Повторите позже.") }); }
   }
 
   return <main className="reviews-page"><header className="reviews-head"><span className="timecode">COMMUNITY / REVIEWS</span><h1>Отзывы студентов</h1><p>Один редактируемый отзыв на аккаунт. Комментарии и официальные ответы хранятся на сервере.</p><dl><div><dt>Опубликовано</dt><dd>{reviews.length}</dd></div><div><dt>Средняя оценка</dt><dd>{average.toFixed(1)} / 5</dd></div></dl></header>

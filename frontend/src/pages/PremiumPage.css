@@ -260,11 +260,21 @@
 }
 
 .premium-features p {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   margin: 0;
   color: #dbeafe;
   font-size: 14px;
   line-height: 1.55;
   font-weight: 750;
+}
+
+.premium-features .frame-icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: #facc15;
 }
 
 .premium-pay-btn,
@@ -436,6 +446,13 @@
   font-size: 24px;
   background: linear-gradient(135deg, #facc15, #f59e0b);
   box-shadow: 0 12px 34px rgba(250, 204, 21, 0.18);
+}
+
+.premium-benefit-grid strong .frame-icon,
+.premium-audience-grid article > div .frame-icon,
+.premium-unlock-icon .frame-icon {
+  width: 25px;
+  height: 25px;
 }
 
 .premium-benefit-grid h3,

@@ -394,7 +394,7 @@ export default function PremiumPage() {
             </article>
 
             <article>
-              <strong>🧑‍🏫</strong>
+              <strong><FrameIcon name="lessons" /></strong>
               <h3>Проверка работ</h3>
               <p>
                 Обратная связь по практическим заданиям и улучшению монтажа.
@@ -441,7 +441,7 @@ export default function PremiumPage() {
           </article>
 
           <article className="premium-unlock-card">
-            <div className="premium-unlock-icon">🧑‍🏫</div>
+            <div className="premium-unlock-icon"><FrameIcon name="lessons" /></div>
             <h3>Проверка практики</h3>
             <p>
               Возможность отправлять работы на проверку и получать рекомендации

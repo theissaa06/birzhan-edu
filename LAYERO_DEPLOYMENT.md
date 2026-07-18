@@ -6,6 +6,25 @@ Backend secrets: `DATABASE_URL`, `JWT_SECRET`, SMTP credentials, Turnstile secre
 
 Provider callback URLs use `https://<production-origin>/api/auth/oauth/<provider>/callback`. Telegram uses the production hostname configured for the bot.
 
+For the current production service, configure these backend-only Google values in Layero:
+
+```text
+FRONTEND_URL=https://theissaa-birzhan-edu.preview.layero.ru
+OAUTH_REDIRECT_BASE_URL=https://theissaa-birzhan-edu.preview.layero.ru
+GOOGLE_CLIENT_ID=<Google OAuth web client ID>
+GOOGLE_CLIENT_SECRET=<Google OAuth web client secret>
+```
+
+The exact authorized redirect URI in Google Cloud Console is:
+
+```text
+https://theissaa-birzhan-edu.preview.layero.ru/api/auth/oauth/google/callback
+```
+
+The feature preview needs its own exact origin and callback entry. In production, redirect providers remain disabled unless their credentials, `FRONTEND_URL`, and either `OAUTH_REDIRECT_BASE_URL` or `PUBLIC_BACKEND_URL` are all present. Never add provider secrets to `VITE_*`, frontend files, Git, or build artifacts. Verify readiness through `GET /api/auth/oauth/providers`; then perform a real provider login and confirm the one-use `/exchange` flow. Do not auto-link an existing account only because the provider returned the same email.
+
+Payment variables are split by trust boundary: `VITE_TIPTOPPAY_KZ_PUBLIC_ID` and `VITE_CLOUDPAYMENTS_RU_PUBLIC_ID` are frontend build variables; `TIPTOPPAY_API_SECRET` and `CLOUDPAYMENTS_API_SECRET` are backend-only. Use sandbox credentials for QA.
+
 ## Database safety
 
 Before the first production deployment, make a PostgreSQL backup from the Layero database connection:

@@ -42,6 +42,8 @@ async function expireBanIfNeeded(user, now) {
 }
 
 const authMiddleware = async (req, res, next) => {
+  let decoded = null;
+
   try {
     const authHeader = String(req.headers.authorization || "");
     if (!authHeader.startsWith("Bearer ")) {
@@ -49,7 +51,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.slice(7).trim();
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded?.id) {
       return apiError(res, 401, "AUTH_TOKEN_INVALID", "Сессия недействительна.");
     }
@@ -115,15 +117,35 @@ const authMiddleware = async (req, res, next) => {
     await prisma.user.update({
       where: { id: user.id },
       data: { lastSeenAt: now },
-    }).catch(() => undefined);
+    }).catch((error) => {
+      console.warn("[AuthMiddleware] Failed to update lastSeenAt", {
+        endpoint: `${req.method} ${req.originalUrl || req.url}`,
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        reason: error?.message || String(error),
+      });
+    });
 
     return next();
   } catch (error) {
     const isJwtError = ["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(error?.name);
-    if (!isJwtError) {
-      console.error("[AuthMiddleware] Authorization failed", error?.stack || error);
+    if (isJwtError) {
+      return apiError(res, 401, "AUTH_TOKEN_INVALID", "Сессия недействительна или истекла.");
     }
-    return apiError(res, 401, "AUTH_TOKEN_INVALID", "Сессия недействительна или истекла.");
+
+    console.error("[AuthMiddleware] Authorization service failed", {
+      endpoint: `${req.method} ${req.originalUrl || req.url}`,
+      userId: decoded?.id ? Number(decoded.id) : null,
+      timestamp: new Date().toISOString(),
+      reason: error?.message || String(error),
+      stack: error?.stack,
+    });
+    return apiError(
+      res,
+      503,
+      "AUTH_SERVICE_UNAVAILABLE",
+      "Сервис проверки доступа временно недоступен. Повторите попытку.",
+    );
   }
 };
 

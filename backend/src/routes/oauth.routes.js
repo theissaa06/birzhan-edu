@@ -42,7 +42,15 @@ function randomToken(bytes = 32) {
 
 function configured(name) {
   const provider = PROVIDERS[name];
-  return Boolean(provider && provider.required.every((key) => String(process.env[key] || "").trim()));
+  if (!provider) return false;
+  if (!provider.required.every((key) => String(process.env[key] || "").trim())) return false;
+  if (name === "telegram" || process.env.NODE_ENV !== "production") return true;
+
+  const redirectBase = String(
+    process.env.OAUTH_REDIRECT_BASE_URL || process.env.PUBLIC_BACKEND_URL || "",
+  ).trim();
+  const frontendBase = String(process.env.FRONTEND_URL || "").split(",")[0].trim();
+  return Boolean(redirectBase && frontendBase);
 }
 
 function frontendUrl(path = "/login") {
