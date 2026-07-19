@@ -98,6 +98,7 @@ async function verifyJwt(jwt, { jwksUrl, issuer, audience, nonceHash }) {
   if (parts.length !== 3) throw new Error("Malformed identity token");
   const header = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8"));
   const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+  if (!["RS256", "ES256"].includes(header.alg)) throw new Error("Unsupported identity token algorithm");
   const response = await fetch(jwksUrl, { signal: AbortSignal.timeout(6000) });
   if (!response.ok) throw new Error("Identity key service unavailable");
   const { keys = [] } = await response.json();
@@ -113,7 +114,8 @@ async function verifyJwt(jwt, { jwksUrl, issuer, audience, nonceHash }) {
   );
   const now = Math.floor(Date.now() / 1000);
   const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  if (!verified || payload.iss !== issuer || !audiences.includes(audience) || Number(payload.exp || 0) <= now) {
+  const issuers = Array.isArray(issuer) ? issuer : [issuer];
+  if (!verified || !issuers.includes(payload.iss) || !audiences.includes(audience) || Number(payload.exp || 0) <= now) {
     throw new Error("Identity token validation failed");
   }
   if (nonceHash && hash(payload.nonce || "") !== nonceHash) throw new Error("Identity nonce mismatch");
@@ -201,13 +203,20 @@ async function exchangeProviderCode(name, body, attempt) {
     });
     if (!tokenResponse.ok) throw new Error("Google token exchange failed");
     const tokens = await tokenResponse.json();
+    if (!tokens.id_token) throw new Error("Google identity token is missing");
+    const identity = await verifyJwt(tokens.id_token, {
+      jwksUrl: process.env.GOOGLE_JWKS_URL || "https://www.googleapis.com/oauth2/v3/certs",
+      issuer: ["https://accounts.google.com", "accounts.google.com"],
+      audience: process.env.GOOGLE_CLIENT_ID,
+      nonceHash: attempt.nonceHash,
+    });
     const userResponse = await fetch(process.env.GOOGLE_USERINFO_URL || "https://openidconnect.googleapis.com/v1/userinfo", {
       headers: { authorization: `Bearer ${tokens.access_token}` },
       signal: AbortSignal.timeout(8000),
     });
     if (!userResponse.ok) throw new Error("Google profile request failed");
     const user = await userResponse.json();
-    if (!user.sub || !user.email || user.email_verified === false) throw new Error("Google did not return a verified email");
+    if (!user.sub || user.sub !== identity.sub || !user.email || user.email_verified === false) throw new Error("Google did not return a verified identity");
     return { providerUserId: String(user.sub), email: String(user.email).toLowerCase(), displayName: user.name || user.email.split("@")[0] };
   }
   if (name === "apple") {
@@ -396,14 +405,21 @@ router.post("/:provider/callback", express.urlencoded({ extended: false }), call
 
 router.post("/exchange", async (req, res) => {
   const codeHash = hash(String(req.body?.code || ""));
+  const now = new Date();
   const attempt = await prisma.oAuthLoginAttempt.findUnique({
     where: { exchangeCodeHash: codeHash },
     include: { user: { include: { roles: true, oauthIdentities: true } } },
   });
-  if (!attempt || !attempt.user || !attempt.usedAt || attempt.exchangedAt || attempt.expiresAt <= new Date()) {
+  if (!attempt || !attempt.user || !attempt.usedAt || attempt.exchangedAt || attempt.expiresAt <= now) {
     return res.status(400).json({ success: false, code: "OAUTH_EXCHANGE_INVALID", message: "Код входа недействителен или уже использован." });
   }
-  await prisma.oAuthLoginAttempt.update({ where: { id: attempt.id }, data: { exchangedAt: new Date(), exchangeCodeHash: null } });
+  const claimed = await prisma.oAuthLoginAttempt.updateMany({
+    where: { id: attempt.id, exchangeCodeHash: codeHash, exchangedAt: null, expiresAt: { gt: now } },
+    data: { exchangedAt: now, exchangeCodeHash: null },
+  });
+  if (claimed.count !== 1) {
+    return res.status(400).json({ success: false, code: "OAUTH_EXCHANGE_INVALID", message: "Код входа недействителен или уже использован." });
+  }
   const roles = rolesFromUser(attempt.user);
   const token = generateToken({ id: attempt.user.id, email: attempt.user.email, sessionVersion: attempt.user.sessionVersion });
   return res.json({

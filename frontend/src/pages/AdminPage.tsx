@@ -8,7 +8,7 @@ import "./AdminPage.css";
 
 type AdminUser = { id: number; username: string; email: string; roles?: string[]; primaryRole?: string; accountStatus?: string; isPremium?: boolean; premiumUntil?: string | null; activeBan?: { reason: string; endsAt?: string | null } | null; createdAt?: string };
 type Ban = { id: number; status: string; reason: string; startsAt: string; endsAt?: string | null; user: { id: number; username: string; email: string }; actor?: { username: string } };
-type Review = { id: number; rating: number; text: string; isHidden?: boolean; createdAt: string; user?: { username?: string; email?: string }; officialReply?: { text: string; label: string } | null; comments?: unknown[] };
+type Review = { id: number; rating: number; text: string; isHidden?: boolean; createdAt: string; author?: { username?: string; roles?: string[] } | null; officialReply?: { id: number; text: string; label: string } | null; comments?: unknown[] };
 type Announcement = { id: number; title: string; message: string; audience: string; activeFrom: string; activeUntil?: string | null };
 type SupportMessage = { id: number; message: string; text?: string; status?: string; createdAt: string; username?: string; email?: string; user?: { username?: string; email?: string }; replies?: SupportMessage[] };
 type Stats = Record<string, number>;
@@ -52,6 +52,7 @@ export default function AdminPage() {
   const [announcement, setAnnouncement] = useState({ title: "", message: "", audience: "ALL", activeUntil: "" });
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [reply, setReply] = useState("");
+  const [replySaving, setReplySaving] = useState(false);
   const [selectedSupport, setSelectedSupport] = useState<SupportMessage | null>(null);
   const [supportReply, setSupportReply] = useState("");
 
@@ -102,6 +103,32 @@ export default function AdminPage() {
     setAnnouncement({ title: "", message: "", audience: "ALL", activeUntil: "" });
   }
 
+  async function submitOfficialReply(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedReview || replySaving) return;
+    const text = reply.trim();
+    if (text.length < 5 || text.length > 1500) {
+      showToast({ tone: "error", title: "Проверьте ответ", message: "Ответ должен содержать от 5 до 1500 символов." });
+      return;
+    }
+
+    setReplySaving(true);
+    try {
+      const { data } = await api.put(`/reviews/${selectedReview.id}/official-reply`, { text });
+      if (data?.success !== true || !data?.officialReply?.id || data.officialReply.text !== text) {
+        throw new Error(data?.message || "Сервер не подтвердил сохранение ответа.");
+      }
+      showToast({ tone: "success", title: "Официальный ответ", message: data.message || "Ответ опубликован и виден на странице отзывов." });
+      setSelectedReview(null);
+      setReply("");
+      await load();
+    } catch (error) {
+      showToast({ tone: "error", title: "Ответ не сохранён", message: errorMessage(error) });
+    } finally {
+      setReplySaving(false);
+    }
+  }
+
   const overview = (
     <div className="admin-metrics">
       {[
@@ -135,7 +162,7 @@ export default function AdminPage() {
 
         {!loading && section === "content" && <div className="admin-content-grid">{[["Курсы", content.courses, "/courses"], ["Вебинары", content.webinars, "/webinars"], ["Вакансии", content.jobs, "/jobs"]].map(([title, items, link]) => <article key={String(title)}><span className="timecode">SERVER DATA</span><h3>{String(title)}</h3><strong>{(items as unknown[]).length}</strong><NavLink to={String(link)}>Открыть публичный раздел</NavLink></article>)}</div>}
 
-        {!loading && section === "reviews" && <div className="admin-list">{reviews.map((review) => <article key={review.id}><header><strong>{review.user?.username || review.user?.email || "Пользователь"}</strong><span>{review.rating}/5 · {date(review.createdAt)}</span></header><p>{review.text}</p>{review.officialReply && <blockquote><strong>{review.officialReply.label}</strong>{review.officialReply.text}</blockquote>}<div className="admin-row-actions"><button onClick={() => void perform(() => api.patch(`/reviews/${review.id}/moderation`, { isHidden: !review.isHidden }), review.isHidden ? "Отзыв опубликован." : "Отзыв скрыт.")}>{review.isHidden ? "Опубликовать" : "Скрыть"}</button><button onClick={() => { setSelectedReview(review); setReply(review.officialReply?.text || ""); }}>Официальный ответ</button></div></article>)}{!reviews.length && <p className="admin-empty">Отзывов пока нет.</p>}{selectedReview && <section className="admin-editor"><h3>Официальный ответ</h3><textarea value={reply} onChange={(event) => setReply(event.target.value)} rows={5} /><div className="admin-editor-actions"><button onClick={() => void perform(() => api.put(`/reviews/${selectedReview.id}/official-reply`, { text: reply }), "Официальный ответ сохранён.")}>Сохранить</button><button onClick={() => setSelectedReview(null)}>Закрыть</button></div></section>}</div>}
+        {!loading && section === "reviews" && <div className="admin-list">{reviews.map((review) => <article key={review.id}><header><strong>{review.author?.username || "Пользователь"}</strong><span>{review.rating}/5 · {date(review.createdAt)}</span></header><p>{review.text}</p>{review.officialReply && <blockquote><strong>{review.officialReply.label}</strong>{review.officialReply.text}</blockquote>}<div className="admin-row-actions"><button type="button" onClick={() => void perform(() => api.patch(`/reviews/${review.id}/moderation`, { isHidden: !review.isHidden }), review.isHidden ? "Отзыв опубликован." : "Отзыв скрыт.")}>{review.isHidden ? "Опубликовать" : "Скрыть"}</button><button type="button" aria-expanded={selectedReview?.id === review.id} onClick={() => { setSelectedReview(review); setReply(review.officialReply?.text || ""); }}>{review.officialReply ? "Редактировать официальный ответ" : "Официальный ответ"}</button></div></article>)}{!reviews.length && <p className="admin-empty">Отзывов пока нет.</p>}{selectedReview && <form className="admin-editor" aria-label="Форма официального ответа" onSubmit={submitOfficialReply}><div><span className="timecode">REVIEW / {selectedReview.id}</span><h3>{selectedReview.officialReply ? "Редактировать официальный ответ" : "Новый официальный ответ"}</h3><p>Метка «Ответ разработчика» или «Ответ администрации» определяется сервером по вашей роли.</p></div><label htmlFor="official-review-reply">Текст ответа<textarea id="official-review-reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={5} minLength={5} maxLength={1500} required disabled={replySaving} /></label><small className="admin-editor-count">{reply.length} / 1500</small><div className="admin-editor-actions"><button type="submit" disabled={replySaving}>{replySaving ? "Сохраняем…" : selectedReview.officialReply ? "Сохранить изменения" : "Опубликовать ответ"}</button><button type="button" disabled={replySaving} onClick={() => { setSelectedReview(null); setReply(""); }}>Закрыть</button></div></form>}</div>}
 
         {!loading && section === "announcements" && <div className="admin-two-columns"><form className="admin-editor" onSubmit={submitAnnouncement}><h3>Новое объявление</h3><label>Заголовок<input value={announcement.title} onChange={(event) => setAnnouncement({ ...announcement, title: event.target.value })} required minLength={3} /></label><label>Сообщение<textarea value={announcement.message} onChange={(event) => setAnnouncement({ ...announcement, message: event.target.value })} required minLength={5} rows={5} /></label><label>Аудитория<select value={announcement.audience} onChange={(event) => setAnnouncement({ ...announcement, audience: event.target.value })}><option value="ALL">Все</option><option value="USERS">Пользователи</option><option value="PREMIUM">Premium</option><option value="STAFF">Команда</option></select></label><label>Показывать до<input type="datetime-local" value={announcement.activeUntil} onChange={(event) => setAnnouncement({ ...announcement, activeUntil: event.target.value })} /></label><button type="submit">Опубликовать</button></form><div className="admin-list">{announcements.map((item) => <article key={item.id}><strong>{item.title}</strong><p>{item.message}</p><small>{item.audience} · {date(item.activeFrom)} — {date(item.activeUntil)}</small><button onClick={() => void perform(() => api.delete(`/announcements/${item.id}`), "Объявление удалено.")}>Удалить</button></article>)}{!announcements.length && <p className="admin-empty">Активных объявлений нет.</p>}</div></div>}
 

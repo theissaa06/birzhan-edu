@@ -41,9 +41,8 @@ const reviewInclude = {
 
 function staffLabel(user) {
   const role = highestRole(rolesFromUser(user));
-  if (role === "OWNER") return "Команда Frame School · Owner";
-  if (role === "DEVELOPER") return "Команда Frame School · Developer";
-  return "Официальный ответ Frame School";
+  if (role === "OWNER" || role === "DEVELOPER") return "Ответ разработчика";
+  return "Ответ администрации";
 }
 
 function publicAuthor(user) {
@@ -176,26 +175,91 @@ router.post("/:id/comments", authMiddleware, writeLimiter, async (req, res) => {
   return res.status(201).json({ success: true, comment: { id: comment.id, text: comment.text, createdAt: comment.createdAt, author: publicAuthor(comment.author) } });
 });
 
-router.put("/:id/official-reply", authMiddleware, adminMiddleware, async (req, res) => {
+router.put("/:id/official-reply", authMiddleware, adminMiddleware, writeLimiter, async (req, res) => {
+  const timestamp = new Date().toISOString();
   const reviewId = Number(req.params.id);
   const text = String(req.body?.text || "").trim();
-  if (!Number.isInteger(reviewId) || reviewId <= 0 || text.length < 5 || text.length > 1500) {
-    return res.status(400).json({ success: false, code: "OFFICIAL_REPLY_INVALID", message: "Ответ должен содержать от 5 до 1500 символов." });
-  }
-  const review = await prisma.review.findUnique({ where: { id: reviewId }, select: { id: true, userId: true } });
-  if (!review) return res.status(404).json({ success: false, code: "REVIEW_NOT_FOUND", message: "Отзыв не найден." });
-  const reply = await prisma.$transaction(async (tx) => {
-    const saved = await tx.reviewOfficialReply.upsert({
-      where: { reviewId },
-      update: { text, authorId: req.user.id },
-      create: { reviewId, authorId: req.user.id, text },
-      include: { author: { select: authorSelect } },
+
+  try {
+    if (!Number.isInteger(reviewId) || reviewId <= 0 || text.length < 5 || text.length > 1500) {
+      return res.status(400).json({ success: false, code: "OFFICIAL_REPLY_INVALID", message: "Ответ должен содержать от 5 до 1500 символов." });
+    }
+
+    const review = await prisma.review.findUnique({ where: { id: reviewId }, select: { id: true, userId: true } });
+    if (!review) return res.status(404).json({ success: false, code: "REVIEW_NOT_FOUND", message: "Отзыв не найден." });
+
+    const result = await prisma.$transaction(async (tx) => {
+      const previous = await tx.reviewOfficialReply.findUnique({
+        where: { reviewId },
+        include: { author: { select: authorSelect } },
+      });
+
+      if (previous && previous.text === text && previous.authorId === req.user.id) {
+        return { reply: previous, operation: "unchanged" };
+      }
+
+      const reply = await tx.reviewOfficialReply.upsert({
+        where: { reviewId },
+        update: { text, authorId: req.user.id },
+        create: { reviewId, authorId: req.user.id, text },
+        include: { author: { select: authorSelect } },
+      });
+      const operation = previous ? "updated" : "created";
+
+      if (review.userId) {
+        await tx.notification.create({
+          data: {
+            userId: review.userId,
+            type: "review",
+            title: operation === "created" ? "Frame School ответила на ваш отзыв" : "Frame School обновила ответ на ваш отзыв",
+            message: text.slice(0, 180),
+            link: "/reviews",
+          },
+        });
+      }
+      await writeAudit(tx, {
+        req,
+        action: `review.official_reply_${operation}`,
+        entityType: "ReviewOfficialReply",
+        entityId: reply.id,
+        targetUserId: review.userId || undefined,
+        before: previous ? { text: previous.text, authorId: previous.authorId } : undefined,
+        after: { reviewId, text, authorId: req.user.id, label: staffLabel(reply.author) },
+      });
+      return { reply, operation };
     });
-    if (review.userId) await tx.notification.create({ data: { userId: review.userId, type: "review", title: "Frame School ответила на ваш отзыв", message: text.slice(0, 180), link: "/reviews" } });
-    await writeAudit(tx, { req, action: "review.official_reply", entityType: "ReviewOfficialReply", entityId: saved.id, targetUserId: review.userId || undefined, after: { reviewId, text } });
-    return saved;
-  });
-  return res.json({ success: true, officialReply: { id: reply.id, text: reply.text, label: staffLabel(reply.author), author: publicAuthor(reply.author) } });
+
+    console.info("[Reviews] Official reply saved", {
+      endpoint: `PUT /api/reviews/${reviewId}/official-reply`,
+      reviewId,
+      actorId: req.user.id,
+      operation: result.operation,
+      timestamp,
+    });
+    return res.json({
+      success: true,
+      operation: result.operation,
+      message: result.operation === "created" ? "Официальный ответ опубликован." : result.operation === "updated" ? "Официальный ответ обновлён." : "Официальный ответ уже актуален.",
+      officialReply: {
+        id: result.reply.id,
+        text: result.reply.text,
+        createdAt: result.reply.createdAt,
+        updatedAt: result.reply.updatedAt,
+        label: staffLabel(result.reply.author),
+        author: publicAuthor(result.reply.author),
+      },
+    });
+  } catch (error) {
+    console.error("[Reviews] Official reply failed", {
+      endpoint: `PUT /api/reviews/${reviewId || req.params.id}/official-reply`,
+      reviewId: Number.isInteger(reviewId) ? reviewId : null,
+      actorId: req.user?.id || null,
+      timestamp,
+      reason: error?.message || String(error),
+      stack: error?.stack,
+    });
+    return res.status(500).json({ success: false, code: "OFFICIAL_REPLY_SAVE_FAILED", message: "Не удалось сохранить официальный ответ. Повторите попытку позже." });
+  }
 });
 
 router.patch("/:id/moderation", authMiddleware, adminMiddleware, async (req, res) => {
