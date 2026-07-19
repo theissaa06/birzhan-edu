@@ -55,6 +55,12 @@ const adminUserSelect = {
     take: 1,
   },
   premiumOverride: true,
+  subscriptions: {
+    where: { status: { in: ["ACTIVE", "GRACE", "PENDING"] } },
+    orderBy: { expiresAt: "desc" },
+    take: 1,
+    select: { id: true, plan: true, status: true, expiresAt: true, graceUntil: true, provider: true },
+  },
 };
 
 function serializeAdminUser(user) {
@@ -64,6 +70,8 @@ function serializeAdminUser(user) {
     roles,
     badges: roles,
     primaryRole: highestRole(roles),
+    paidUntil: user.subscriptions?.[0]?.expiresAt || null,
+    paidSubscription: user.subscriptions?.[0] || null,
     activeBan: user.bansReceived?.[0] || null,
     blockedAt: user.bansReceived?.[0]?.startsAt || null,
     blockedUntil: user.bansReceived?.[0]?.endsAt || null,
@@ -251,9 +259,20 @@ async function applyPremiumOverride(req, res, input) {
   const userId = positiveId(input.userId);
   const mode = String(input.mode || "").toUpperCase();
   const reason = String(input.reason || "").trim().slice(0, 500);
-  const validUntil = input.validUntil ? new Date(input.validUntil) : null;
-  if (!userId || !["FORCE_ENABLED", "FORCE_DISABLED", "CLEAR"].includes(mode) || reason.length < 5 || (validUntil && Number.isNaN(validUntil.getTime()))) {
-    return res.status(400).json({ success: false, code: "PREMIUM_OVERRIDE_INVALID", message: "Укажите режим, причину не короче 5 символов и корректную дату." });
+  const validUntil = mode !== "CLEAR" && input.validUntil ? new Date(input.validUntil) : null;
+  const fieldErrors = {};
+  if (!userId) fieldErrors.userId = "Некорректный пользователь.";
+  if (!["FORCE_ENABLED", "FORCE_DISABLED", "CLEAR"].includes(mode)) fieldErrors.mode = "Выберите действие с Premium.";
+  if (reason.length < 5) fieldErrors.reason = "Укажите причину не короче 5 символов.";
+  if (validUntil && (Number.isNaN(validUntil.getTime()) || validUntil <= new Date())) fieldErrors.validUntil = "Дата окончания должна быть корректной и находиться в будущем.";
+  if (input.confirmed !== true) fieldErrors.confirmed = "Подтвердите ручное изменение Premium.";
+  if (Object.keys(fieldErrors).length) {
+    return res.status(400).json({
+      success: false,
+      code: "PREMIUM_OVERRIDE_INVALID",
+      message: Object.values(fieldErrors)[0],
+      fieldErrors,
+    });
   }
   const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, premiumOverride: true } });
   if (!target) return res.status(404).json({ success: false, code: "USER_NOT_FOUND", message: "Пользователь не найден." });
@@ -304,6 +323,7 @@ router.post("/premium/grant", privilegedMiddleware, async (req, res) => {
     mode: "FORCE_ENABLED",
     validUntil: new Date(Date.now() + durationDays * 86400000).toISOString(),
     reason: req.body?.reason || "Выдача Premium через панель управления",
+    confirmed: true,
   });
 });
 
@@ -314,6 +334,7 @@ router.post("/premium/revoke", privilegedMiddleware, async (req, res) => {
     userId,
     mode: "FORCE_DISABLED",
     reason: req.body?.reason || "Отключение Premium через панель управления",
+    confirmed: true,
   });
 });
 

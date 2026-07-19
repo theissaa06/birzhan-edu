@@ -12,7 +12,7 @@ export default function AppToast() {
     const handleToast = (event: Event) => {
       const payload = (event as CustomEvent<AppToastPayload>).detail;
       if (!payload?.title || !payload?.message) return;
-      setToasts((current) => [...current.slice(-3), payload]);
+      setToasts((current) => [...current.slice(-2), payload]);
       window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== payload.id)), payload.durationMs || 6200);
     };
     window.addEventListener(APP_TOAST_EVENT, handleToast);

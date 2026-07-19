@@ -8,7 +8,7 @@ import api from "../services/api";
 import { showToast } from "../services/appToast";
 import "./AdminPage.css";
 
-type AdminUser = { id: number; username: string; email: string; roles?: string[]; primaryRole?: string; accountStatus?: string; isPremium?: boolean; premiumUntil?: string | null; activeBan?: { reason: string; endsAt?: string | null } | null; createdAt?: string };
+type AdminUser = { id: number; username: string; email: string; roles?: string[]; primaryRole?: string; accountStatus?: string; isPremium?: boolean; premiumUntil?: string | null; paidUntil?: string | null; paidSubscription?: { plan?: string; status?: string; expiresAt?: string | null; provider?: string | null } | null; premiumOverride?: { mode: "FORCE_ENABLED" | "FORCE_DISABLED"; validUntil?: string | null; reason: string; updatedAt?: string } | null; activeBan?: { reason: string; endsAt?: string | null } | null; createdAt?: string };
 type Ban = { id: number; status: string; reason: string; startsAt: string; endsAt?: string | null; user: { id: number; username: string; email: string }; actor?: { username: string } };
 type Review = { id: number; rating: number; text: string; isHidden?: boolean; createdAt: string; author?: { username?: string; roles?: string[] } | null; officialReply?: { id: number; text: string; label: string } | null; comments?: unknown[] };
 type Announcement = { id: number; title: string; message: string; audience: string; activeFrom: string; activeUntil?: string | null };
@@ -35,6 +35,18 @@ function date(value?: string | null) {
   return value ? new Date(value).toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" }) : "без срока";
 }
 
+function premiumLabel(entry: AdminUser) {
+  if (entry.premiumOverride?.mode === "FORCE_ENABLED") return `вручную включён · до ${date(entry.premiumOverride.validUntil)}`;
+  if (entry.premiumOverride?.mode === "FORCE_DISABLED") return `вручную отключён · до ${date(entry.premiumOverride.validUntil)}`;
+  if (entry.isPremium) return `активен · до ${date(entry.premiumUntil)}`;
+  return "не активен";
+}
+
+function localDateTimeAfterDays(days: number) {
+  const value = new Date(Date.now() + days * 86400000);
+  return new Date(value.getTime() - value.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
 export default function AdminPage() {
   const location = useLocation();
   const { user } = useAuthSession();
@@ -52,6 +64,11 @@ export default function AdminPage() {
   const [reason, setReason] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("1440");
   const [premiumMode, setPremiumMode] = useState("FORCE_ENABLED");
+  const [premiumReason, setPremiumReason] = useState("");
+  const [premiumValidUntil, setPremiumValidUntil] = useState("");
+  const [premiumConfirmed, setPremiumConfirmed] = useState(false);
+  const [premiumSaving, setPremiumSaving] = useState(false);
+  const [premiumError, setPremiumError] = useState("");
   const [announcement, setAnnouncement] = useState({ title: "", message: "", audience: "ALL", activeUntil: "" });
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [reply, setReply] = useState("");
@@ -68,7 +85,11 @@ export default function AdminPage() {
     try {
       const statsRequest = api.get("/admin/stats").then(({ data }) => setStats(data.stats || {}));
       if (section === "users") {
-        await Promise.all([statsRequest, api.get("/admin/users", { params: { q: query || undefined } }).then(({ data }) => setUsers(data.users || data.data || []))]);
+        await Promise.all([statsRequest, api.get("/admin/users", { params: { q: query || undefined } }).then(({ data }) => {
+          const entries = (data.users || data.data || []) as AdminUser[];
+          setUsers(entries);
+          setSelectedUser((current) => current ? entries.find((entry) => entry.id === current.id) || current : null);
+        })]);
       } else if (section === "bans") {
         await Promise.all([statsRequest, api.get("/admin/bans").then(({ data }) => setBans(data.bans || []))]);
       } else if (section === "content") {
@@ -159,6 +180,60 @@ export default function AdminPage() {
     }
   }
 
+  function openUserEditor(entry: AdminUser) {
+    setSelectedUser(entry);
+    setReason("");
+    setPremiumMode("FORCE_ENABLED");
+    setPremiumReason("");
+    setPremiumValidUntil("");
+    setPremiumConfirmed(false);
+    setPremiumError("");
+  }
+
+  async function submitPremiumOverride(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedUser || premiumSaving) return;
+    const cleanReason = premiumReason.trim();
+    if (cleanReason.length < 5) {
+      setPremiumError("Укажите понятную причину не короче 5 символов.");
+      return;
+    }
+    let validUntil: string | null = null;
+    if (premiumMode !== "CLEAR" && premiumValidUntil) {
+      const parsed = new Date(premiumValidUntil);
+      if (Number.isNaN(parsed.getTime()) || parsed <= new Date()) {
+        setPremiumError("Дата окончания должна находиться в будущем.");
+        return;
+      }
+      validUntil = parsed.toISOString();
+    }
+    if (!premiumConfirmed) {
+      setPremiumError("Подтвердите ручное изменение Premium.");
+      return;
+    }
+
+    setPremiumSaving(true);
+    setPremiumError("");
+    try {
+      const { data } = await api.post(`/admin/users/${selectedUser.id}/premium-override`, {
+        mode: premiumMode,
+        reason: cleanReason,
+        validUntil,
+        confirmed: true,
+      });
+      if (data?.success !== true) throw new Error(data?.message || "Сервер не подтвердил изменение Premium.");
+      showToast({ tone: "success", title: "Premium обновлён", message: data.message || "Пользователь уведомлён об изменении." });
+      setPremiumConfirmed(false);
+      await load();
+    } catch (error) {
+      const message = errorMessage(error);
+      setPremiumError(message);
+      showToast({ tone: "error", title: "Проверьте Premium", message });
+    } finally {
+      setPremiumSaving(false);
+    }
+  }
+
   const overview = (
     <div className="admin-metrics">
       {[
@@ -184,8 +259,43 @@ export default function AdminPage() {
 
         {!loading && section === "users" && <>
           <form className="admin-search" onSubmit={(event) => { event.preventDefault(); void load(); }}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Имя или email" aria-label="Поиск пользователей" /><button>Найти</button></form>
-          <div className="admin-table-wrap"><table><thead><tr><th>Пользователь</th><th>Роли</th><th>Статус</th><th>Premium</th><th>Действия</th></tr></thead><tbody>{users.map((entry) => <tr key={entry.id}><td><strong>{entry.username}</strong><small>{entry.email}</small></td><td>{(entry.roles || []).join(" / ") || "USER"}</td><td>{entry.activeBan ? `Блокировка: ${entry.activeBan.reason}` : entry.accountStatus || "ACTIVE"}</td><td>{entry.isPremium ? `до ${date(entry.premiumUntil)}` : "нет"}</td><td><div className="admin-row-actions"><button onClick={() => void perform(() => api.patch(`/admin/users/${entry.id}/roles`, { role: "ADMIN", enabled: !(entry.roles || []).includes("ADMIN") }), "Роли обновлены.")}>{(entry.roles || []).includes("ADMIN") ? "Снять Admin" : "Назначить Admin"}</button><button onClick={() => setSelectedUser(entry)}>Управлять</button></div></td></tr>)}</tbody></table>{!users.length && <p className="admin-empty">Пользователи не найдены.</p>}</div>
-          {selectedUser && <section className="admin-editor"><div><h3>{selectedUser.username}</h3><p>{selectedUser.email}</p></div><label>Причина<input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Не короче 5 символов" /></label><label>Блокировка, минут<input type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} /></label><div className="admin-editor-actions"><button onClick={() => void perform(() => api.post(`/admin/users/${selectedUser.id}/bans`, { reason, durationMinutes: Number(durationMinutes) }), "Блокировка применена и сессии завершены.")}>Заблокировать</button>{selectedUser.activeBan && <button onClick={() => void perform(() => api.delete(`/admin/users/${selectedUser.id}/bans/active`), "Блокировка снята.")}>Разблокировать</button>}<button onClick={() => setSelectedUser(null)}>Закрыть</button></div>{canManagePremium && <><label>Ручной Premium<select value={premiumMode} onChange={(event) => setPremiumMode(event.target.value)}><option value="FORCE_ENABLED">Включить</option><option value="FORCE_DISABLED">Отключить</option><option value="CLEAR">Убрать переопределение</option></select></label><button onClick={() => void perform(() => api.post(`/admin/users/${selectedUser.id}/premium-override`, { mode: premiumMode, reason }), "Настройка Premium обновлена; пользователь уведомлён.")}>Подтвердить Premium</button></>}</section>}
+          <div className="admin-table-wrap"><table><thead><tr><th>Пользователь</th><th>Роли</th><th>Статус</th><th>Premium</th><th>Действия</th></tr></thead><tbody>{users.map((entry) => <tr key={entry.id}><td><strong>{entry.username}</strong><small>{entry.email}</small></td><td>{(entry.roles || []).join(" / ") || "USER"}</td><td>{entry.activeBan ? `Блокировка: ${entry.activeBan.reason}` : entry.accountStatus || "ACTIVE"}</td><td><strong>{premiumLabel(entry)}</strong>{entry.paidUntil && <small>Оплата до: {date(entry.paidUntil)}</small>}{entry.premiumOverride?.reason && <small>Причина: {entry.premiumOverride.reason}</small>}</td><td><div className="admin-row-actions"><button onClick={() => void perform(() => api.patch(`/admin/users/${entry.id}/roles`, { role: "ADMIN", enabled: !(entry.roles || []).includes("ADMIN") }), "Роли обновлены.")}>{(entry.roles || []).includes("ADMIN") ? "Снять Admin" : "Назначить Admin"}</button><button onClick={() => openUserEditor(entry)}>Управлять</button></div></td></tr>)}</tbody></table>{!users.length && <p className="admin-empty">Пользователи не найдены.</p>}</div>
+          {selectedUser && <section className="admin-editor">
+            <div><h3>{selectedUser.username}</h3><p>{selectedUser.email}</p></div>
+            <section className="admin-control-group" aria-labelledby="ban-control-title">
+              <h4 id="ban-control-title">Блокировка</h4>
+              <label>Причина блокировки<input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Не короче 5 символов" /></label>
+              <label>Длительность, минут<input type="number" min="1" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} /></label>
+              <div className="admin-editor-actions"><button onClick={() => void perform(() => api.post(`/admin/users/${selectedUser.id}/bans`, { reason, durationMinutes: Number(durationMinutes) }), "Блокировка применена и сессии завершены.")}>Заблокировать</button>{selectedUser.activeBan && <button onClick={() => void perform(() => api.delete(`/admin/users/${selectedUser.id}/bans/active`), "Блокировка снята.")}>Разблокировать</button>}</div>
+            </section>
+            {canManagePremium && <form className="admin-control-group admin-premium-control" aria-labelledby="premium-control-title" onSubmit={submitPremiumOverride} noValidate>
+              <div><h4 id="premium-control-title">Ручной Premium</h4><p>Переопределение доступа не отменяет рекуррентный платёж у провайдера.</p></div>
+              <dl className="admin-premium-current">
+                <div><dt>Текущий доступ</dt><dd>{premiumLabel(selectedUser)}</dd></div>
+                <div><dt>Оплаченный период</dt><dd>{selectedUser.paidUntil ? `${selectedUser.paidSubscription?.plan || "Premium"} · до ${date(selectedUser.paidUntil)}${selectedUser.paidSubscription?.provider ? ` · ${selectedUser.paidSubscription.provider}` : ""}` : "нет активного периода"}</dd></div>
+                {selectedUser.premiumOverride && <div><dt>Причина override</dt><dd>{selectedUser.premiumOverride.reason}</dd></div>}
+              </dl>
+              <div className="admin-premium-modes" role="radiogroup" aria-label="Действие с Premium">
+                {[
+                  ["FORCE_ENABLED", "Включить", "Разрешить доступ вручную"],
+                  ["FORCE_DISABLED", "Отключить", "Запретить доступ вручную"],
+                  ["CLEAR", "Снять override", "Вернуть расчёт по оплате"],
+                ].map(([value, label, description]) => <button key={value} type="button" role="radio" aria-checked={premiumMode === value} className={premiumMode === value ? "is-active" : ""} onClick={() => { setPremiumMode(value); setPremiumConfirmed(false); setPremiumError(""); }}>{label}<small>{description}</small></button>)}
+              </div>
+              <label>Причина изменения<input value={premiumReason} onChange={(event) => { setPremiumReason(event.target.value); setPremiumError(""); }} placeholder="Например: доступ на время проверки" minLength={5} maxLength={500} required /></label>
+              {premiumMode !== "CLEAR" && <label>Действует до, необязательно
+                <input type="datetime-local" value={premiumValidUntil} onChange={(event) => { setPremiumValidUntil(event.target.value); setPremiumError(""); }} />
+                <span className="admin-duration-actions">
+                  {[7, 30, 90].map((days) => <button key={days} type="button" onClick={() => { setPremiumValidUntil(localDateTimeAfterDays(days)); setPremiumError(""); }}>{days} дней</button>)}
+                  <button type="button" onClick={() => { setPremiumValidUntil(""); setPremiumError(""); }}>Без срока</button>
+                </span>
+              </label>}
+              <label className="admin-confirm-row"><input type="checkbox" checked={premiumConfirmed} onChange={(event) => { setPremiumConfirmed(event.target.checked); setPremiumError(""); }} /><span>Подтверждаю ручное изменение Premium для {selectedUser.username}</span></label>
+              {premiumError && <p className="admin-inline-error" role="alert">{premiumError}</p>}
+              <button type="submit" disabled={premiumSaving}>{premiumSaving ? "Сохраняем…" : premiumMode === "FORCE_ENABLED" ? "Включить Premium" : premiumMode === "FORCE_DISABLED" ? "Отключить Premium" : "Снять переопределение"}</button>
+            </form>}
+            <button type="button" onClick={() => setSelectedUser(null)}>Закрыть управление</button>
+          </section>}
         </>}
 
         {!loading && section === "bans" && <div className="admin-table-wrap"><table><thead><tr><th>Пользователь</th><th>Причина</th><th>Статус</th><th>Период</th><th>Автор</th></tr></thead><tbody>{bans.map((ban) => <tr key={ban.id}><td>{ban.user.username}<small>{ban.user.email}</small></td><td>{ban.reason}</td><td>{ban.status}</td><td>{date(ban.startsAt)} — {date(ban.endsAt)}</td><td>{ban.actor?.username || "система"}</td></tr>)}</tbody></table>{!bans.length && <p className="admin-empty">История блокировок пуста.</p>}</div>}

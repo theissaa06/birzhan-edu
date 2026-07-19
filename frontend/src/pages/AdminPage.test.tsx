@@ -17,6 +17,7 @@ vi.mock("../services/appToast", () => ({ showToast: vi.fn() }));
 
 const getMock = vi.mocked(api.get);
 const putMock = vi.mocked(api.put);
+const postMock = vi.mocked(api.post);
 const toastMock = vi.mocked(showToast);
 const review = {
   id: 91,
@@ -82,5 +83,73 @@ describe("AdminPage official review reply", () => {
     await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ tone: "error", title: "Ответ не сохранён" })));
     expect(screen.getByRole("form", { name: "Форма официального ответа" })).toBeInTheDocument();
     expect(toastMock).not.toHaveBeenCalledWith(expect.objectContaining({ tone: "success" }));
+  });
+});
+
+describe("AdminPage manual Premium controls", () => {
+  let premiumUpdated = false;
+
+  beforeEach(() => {
+    premiumUpdated = false;
+    getMock.mockReset();
+    postMock.mockReset();
+    toastMock.mockReset();
+    getMock.mockImplementation(async (url) => {
+      if (url === "/admin/stats") return { data: { stats: { users: 1, premiumUsers: premiumUpdated ? 1 : 0 } } };
+      if (url === "/admin/users") return {
+        data: {
+          success: true,
+          users: [{
+            id: 7,
+            username: "Premium Student",
+            email: "premium@example.test",
+            roles: [],
+            accountStatus: "ACTIVE",
+            isPremium: premiumUpdated,
+            premiumUntil: premiumUpdated ? "2026-08-18T12:00:00.000Z" : null,
+            premiumOverride: premiumUpdated ? { mode: "FORCE_ENABLED", validUntil: "2026-08-18T12:00:00.000Z", reason: "Доступ на проверку" } : null,
+          }],
+        },
+      };
+      throw new Error(`Unexpected GET ${url}`);
+    });
+  });
+
+  function renderUsersPage() {
+    return render(<MemoryRouter initialEntries={["/admin/users"]}><AdminPage /></MemoryRouter>);
+  }
+
+  it("grants a dated override only after reason and explicit confirmation, then refreshes the visible status", async () => {
+    postMock.mockImplementation(async () => {
+      premiumUpdated = true;
+      return { data: { success: true, message: "Настройка Premium обновлена." } };
+    });
+    renderUsersPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Управлять" }));
+    expect(screen.getByText("нет активного периода")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "30 дней" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Причина изменения" }), { target: { value: "Доступ на проверку" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю ручное изменение Premium/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Включить Premium" }));
+
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith("/admin/users/7/premium-override", expect.objectContaining({
+      mode: "FORCE_ENABLED",
+      reason: "Доступ на проверку",
+      validUntil: expect.any(String),
+      confirmed: true,
+    })));
+    expect((await screen.findAllByText(/вручную включён/)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Причина: Доступ на проверку/).length).toBeGreaterThan(0);
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ tone: "success", title: "Premium обновлён" }));
+  });
+
+  it("shows a precise inline reason error without calling the API", async () => {
+    renderUsersPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Управлять" }));
+    fireEvent.click(screen.getByRole("button", { name: "Включить Premium" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Укажите понятную причину не короче 5 символов.");
+    expect(postMock).not.toHaveBeenCalled();
   });
 });

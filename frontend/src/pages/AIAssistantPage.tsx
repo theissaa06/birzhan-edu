@@ -4,18 +4,45 @@ import FrameIcon from "../components/FrameIcon";
 import UserAvatar from "../components/UserAvatar";
 import { useAuthSession } from "../components/AuthSessionProvider";
 import {
+  deleteAIConversation,
+  getAIConversation,
+  getAIConversations,
+  getAIOptions,
   getAIStatus,
   sendAIMessage,
+  type AIConversation,
   type AIMessage,
+  type AIOption,
   type AIStatus,
 } from "../services/ai";
 import "./AIAssistantPage.css";
 
 type ChatMessage = {
-  id: number;
+  id: number | string;
   role: "user" | "assistant" | "error";
   text: string;
 };
+
+const DEFAULT_GREETING: ChatMessage = {
+  id: "frame-ai-greeting",
+  role: "assistant",
+  text: "Привет! Я Frame AI.\n\nВыберите режим или просто задайте вопрос. Я помогу разобрать тему, подготовить конспект, план ролика, мини-тест или улучшить текст.",
+};
+
+const fallbackModes: AIOption[] = [
+  { id: "assistant", label: "Помощник", description: "Практичные ответы" },
+  { id: "mentor", label: "Наставник", description: "Обучение по шагам" },
+  { id: "ideas", label: "Идеи", description: "Концепции и хуки" },
+  { id: "reviewer", label: "Разбор", description: "Конструктивная проверка" },
+];
+
+const fallbackActions: AIOption[] = [
+  { id: "answer", label: "Ответ", description: "Обычный ответ" },
+  { id: "summary", label: "Конспект", description: "Структурировать материал" },
+  { id: "video_plan", label: "План ролика", description: "Сценарий и монтаж" },
+  { id: "quiz", label: "Мини-тест", description: "Проверить знания" },
+  { id: "rewrite", label: "Улучшить текст", description: "Отредактировать текст" },
+];
 
 const quickQuestions = [
   "Составь план монтажа для TikTok-ролика на 30 секунд",
@@ -26,23 +53,26 @@ const quickQuestions = [
 ];
 
 export default function AIAssistantPage() {
-  const { user } = useAuthSession();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 1,
-      role: "assistant",
-      text: "Привет! Я Frame AI.\n\nСпрашивай что угодно — не только про монтаж. Помогу разобраться с учёбой, накидать текст, обсудить идею для ролика или просто ответить на вопрос, который давно вертится в голове. Отвечаю быстро, по делу и без занудства.\n\nС чего начнём?",
-    },
-  ]);
+  const { user, isAuthenticated } = useAuthSession();
+  const [messages, setMessages] = useState<ChatMessage[]>([DEFAULT_GREETING]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
+  const [modes, setModes] = useState<AIOption[]>(fallbackModes);
+  const [actions, setActions] = useState<AIOption[]>(fallbackActions);
+  const [mode, setMode] = useState("assistant");
+  const [action, setAction] = useState("answer");
+  const [conversations, setConversations] = useState<AIConversation[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(false);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,20 +81,44 @@ export default function AIAssistantPage() {
   useEffect(() => {
     let active = true;
 
-    async function loadAIStatus() {
+    async function loadAIConfiguration() {
       try {
-        const status = await getAIStatus();
-        if (active) setAIStatus(status);
+        const [status, options] = await Promise.all([getAIStatus(), getAIOptions()]);
+        if (active) {
+          setAIStatus(status);
+          if (options.modes.length) setModes(options.modes);
+          if (options.actions.length) setActions(options.actions);
+        }
       } catch (statusError) {
         console.error("[Frame AI] Не удалось проверить статус Gemini.", statusError);
       }
     }
 
-    void loadAIStatus();
+    void loadAIConfiguration();
     return () => {
       active = false;
     };
   }, []);
+
+  const loadConversationList = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const items = await getAIConversations();
+      setConversations(items);
+    } catch (historyError) {
+      console.error("[Frame AI] Не удалось загрузить историю.", historyError);
+      setError("Не удалось загрузить сохранённые диалоги.");
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      void loadConversationList();
+    } else {
+      setConversations([]);
+      setConversationId(null);
+    }
+  }, [isAuthenticated]);
 
   const aiUnavailable = aiStatus?.mode === "unavailable";
 
@@ -96,7 +150,11 @@ export default function AIAssistantPage() {
     setLoading(true);
 
     try {
-      const response = await sendAIMessage(text, historyForApi);
+      const response = await sendAIMessage(text, isAuthenticated ? [] : historyForApi, {
+        conversationId,
+        mode,
+        action,
+      });
 
       const aiAnswer =
         response?.success && typeof response.answer === "string"
@@ -130,6 +188,16 @@ export default function AIAssistantPage() {
           text: finalAnswer,
         },
       ]);
+
+      if (response.conversation) {
+        setConversationId(response.conversation.id);
+        setConversations((prev) => [
+          response.conversation as AIConversation,
+          ...prev.filter((item) => item.id !== response.conversation?.id),
+        ]);
+      }
+
+      setAction("answer");
 
       if (response.demo || response.source === "demo") {
         setStatusMessage(
@@ -166,6 +234,58 @@ export default function AIAssistantPage() {
       loadingRef.current = false;
       setLoading(false);
     }
+  }
+
+  function startNewConversation() {
+    if (loadingRef.current) return;
+    setConversationId(null);
+    setMessages([DEFAULT_GREETING]);
+    setInput("");
+    setError("");
+    setStatusMessage("");
+    setAction("answer");
+    setPendingDeleteId(null);
+    inputRef.current?.focus();
+  }
+
+  async function openConversation(id: string) {
+    if (loadingRef.current || historyLoading || id === conversationId) return;
+    setHistoryLoading(true);
+    setError("");
+    try {
+      const data = await getAIConversation(id);
+      setConversationId(data.conversation.id);
+      setMode(data.conversation.mode || "assistant");
+      setMessages(data.messages.length ? data.messages.map((item) => ({ id: item.id, role: item.role === "user" ? "user" : "assistant", text: item.text })) : [DEFAULT_GREETING]);
+      setPendingDeleteId(null);
+    } catch (historyError) {
+      console.error("[Frame AI] Не удалось открыть диалог.", historyError);
+      setError("Не удалось открыть этот диалог.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function removeConversation(id: string) {
+    if (pendingDeleteId !== id) {
+      setPendingDeleteId(id);
+      return;
+    }
+    try {
+      await deleteAIConversation(id);
+      setConversations((prev) => prev.filter((item) => item.id !== id));
+      if (conversationId === id) startNewConversation();
+      setPendingDeleteId(null);
+      setStatusMessage("Диалог удалён.");
+    } catch (historyError) {
+      console.error("[Frame AI] Не удалось удалить диалог.", historyError);
+      setError("Не удалось удалить диалог.");
+    }
+  }
+
+  function chooseAction(nextAction: string) {
+    setAction(nextAction);
+    inputRef.current?.focus();
   }
 
   function handleQuickQuestion(question: string) {
@@ -225,6 +345,33 @@ export default function AIAssistantPage() {
       <section className="ai-layout">
         <aside className="ai-sidebar">
           <div className="ai-sidebar-card">
+            <div className="ai-history-heading">
+              <div>
+                <p className="ai-sidebar-label">ПАМЯТЬ ДИАЛОГОВ</p>
+                <h2>История</h2>
+              </div>
+              <button type="button" className="ai-new-chat-btn" onClick={startNewConversation} disabled={loading}>Новый</button>
+            </div>
+
+            {isAuthenticated ? (
+              <div className="ai-history-list" aria-label="Сохранённые диалоги" aria-busy={historyLoading}>
+                {conversations.length ? conversations.map((conversation) => (
+                  <div key={conversation.id} className={`ai-history-item${conversation.id === conversationId ? " is-active" : ""}`}>
+                    <button type="button" className="ai-history-open" onClick={() => void openConversation(conversation.id)} disabled={historyLoading || loading}>
+                      <strong>{conversation.title}</strong>
+                      <span>{conversation.preview || "Пустой диалог"}</span>
+                    </button>
+                    <button type="button" className="ai-history-delete" onClick={() => void removeConversation(conversation.id)} aria-label={`${pendingDeleteId === conversation.id ? "Подтвердить удаление" : "Удалить"}: ${conversation.title}`}>
+                      {pendingDeleteId === conversation.id ? "Да" : "×"}
+                    </button>
+                  </div>
+                )) : <p className="ai-history-empty">Первый диалог появится после ответа Frame AI.</p>}
+              </div>
+            ) : (
+              <p className="ai-history-empty">Войдите в аккаунт, чтобы диалоги сохранялись и были доступны на других устройствах.</p>
+            )}
+
+            <div className="ai-sidebar-divider" />
             <p className="ai-sidebar-label">БЫСТРЫЕ ВОПРОСЫ</p>
 
             <h2>Попробуйте спросить</h2>
@@ -282,6 +429,14 @@ export default function AIAssistantPage() {
             </Link>
           </div>
 
+          <div className="ai-mode-toolbar" aria-label="Режим Frame AI">
+            {modes.map((item) => (
+              <button key={item.id} type="button" className={`ai-mode-btn${mode === item.id ? " is-active" : ""}`} onClick={() => setMode(item.id)} disabled={loading} title={item.description} aria-pressed={mode === item.id}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           <div className="ai-chat-body">
             {messages.map((message) => (
               <div
@@ -331,12 +486,21 @@ export default function AIAssistantPage() {
             <div className="ai-status-banner">{statusMessage}</div>
           )}
 
+          <div className="ai-action-toolbar" aria-label="Генерация контента">
+            {actions.map((item) => (
+              <button key={item.id} type="button" className={`ai-action-btn${action === item.id ? " is-active" : ""}`} onClick={() => chooseAction(item.id)} disabled={loading || aiUnavailable} title={item.description} aria-pressed={action === item.id}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           <form className="ai-input-row" onSubmit={handleSubmit}>
             <textarea
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Напишите любой вопрос..."
+              placeholder={action === "answer" ? "Напишите любой вопрос..." : `Добавьте материал для действия «${actions.find((item) => item.id === action)?.label || "Генерация"}»...`}
               className="ai-input"
               rows={2}
               disabled={loading || aiUnavailable}
