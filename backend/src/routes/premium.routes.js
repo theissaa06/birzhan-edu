@@ -10,6 +10,7 @@ const {
   randomIdempotencyKey,
 } = require("../services/premium.service");
 const { writeAudit } = require("../utils/audit");
+const { highestRole, rolesFromUser } = require("../utils/access");
 
 const router = express.Router();
 
@@ -29,6 +30,12 @@ const PROVIDERS = Object.freeze({
 });
 
 function publicStatus(result) {
+  const overrideActorRole = result.override?.actor
+    ? highestRole(rolesFromUser(result.override.actor))
+    : null;
+  const paidSubscription = result.subscription || result.user.subscriptions?.[0] || null;
+  const recoveryRequired = result.override?.mode === "FORCE_DISABLED";
+  const disabledByUser = recoveryRequired && !result.override.actorId;
   return {
     userId: result.user.id,
     username: result.user.username,
@@ -36,16 +43,29 @@ function publicStatus(result) {
     isPremium: result.active,
     premiumStatus: result.status,
     source: result.source,
+    accessOrigin: result.source === "manual"
+      ? { kind: "granted", issuedByRole: overrideActorRole || "TEAM" }
+      : result.source === "subscription"
+        ? { kind: "paid", provider: paidSubscription?.provider || null }
+        : result.source === "legacy"
+          ? { kind: "paid", provider: null }
+          : null,
     premiumPlan: result.plan,
     premiumStarted: result.user.premiumStarted,
     premiumUntil: result.paidUntil,
     graceUntil: result.graceUntil,
+    isGracePeriod: result.status === "grace",
     needsPayment: result.status === "grace",
+    paidUntil: paidSubscription?.expiresAt || null,
+    recoveryRequired,
+    disabledByUser,
+    restorationPath: recoveryRequired ? "/support" : null,
     override: result.override
       ? {
           mode: result.override.mode,
           validUntil: result.override.validUntil,
           reason: result.override.reason,
+          issuedByRole: overrideActorRole,
         }
       : null,
   };
@@ -194,11 +214,23 @@ router.post("/tiptoppay/pay", express.urlencoded({ extended: true }), (req, res)
 );
 
 router.post("/cancel", authMiddleware, async (req, res) => {
-  const reason = String(req.body?.reason || "Отмена продления пользователем").trim().slice(0, 300);
+  if (req.body?.confirmed !== true) {
+    return res.status(400).json({ success: false, code: "PREMIUM_CANCEL_CONFIRMATION_REQUIRED", message: "Подтвердите отключение Premium." });
+  }
+  const reason = String(req.body?.reason || "Отключение Premium пользователем").trim().slice(0, 300);
+  const before = await getPremiumAccess(req.user.id);
+  if (!before?.active && before?.override?.mode !== "FORCE_ENABLED") {
+    return res.status(409).json({ success: false, code: "PREMIUM_NOT_ACTIVE", message: "Активный Premium не найден." });
+  }
   const subscriptions = await prisma.subscription.findMany({
     where: { userId: req.user.id, status: { in: ["ACTIVE", "GRACE"] } },
   });
   await prisma.$transaction(async (tx) => {
+    await tx.premiumOverride.upsert({
+      where: { userId: req.user.id },
+      update: { mode: "FORCE_DISABLED", validUntil: null, reason: `Отключено пользователем: ${reason}`, actorId: null },
+      create: { userId: req.user.id, mode: "FORCE_DISABLED", validUntil: null, reason: `Отключено пользователем: ${reason}`, actorId: null },
+    });
     await tx.subscription.updateMany({
       where: { userId: req.user.id, status: { in: ["ACTIVE", "GRACE"] } },
       data: { status: "CANCELED", canceledAt: new Date() },
@@ -206,23 +238,32 @@ router.post("/cancel", authMiddleware, async (req, res) => {
     await tx.subscriptionEvent.create({
       data: {
         userId: req.user.id,
-        type: "RENEWAL_CANCELLATION_REQUESTED",
+        type: "USER_PREMIUM_DISABLED",
         idempotencyKey: randomIdempotencyKey(`cancel:${req.user.id}`),
-        payload: { reason, retainedUntil: subscriptions[0]?.expiresAt || null },
+        payload: { reason, previousSource: before.source, retainedUntil: subscriptions[0]?.expiresAt || before.paidUntil || null, restorationRequiresSupport: true },
+      },
+    });
+    await tx.notification.create({
+      data: {
+        userId: req.user.id,
+        type: "premium",
+        title: "Premium отключён",
+        message: "Доступ отключён по вашему запросу. Для восстановления обратитесь в техподдержку с подтверждением права на Premium.",
+        link: "/support",
       },
     });
     await writeAudit(tx, {
       req,
-      action: "premium.cancel_requested",
+      action: "premium.disabled_by_user",
       entityType: "Subscription",
       targetUserId: req.user.id,
       metadata: { reason },
     });
   });
-  const result = await getPremiumAccess(req.user.id);
+  const result = await reconcilePremiumForUser(req.user.id);
   return res.json({
     success: true,
-    message: "Автопродление помечено как отменённое. Оплаченный доступ сохранён до конца периода.",
+    message: "Premium отключён. Для восстановления обратитесь в техподдержку с подтверждающими материалами.",
     data: publicStatus(result),
   });
 });

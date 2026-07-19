@@ -397,7 +397,8 @@ router.get("/:provider/link", authMiddleware, async (req, res) => {
   const name = String(req.params.provider || "").toLowerCase();
   if (!PROVIDERS[name] || name === "telegram" || !configured(name)) return res.status(503).json({ success: false, code: "OAUTH_PROVIDER_NOT_CONFIGURED", message: "Провайдер не настроен." });
   const attempt = await createAttempt(name, { redirectPath: "/profile", userId: req.user.id });
-  return res.redirect(302, authorizationUrl(name, attempt));
+  const url = authorizationUrl(name, attempt);
+  return req.query.format === "json" ? res.json({ success: true, url }) : res.redirect(302, url);
 });
 
 router.get("/:provider/callback", callbackHandler);

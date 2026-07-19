@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const express = require("express");
+const jwt = require("jsonwebtoken");
 const prisma = require("../src/config/prisma");
 const oauthRouter = require("../src/routes/oauth.routes");
 
@@ -19,6 +20,7 @@ const ENV_KEYS = [
   "TELEGRAM_BOT_TOKEN",
   "VK_CLIENT_ID",
   "VK_CLIENT_SECRET",
+  "JWT_SECRET",
 ];
 
 function preserveEnvironment() {
@@ -140,6 +142,60 @@ test("builds a Google authorization request with the exact production callback, 
     });
   } finally {
     prisma.oAuthLoginAttempt.create = originalCreate;
+    restoreEnvironment(previous);
+  }
+});
+
+test("authenticated account linking returns a provider URL as JSON instead of exposing an API error page", async () => {
+  const previous = preserveEnvironment();
+  const originals = {
+    attemptCreate: prisma.oAuthLoginAttempt.create,
+    userFindUnique: prisma.user.findUnique,
+    userUpdate: prisma.user.update,
+  };
+  let attemptData = null;
+  Object.assign(process.env, {
+    NODE_ENV: "production",
+    FRONTEND_URL: "https://frame.example",
+    OAUTH_REDIRECT_BASE_URL: "https://frame.example",
+    GOOGLE_CLIENT_ID: "google-public-id",
+    GOOGLE_CLIENT_SECRET: "google-backend-secret",
+    JWT_SECRET: "oauth-link-test-secret",
+  });
+  const user = {
+    id: 7,
+    email: "student@example.test",
+    role: "USER",
+    badges: [],
+    roles: [],
+    accountStatus: "ACTIVE",
+    deactivatedAt: null,
+    sessionVersion: 0,
+    blockedAt: null,
+    blockedUntil: null,
+    blockedReason: null,
+    bansReceived: [],
+  };
+  prisma.user.findUnique = async ({ where }) => where.id === user.id ? user : null;
+  prisma.user.update = async () => user;
+  prisma.oAuthLoginAttempt.create = async ({ data }) => { attemptData = data; return { id: 9, ...data }; };
+
+  try {
+    const token = jwt.sign({ id: user.id, sessionVersion: 0 }, process.env.JWT_SECRET);
+    await withOAuthServer(async (origin) => {
+      const response = await fetch(`${origin}/api/auth/oauth/google/link?format=json`, { headers: { authorization: `Bearer ${token}` } });
+      const body = await response.json();
+      assert.equal(response.status, 200);
+      assert.equal(body.success, true);
+      assert.equal(new URL(body.url).origin, "https://accounts.google.com");
+      assert.equal(attemptData.userId, user.id);
+      assert.equal(attemptData.redirectPath, "/profile");
+      assert.equal(JSON.stringify(body).includes(process.env.GOOGLE_CLIENT_SECRET), false);
+    });
+  } finally {
+    prisma.oAuthLoginAttempt.create = originals.attemptCreate;
+    prisma.user.findUnique = originals.userFindUnique;
+    prisma.user.update = originals.userUpdate;
     restoreEnvironment(previous);
   }
 });

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
 import AvatarEditor from "../components/AvatarEditor";
 import { useAuthSession } from "../components/AuthSessionProvider";
-import api, { API_BASE_URL } from "../services/api";
+import api from "../services/api";
 import { showToast } from "../services/appToast";
 import "./ProfilePage.css";
 
@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [certificates, setCertificates] = useState(0);
   const [providers, setProviders] = useState<Record<string, {configured:boolean;botName?:string|null}>>({});
   const [telegramOpen, setTelegramOpen] = useState(false);
+  const [connectingProvider, setConnectingProvider] = useState<ProviderName | null>(null);
   const telegramHost = useRef<HTMLDivElement>(null);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "" });
   const [deactivation, setDeactivation] = useState({ password: "", confirmation: "" });
@@ -60,10 +61,21 @@ export default function ProfilePage() {
     return () => { delete window.frameSchoolTelegramLink; };
   }, [providers.telegram?.botName, providers.telegram?.configured, telegramOpen]);
 
-  function connect(provider: ProviderName) {
-    if (!providers[provider]?.configured) { showToast({ tone: "warning", title: `${providerLabels[provider]} не настроен`, message: "Добавьте ключи провайдера в Layero." }); return; }
+  async function connect(provider: ProviderName) {
+    if (!providers[provider]?.configured) { showToast({ tone: "warning", title: `${providerLabels[provider]} недоступен`, message: "Этот способ входа временно недоступен. Попробуйте позже." }); return; }
     if (provider === "telegram") { setTelegramOpen((value) => !value); return; }
-    window.location.assign(`${API_BASE_URL}/auth/oauth/${provider}/link`);
+    if (connectingProvider) return;
+    setConnectingProvider(provider);
+    try {
+      const { data } = await api.get(`/auth/oauth/${provider}/link`, { params: { format: "json" } });
+      const target = String(data?.url || "");
+      const authorizationUrl = new URL(target);
+      if (data?.success !== true || authorizationUrl.protocol !== "https:") throw new Error("Сервер не вернул безопасную ссылку провайдера.");
+      window.location.assign(authorizationUrl.toString());
+    } catch (error) {
+      setConnectingProvider(null);
+      showToast({ tone: "error", title: `${providerLabels[provider]} не подключён`, message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || (error instanceof Error ? error.message : "Не удалось начать безопасную привязку.") });
+    }
   }
 
   async function disconnect(provider: ProviderName) {
@@ -93,7 +105,7 @@ export default function ProfilePage() {
   if (!isAuthenticated || !profile) return <main className="profile-page"><section className="profile-state"><h1>Войдите в аккаунт</h1><p>Профиль, прогресс и сертификаты хранятся на сервере.</p><Link to="/login">Войти</Link></section></main>;
 
   return <main className="profile-page"><header className="profile-hero"><div><span className="timecode">USER / {profile.id}</span><h1>{profile.username}</h1><p>{profile.email}</p></div><button type="button" onClick={() => { signOut(); void refreshSession(); }}>Выйти</button></header><AvatarEditor username={profile.username} avatarUrl={profile.avatarUrl} avatarPreset={profile.avatarPreset} onSaved={avatarSaved} /><section className="profile-metrics"><article><FrameIcon name="lessons"/><span>Завершённые уроки</span><strong>{completed}</strong></article><article><FrameIcon name="certificate"/><span>Сертификаты</span><strong>{certificates}</strong></article><article><FrameIcon name="premium"/><span>Premium</span><strong>{profile.isPremium ? profile.premiumStatus || "active" : "free"}</strong></article><article><FrameIcon name="all"/><span>Роли</span><strong>{(profile.roles || []).join(" / ") || "USER"}</strong></article></section>
-    <section className="profile-grid"><article className="profile-panel"><h2>Способы входа</h2><p>Новый сервис не связывается с существующим аккаунтом только по совпавшему email.</p><div className="profile-connections">{(Object.keys(providerLabels) as ProviderName[]).map((provider) => <div key={provider}><strong>{providerLabels[provider]}</strong><span>{connected.has(provider) ? "подключён" : providers[provider]?.configured ? "доступен" : "нужна настройка"}</span>{connected.has(provider) ? <button onClick={() => void disconnect(provider)}>Отключить</button> : <button onClick={() => connect(provider)}>Подключить</button>}</div>)}</div>{telegramOpen && <div className="profile-telegram"><p>Подтвердите аккаунт Telegram.</p><div ref={telegramHost}/></div>}</article>
+    <section className="profile-grid"><article className="profile-panel"><h2>Способы входа</h2><p>Новый сервис не связывается с существующим аккаунтом только по совпавшему email.</p><div className="profile-connections">{(Object.keys(providerLabels) as ProviderName[]).map((provider) => <div key={provider}><strong>{providerLabels[provider]}</strong><span>{connected.has(provider) ? "подключён" : providers[provider]?.configured ? "доступен" : "временно недоступен"}</span>{connected.has(provider) ? <button onClick={() => void disconnect(provider)}>Отключить</button> : <button disabled={Boolean(connectingProvider) || !providers[provider]?.configured} onClick={() => void connect(provider)}>{connectingProvider === provider ? "Переходим…" : providers[provider]?.configured ? "Подключить" : "Недоступно"}</button>}</div>)}</div>{telegramOpen && <div className="profile-telegram"><p>Подтвердите аккаунт Telegram.</p><div ref={telegramHost}/></div>}</article>
       <article className="profile-panel"><h2>Пароль</h2><p>{profile.oauthIdentities?.length ? "OAuth-аккаунт может задать пароль после входа." : "После изменения все прежние сессии завершатся."}</p><form onSubmit={changePassword}><label>Текущий пароль<input type="password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm({...passwordForm,currentPassword:event.target.value})}/></label><label>Новый пароль<input type="password" minLength={8} maxLength={128} value={passwordForm.newPassword} onChange={(event) => setPasswordForm({...passwordForm,newPassword:event.target.value})} required/></label><button>Обновить пароль</button></form></article>
       <article className="profile-panel profile-danger"><h2>Деактивация</h2><p>Профиль станет скрытым, сессии завершатся. Прогресс и сертификаты останутся в базе.</p><form onSubmit={deactivate}><label>Текущий пароль<input type="password" value={deactivation.password} onChange={(event) => setDeactivation({...deactivation,password:event.target.value})}/></label><label>Для OAuth-only аккаунта введите DEACTIVATE<input value={deactivation.confirmation} onChange={(event) => setDeactivation({...deactivation,confirmation:event.target.value})}/></label><button>Деактивировать аккаунт</button></form></article>
       <article className="profile-panel"><h2>Быстрые ссылки</h2><nav><Link to="/courses">Курсы</Link><Link to="/certificates">Сертификаты</Link><Link to="/reviews">Отзывы</Link><Link to="/support">Поддержка</Link></nav></article></section></main>;

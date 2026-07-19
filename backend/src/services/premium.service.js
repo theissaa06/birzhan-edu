@@ -102,7 +102,18 @@ function evaluatePremiumRecord(user, now = new Date()) {
 }
 
 const premiumInclude = {
-  premiumOverride: true,
+  premiumOverride: {
+    include: {
+      actor: {
+        select: {
+          id: true,
+          role: true,
+          badges: true,
+          roles: { select: { role: true } },
+        },
+      },
+    },
+  },
   subscriptions: {
     orderBy: { expiresAt: "desc" },
     take: 5,

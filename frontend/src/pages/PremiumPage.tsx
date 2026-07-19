@@ -5,24 +5,9 @@ import {
   activatePremium,
   cancelPremium,
   getPremiumStatus,
+  type PremiumStatus,
 } from "../services/premium";
 import "./PremiumPage.css";
-
-type PremiumStatus = {
-  userId: number;
-  username?: string;
-  email?: string;
-  role?: string;
-  isPremium: boolean;
-  adminAccess?: boolean;
-  premiumStatus?: "free" | "active" | "grace" | "expired" | "admin";
-  isGracePeriod?: boolean;
-  premiumPlan: string | null;
-  premiumStarted: string | null;
-  premiumUntil: string | null;
-  graceUntil?: string | null;
-  needsPayment?: boolean;
-};
 
 declare global {
   interface Window {
@@ -48,20 +33,29 @@ const PAYMENT_WIDGET_SRC =
     : "https://widget.tiptoppay.kz/bundles/widget.js";
 
 function isRealPremiumStatus(data?: PremiumStatus | null) {
-  if (!data?.isPremium) return false;
-  if (data.premiumPlan === "admin-demo") return false;
-  if (!data.premiumUntil) return false;
-  return true;
+  return Boolean(data?.isPremium && data.premiumPlan !== "admin-demo");
 }
 
 function formatPremiumDate(value?: string | null) {
-  if (!value) return "дата не задана";
+  if (!value) return "без ограничения по сроку";
 
-  return new Date(value).toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
+  return new Date(value).toLocaleString("ru-RU", {
+    day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
+}
+
+function providerLabel(provider?: string | null) {
+  const value = String(provider || "").toLowerCase();
+  if (value.includes("tiptoppay")) return "TipTopPay";
+  if (value.includes("cloudpayments")) return "CloudPayments";
+  return "платёжного провайдера";
+}
+
+function roleLabel(role?: string | null) {
+  if (role === "OWNER") return "Owner";
+  if (role === "DEVELOPER") return "Developer";
+  if (role === "ADMIN") return "администратор";
+  return "команда Frame School";
 }
 
 export default function PremiumPage() {
@@ -71,6 +65,8 @@ export default function PremiumPage() {
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelConfirmed, setCancelConfirmed] = useState(false);
 
   const isPremiumActive = isRealPremiumStatus(premium);
 
@@ -135,10 +131,16 @@ export default function PremiumPage() {
       setError("");
       setSuccessMessage("");
 
-      const status = await cancelPremium();
+      if (!cancelConfirmed) {
+        setError("Подтвердите, что понимаете условия отключения Premium.");
+        return;
+      }
+      const status = await cancelPremium("Отключение доступа со страницы Premium");
 
       setPremium(status);
-      setSuccessMessage("Premium отключён для демонстрации.");
+      setCancelOpen(false);
+      setCancelConfirmed(false);
+      setSuccessMessage("Premium отключён. Для восстановления обратитесь в техподдержку с подтверждающими материалами.");
     } catch (err) {
       console.error("Ошибка отключения Premium:", err);
       setError("Не удалось отключить Premium.");
@@ -309,11 +311,15 @@ export default function PremiumPage() {
             </button>
           ) : isPremiumActive ? (
             <div className="premium-active-box">
-              <h3>
-                {premium?.isGracePeriod
-                  ? "Premium PRO в grace period"
-                  : "Premium PRO активен"}
-              </h3>
+              <h3>{premium?.isGracePeriod ? "Premium PRO в grace period" : "У вас уже есть Premium PRO"}</h3>
+
+              <p className="premium-source-line">
+                {premium?.accessOrigin?.kind === "granted"
+                  ? `Доступ выдан: ${roleLabel(premium.accessOrigin.issuedByRole)}.`
+                  : premium?.accessOrigin?.kind === "paid"
+                    ? `Premium оплачен вами через ${providerLabel(premium.accessOrigin.provider)}.`
+                    : "Источник доступа подтверждён сервером Frame School."}
+              </p>
 
               <p>
                 План: <strong>{premium?.premiumPlan || "Premium PRO"}</strong>
@@ -332,13 +338,20 @@ export default function PremiumPage() {
                 </p>
               )}
 
-              <button
-                type="button"
-                onClick={handleCancelPremium}
-                disabled={paying}
-              >
-                {paying ? "Отключаем..." : "Отключить Premium"}
-              </button>
+              {!cancelOpen ? <button type="button" onClick={() => { setCancelOpen(true); setError(""); }} disabled={paying}>Отключить Premium</button> : <div className="premium-cancel-confirm" role="group" aria-label="Подтверждение отключения Premium">
+                <strong>Premium отключится сразу</strong>
+                <p>Данные об оплате или выдаче сохранятся. Самостоятельно вернуть доступ нельзя: потребуется обращение в техподдержку и подтверждающие материалы.</p>
+                <label><input type="checkbox" checked={cancelConfirmed} onChange={(event) => { setCancelConfirmed(event.target.checked); setError(""); }} />Я понимаю условия отключения</label>
+                <div><button type="button" onClick={() => void handleCancelPremium()} disabled={paying}>{paying ? "Отключаем…" : "Подтвердить отключение"}</button><button type="button" onClick={() => { setCancelOpen(false); setCancelConfirmed(false); }} disabled={paying}>Оставить Premium</button></div>
+              </div>}
+            </div>
+          ) : premium?.recoveryRequired ? (
+            <div className="premium-recovery-box">
+              <h3>{premium.disabledByUser ? "Premium отключён вами" : "Premium отключён командой платформы"}</h3>
+              <p>{premium.disabledByUser ? "Самостоятельное повторное включение недоступно." : "Для уточнения причины и восстановления доступа обратитесь в техподдержку."}</p>
+              {premium.paidUntil && <p>Подтверждённый оплаченный период: <strong>до {formatPremiumDate(premium.paidUntil)}</strong></p>}
+              <Link to={premium.restorationPath || "/support"} className="premium-support-link">Написать в техподдержку</Link>
+              <small>В обращении укажите номер платежа, дату оплаты или данные выдачи Premium командой.</small>
             </div>
           ) : (
             <button
@@ -360,7 +373,7 @@ export default function PremiumPage() {
           <div className="premium-preview-card">
             <span>Статус аккаунта</span>
 
-            <h2>{isPremiumActive ? "Premium PRO активен" : "Free аккаунт"}</h2>
+            <h2>{isPremiumActive ? "Premium PRO активен" : premium?.recoveryRequired ? "Нужно восстановление" : "Free аккаунт"}</h2>
             <div
               className={`premium-progress ${
                 isPremiumActive
@@ -376,7 +389,9 @@ export default function PremiumPage() {
                 ? premium?.isGracePeriod
                   ? "Доступ ещё открыт на время grace period. Обновите оплату, чтобы Premium не отключился автоматически."
                   : "PRO-возможности открыты: вебинары, бонусы, проверка работ, портфолио-материалы и расширенные сертификаты."
-                : "Базовое обучение уже доступно бесплатно. Premium PRO откроет дополнительные материалы для быстрого роста."}
+                : premium?.recoveryRequired
+                  ? "Доступ отключён. История права на Premium сохранена; восстановление проводится через техподдержку после проверки подтверждений."
+                  : "Базовое обучение уже доступно бесплатно. Premium PRO откроет дополнительные материалы для быстрого роста."}
             </p>
           </div>
 
