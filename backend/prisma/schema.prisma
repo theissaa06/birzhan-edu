@@ -74,6 +74,24 @@ enum LessonType {
   PRACTICE
 }
 
+enum VideoReviewStatus {
+  MANUAL_REQUIRED
+  QUEUED
+  PROCESSING
+  APPROVED
+  NEEDS_CHANGES
+  FAILED
+  APPEALED
+  MANUAL_APPROVED
+  MANUAL_NEEDS_CHANGES
+}
+
+enum SubmissionAppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id               Int           @id @default(autoincrement())
   username         String
@@ -127,6 +145,8 @@ model User {
   reviewComments        ReviewComment[]
   officialReplies       ReviewOfficialReply[]
   jobApplications       JobApplication[]
+  submissionAppeals     SubmissionAppeal[]    @relation("SubmissionAppealUser")
+  appealsReviewed       SubmissionAppeal[]    @relation("SubmissionAppealReviewer")
 
   @@index([accountStatus])
   @@index([blockedUntil])
@@ -379,12 +399,36 @@ model Lesson {
   orderNumber  Int
   type         LessonType       @default(VIDEO)
   isPublished  Boolean          @default(true)
+  autoReviewEnabled Boolean     @default(false)
   courseId     Int
   course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   progress     LessonProgress[]
   submissions  AssignmentSubmission[]
+  reviewCriteria LessonReviewCriterion[]
+}
+
+model LessonReviewCriterion {
+  id            Int      @id @default(autoincrement())
+  lessonId      Int
+  key           String
+  title         String
+  description   String
+  kind          String
+  required      Boolean  @default(true)
+  minValue      Float?
+  maxValue      Float?
+  expectedValue String?
+  weight        Int      @default(1)
+  orderNumber   Int      @default(1)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lesson        Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, key])
+  @@index([lessonId, active, orderNumber])
 }
 
 model LessonProgress {
@@ -596,13 +640,56 @@ model AssignmentSubmission {
   status    String   @default("submitted")
   feedback  String?
   isPublic  Boolean  @default(false)
+  attemptNumber Int   @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  autoReview SubmissionAutoReview?
+  appeal     SubmissionAppeal?
 
   @@index([userId])
   @@index([lessonId])
   @@index([courseId])
   @@index([status])
+}
+
+model SubmissionAutoReview {
+  id                Int               @id @default(autoincrement())
+  submissionId      Int               @unique
+  status            VideoReviewStatus @default(MANUAL_REQUIRED)
+  criteriaSnapshot  Json
+  technicalMetadata Json?
+  result             Json?
+  provider           String?
+  model              String?
+  errorCode          String?
+  errorMessage       String?
+  leaseExpiresAt     DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  submission         AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([leaseExpiresAt])
+}
+
+model SubmissionAppeal {
+  id           Int                    @id @default(autoincrement())
+  submissionId Int                    @unique
+  userId       Int
+  reviewerId   Int?
+  reason       String
+  status       SubmissionAppealStatus @default(PENDING)
+  resolution   String?
+  createdAt    DateTime               @default(now())
+  resolvedAt   DateTime?
+  submission   AssignmentSubmission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user         User                   @relation("SubmissionAppealUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer     User?                  @relation("SubmissionAppealReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }

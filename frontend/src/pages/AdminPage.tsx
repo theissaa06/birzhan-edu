@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
+import AdminVideoReviewPage from "../components/AdminVideoReviewPage";
 import { useAuthSession } from "../components/AuthSessionProvider";
 import api from "../services/api";
 import { showToast } from "../services/appToast";
@@ -20,6 +21,7 @@ const navigation = [
   ["/admin/bans", "Блокировки", "warning"],
   ["/admin/content", "Контент", "folder"],
   ["/admin/reviews", "Отзывы", "frame"],
+  ["/admin/ai-reviews", "Проверка видео", "spark"],
   ["/admin/announcements", "Объявления", "premium"],
   ["/admin/support", "Поддержка", "sound"],
 ] as const;
@@ -163,6 +165,8 @@ export default function AdminPage() {
         {!loading && section === "content" && <div className="admin-content-grid">{[["Курсы", content.courses, "/courses"], ["Вебинары", content.webinars, "/webinars"], ["Вакансии", content.jobs, "/jobs"]].map(([title, items, link]) => <article key={String(title)}><span className="timecode">SERVER DATA</span><h3>{String(title)}</h3><strong>{(items as unknown[]).length}</strong><NavLink to={String(link)}>Открыть публичный раздел</NavLink></article>)}</div>}
 
         {!loading && section === "reviews" && <div className="admin-list">{reviews.map((review) => <article key={review.id}><header><strong>{review.author?.username || "Пользователь"}</strong><span>{review.rating}/5 · {date(review.createdAt)}</span></header><p>{review.text}</p>{review.officialReply && <blockquote><strong>{review.officialReply.label}</strong>{review.officialReply.text}</blockquote>}<div className="admin-row-actions"><button type="button" onClick={() => void perform(() => api.patch(`/reviews/${review.id}/moderation`, { isHidden: !review.isHidden }), review.isHidden ? "Отзыв опубликован." : "Отзыв скрыт.")}>{review.isHidden ? "Опубликовать" : "Скрыть"}</button><button type="button" aria-expanded={selectedReview?.id === review.id} onClick={() => { setSelectedReview(review); setReply(review.officialReply?.text || ""); }}>{review.officialReply ? "Редактировать официальный ответ" : "Официальный ответ"}</button></div></article>)}{!reviews.length && <p className="admin-empty">Отзывов пока нет.</p>}{selectedReview && <form className="admin-editor" aria-label="Форма официального ответа" onSubmit={submitOfficialReply}><div><span className="timecode">REVIEW / {selectedReview.id}</span><h3>{selectedReview.officialReply ? "Редактировать официальный ответ" : "Новый официальный ответ"}</h3><p>Метка «Ответ разработчика» или «Ответ администрации» определяется сервером по вашей роли.</p></div><label htmlFor="official-review-reply">Текст ответа<textarea id="official-review-reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={5} minLength={5} maxLength={1500} required disabled={replySaving} /></label><small className="admin-editor-count">{reply.length} / 1500</small><div className="admin-editor-actions"><button type="submit" disabled={replySaving}>{replySaving ? "Сохраняем…" : selectedReview.officialReply ? "Сохранить изменения" : "Опубликовать ответ"}</button><button type="button" disabled={replySaving} onClick={() => { setSelectedReview(null); setReply(""); }}>Закрыть</button></div></form>}</div>}
+
+        {!loading && section === "ai-reviews" && <AdminVideoReviewPage />}
 
         {!loading && section === "announcements" && <div className="admin-two-columns"><form className="admin-editor" onSubmit={submitAnnouncement}><h3>Новое объявление</h3><label>Заголовок<input value={announcement.title} onChange={(event) => setAnnouncement({ ...announcement, title: event.target.value })} required minLength={3} /></label><label>Сообщение<textarea value={announcement.message} onChange={(event) => setAnnouncement({ ...announcement, message: event.target.value })} required minLength={5} rows={5} /></label><label>Аудитория<select value={announcement.audience} onChange={(event) => setAnnouncement({ ...announcement, audience: event.target.value })}><option value="ALL">Все</option><option value="USERS">Пользователи</option><option value="PREMIUM">Premium</option><option value="STAFF">Команда</option></select></label><label>Показывать до<input type="datetime-local" value={announcement.activeUntil} onChange={(event) => setAnnouncement({ ...announcement, activeUntil: event.target.value })} /></label><button type="submit">Опубликовать</button></form><div className="admin-list">{announcements.map((item) => <article key={item.id}><strong>{item.title}</strong><p>{item.message}</p><small>{item.audience} · {date(item.activeFrom)} — {date(item.activeUntil)}</small><button onClick={() => void perform(() => api.delete(`/announcements/${item.id}`), "Объявление удалено.")}>Удалить</button></article>)}{!announcements.length && <p className="admin-empty">Активных объявлений нет.</p>}</div></div>}
 

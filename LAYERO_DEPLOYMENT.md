@@ -56,6 +56,26 @@ The feature preview needs its own exact origin and callback entry. In production
 
 Payment variables are split by trust boundary: `VITE_TIPTOPPAY_KZ_PUBLIC_ID` and `VITE_CLOUDPAYMENTS_RU_PUBLIC_ID` are frontend build variables; `TIPTOPPAY_API_SECRET` and `CLOUDPAYMENTS_API_SECRET` are backend-only. Use sandbox credentials for QA.
 
+## Automatic video review
+
+Migration `20260719153000_video_auto_review` is expand-only: it adds structured lesson criteria, per-attempt review history and appeals without changing existing submissions. Every lesson starts with `autoReviewEnabled=false`; enabling is rejected unless at least one valid criterion is saved in `/admin/ai-reviews`.
+
+Video upload and Gemini analysis require backend-only Layero variables:
+
+```text
+R2_ACCOUNT_ID=<Cloudflare account ID>
+R2_ACCESS_KEY_ID=<R2 scoped access key>
+R2_SECRET_ACCESS_KEY=<R2 scoped secret>
+R2_BUCKET=<private upload bucket>
+R2_PUBLIC_BASE_URL=<HTTPS delivery base restricted to this bucket>
+GEMINI_API_KEY=<server-only Gemini key>
+GEMINI_VIDEO_MODEL=gemini-2.5-flash
+AUTO_REVIEW_POLL_INTERVAL_MS=30000
+AUTO_REVIEW_MAX_VIDEO_MB=300
+```
+
+Never use a `VITE_*` name for R2 or Gemini secrets. The server only auto-reviews URLs under the configured R2 delivery base, downloads them to a unique temporary file, uploads the file through the Gemini Files API, and removes both temporary copies after the decision. A provider timeout or malformed result is stored as `FAILED` and leaves the submission un-rejected. Do not enable a production lesson until R2, Gemini and two representative videos have passed preview QA.
+
 ## Database safety
 
 Before the first production deployment, make a PostgreSQL backup from the Layero database connection:
@@ -64,7 +84,7 @@ Before the first production deployment, make a PostgreSQL backup from the Layero
 pg_dump --format=custom --no-owner --file=frame-school-before-platform-foundation.dump "$DATABASE_URL"
 ```
 
-Verify the backup with `pg_restore --list`. Then deploy migration `20260717150000_platform_foundation`. It is an expand/backfill migration and intentionally preserves legacy role, ban, Premium, and certificate fields. A contract migration must be a later reviewed release after row-count and backfill checks.
+Verify the backup with `pg_restore --list`. Then deploy migrations `20260717150000_platform_foundation` and `20260719153000_video_auto_review`. Both are expand migrations and intentionally preserve legacy fields and existing submission data. A contract migration must be a later reviewed release after row-count and backfill checks.
 
 ## Release gates
 

@@ -1671,6 +1671,65 @@
   font-weight: 800;
 }
 
+.lesson-auto-review-note {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 15px;
+  border: 1px solid rgba(53, 230, 255, .34);
+  color: var(--fs-text);
+  background: rgba(53, 230, 255, .065);
+}
+
+.lesson-auto-review-note .frame-icon { width: 30px; height: 30px; color: var(--fs-cyan); }
+.lesson-auto-review-note strong { display: block; margin-bottom: 5px; }
+.lesson-auto-review-note p { margin: 0; color: var(--fs-muted); line-height: 1.55; }
+
+.submission-review-panel {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--fs-line-strong);
+  background: rgba(11, 13, 18, .74);
+}
+
+.submission-review-panel > header h2 { margin: 6px 0 10px; font: 600 clamp(23px, 3vw, 32px) "Unbounded", sans-serif; }
+.submission-review-panel > header p { margin: 0; color: var(--fs-muted); line-height: 1.6; }
+.submission-review-list { display: grid; gap: 12px; }
+.submission-review { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--fs-line); background: rgba(18, 22, 32, .62); }
+.submission-review--approved, .submission-review--manual_approved { border-color: rgba(53, 230, 255, .42); }
+.submission-review--needs_changes, .submission-review--manual_needs_changes { border-color: rgba(255, 176, 92, .46); }
+.submission-review--failed { border-color: rgba(255, 79, 216, .42); }
+.submission-review-head { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.submission-review-head .frame-icon { width: 28px; height: 28px; color: var(--fs-cyan); }
+.submission-review-head div { display: grid; gap: 3px; }
+.submission-review-head div span { color: var(--fs-dim); font: 500 10px "JetBrains Mono", monospace; }
+.submission-review-status { padding: 6px 8px; border: 1px solid var(--fs-line); color: var(--fs-cyan); font: 500 9px "JetBrains Mono", monospace; letter-spacing: .07em; text-transform: uppercase; }
+.submission-review > p { margin: 0; color: var(--fs-muted); line-height: 1.6; }
+.submission-review > button, .submission-review-appeal-form button { justify-self: start; min-height: 40px; padding: 0 14px; border: 1px solid var(--fs-cyan); color: var(--fs-text); background: var(--fs-cyan-soft); }
+.submission-review-criteria { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.submission-review-criteria li { display: grid; grid-template-columns: 84px 1fr; gap: 12px; padding: 12px; border-left: 2px solid var(--fs-line-strong); background: rgba(7, 9, 13, .4); }
+.submission-review-criteria li.passed { border-left-color: var(--fs-cyan); }
+.submission-review-criteria li.failed { border-left-color: var(--fs-warning); }
+.submission-review-criteria li > span { color: var(--fs-dim); font: 500 9px "JetBrains Mono", monospace; text-transform: uppercase; }
+.submission-review-criteria strong { display: block; margin-bottom: 4px; }
+.submission-review-criteria p { margin: 0; color: var(--fs-muted); line-height: 1.5; }
+.submission-review-criteria code { display: inline-block; margin-top: 7px; color: var(--fs-warning); }
+.submission-review-appeal { padding: 12px; border: 1px solid rgba(255, 79, 216, .3); background: rgba(255, 79, 216, .055); }
+.submission-review-appeal p { margin: 5px 0 0; color: var(--fs-muted); }
+.submission-review-appeal-form { display: grid; gap: 12px; }
+.submission-review-appeal-form label { display: grid; gap: 7px; color: var(--fs-muted); }
+.submission-review-appeal-form textarea { padding: 12px; resize: vertical; border: 1px solid var(--fs-line-strong); color: var(--fs-text); background: #0b0f16; }
+.submission-review-appeal-form > div { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 600px) {
+  .submission-review-head { grid-template-columns: 30px 1fr; }
+  .submission-review-status { grid-column: 1 / -1; justify-self: start; }
+  .submission-review-criteria li { grid-template-columns: 1fr; }
+}
+
 .lesson-submission-success {
   color: #bbf7d0;
   background: rgba(34, 197, 94, 0.12);

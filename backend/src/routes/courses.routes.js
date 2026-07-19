@@ -12,6 +12,7 @@ router.get("/", async (req, res) => {
       include: {
         lessons: {
           orderBy: { orderNumber: "asc" },
+          include: { reviewCriteria: { where: { active: true }, orderBy: { orderNumber: "asc" } } },
         },
       },
     });
@@ -54,6 +55,7 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
       include: {
         lessons: {
           orderBy: { orderNumber: "asc" },
+          include: { reviewCriteria: { where: { active: true }, orderBy: { orderNumber: "asc" } } },
         },
       },
     });
@@ -88,6 +90,7 @@ router.get("/:id", async (req, res) => {
       include: {
         lessons: {
           orderBy: { orderNumber: "asc" },
+          include: { reviewCriteria: { where: { active: true }, orderBy: { orderNumber: "asc" } } },
         },
       },
     });
@@ -157,6 +160,7 @@ router.put("/:id", authMiddleware, adminMiddleware, async (req, res) => {
       include: {
         lessons: {
           orderBy: { orderNumber: "asc" },
+          include: { reviewCriteria: { where: { active: true }, orderBy: { orderNumber: "asc" } } },
         },
       },
     });

@@ -234,10 +234,9 @@ export default function CareerCenterPage() {
           </details>
 
           <details>
-            <summary>Можно ли подключить реальные заявки?</summary>
+            <summary>Где искать реальные вакансии и специалистов?</summary>
             <p>
-              Да. Позже можно сделать раздел заявок, форму портфолио и
-              интеграцию с backend/админ-панелью.
+              В разделе <Link to="/jobs">«Вакансии»</Link> публикуются актуальные предложения команды, а каталог <Link to="/find-employee">«Участники»</Link> показывает только реальные публичные работы и сертификаты.
             </p>
           </details>
         </div>
@@ -250,9 +249,10 @@ export default function CareerCenterPage() {
           сейчас.
         </p>
 
-        <Link to="/courses" className="career-btn career-btn--primary">
-          Перейти к курсам →
-        </Link>
+        <div className="career-actions">
+          <Link to="/courses" className="career-btn career-btn--primary">Перейти к курсам</Link>
+          <Link to="/jobs" className="career-btn career-btn--light">Открыть вакансии</Link>
+        </div>
       </section>
     </main>
   );

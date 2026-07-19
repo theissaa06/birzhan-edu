@@ -25,6 +25,7 @@ const webinarRoutes = require("./routes/webinar.routes");
 const jobRoutes = require("./routes/job.routes");
 const publicRoutes = require("./routes/public.routes");
 const { runMaintenance } = require("./services/maintenance.service");
+const { runPendingAutoReviews } = require("./services/video-review.service");
 const { syncAdminConfig } = require("./services/admin-config.service");
 
 const app = express();
@@ -144,12 +145,21 @@ async function runScheduledMaintenance() {
   try { await runMaintenance(); } catch (error) { console.error("[Maintenance] Failed", error?.stack || error); }
 }
 
+async function pollAutoReviews() {
+  try { await runPendingAutoReviews(prisma); } catch (error) { console.error("[VideoReview] Poll failed", error?.stack || error); }
+}
+
 function startServer() {
   const port = Number(process.env.PORT || 3003);
   return app.listen(port, () => {
     console.log(`Frame School backend running on port ${port}`);
     syncAdminConfig().catch((error) => console.error("[AdminConfig] Sync failed", error?.stack || error));
     runScheduledMaintenance();
+    const autoReviewIntervalMs = Number(process.env.AUTO_REVIEW_POLL_INTERVAL_MS || 30000);
+    if (Number.isFinite(autoReviewIntervalMs) && autoReviewIntervalMs > 0) {
+      const autoReviewTimer = setInterval(pollAutoReviews, autoReviewIntervalMs);
+      autoReviewTimer.unref?.();
+    }
     startKeepAlivePings();
     const intervalMs = Number(process.env.MAINTENANCE_INTERVAL_MS || 60 * 60 * 1000);
     if (Number.isFinite(intervalMs) && intervalMs > 0) {

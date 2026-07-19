@@ -14,6 +14,7 @@
 | `/admin/users` | Admin/Developer/Owner | roles, bans, Premium | role matrix, protected users, confirmation reasons | required | access matrix tests passed | blocked: no confirmed OWNER/DEVELOPER account | blocked: no confirmed OWNER/DEVELOPER account |
 | `/admin/bans` | Admin+ | bans registry | active/expired/revoked history | required | access matrix tests passed | blocked: no confirmed privileged account | blocked: no confirmed privileged account |
 | `/admin/reviews` | Admin/Developer/Owner | moderation/official reply | form, create/edit one reply, backend role label, notification, audit | required | frontend confirmed-response tests + backend RBAC/notification/audit/public-list test passed | authenticated Browser flow requires a staff session | authenticated Browser flow requires a staff session |
+| `/admin/ai-reviews` | Admin/Developer/Owner | lesson review criteria, decision log, appeal resolution | controlled opt-in, structured criteria, audit, manual override | required | technical-check, AI decision/failure and UI appeal tests pending final run | pending new preview | pending production release |
 | `/admin/announcements` | Admin+ | announcements | audience/date/create/delete | required | syntax/typecheck passed | blocked: no confirmed privileged account | blocked: no confirmed privileged account |
 | `/admin/support` | Admin+ | support/reply | session-bound author, protected reply | public form has no overflow | syntax/typecheck passed | public support page passed; admin flow blocked | public support page passed; admin flow blocked |
 | `/premium` | User | regional config/status/webhooks | KZ/RU, missing key, invalid/replay webhook | required | syntax tests passed | blocked: KZ/RU sandbox keys absent | blocked: KZ/RU sandbox keys absent |
@@ -33,5 +34,13 @@
 |---|---|---|---|---|
 | Admin review button did not provide a reliable official-reply workflow | UI open/create/error-confirmation tests; backend ADMIN/DEVELOPER RBAC, single upsert, role label, notification, audit, public serialization and failure test | no new secret required | pending new deploy | pending new deploy; authenticated staff session required for the write |
 | OAuth buttons need real Google/Apple/Telegram/VK credentials | frontend four-button readiness tests; backend complete/incomplete configuration, exact Google callback with state/nonce/PKCE, signed Google ID token verification and atomic one-use exchange | `OAUTH_REDIRECT_BASE_URL`, Google Client ID/secret added to Layero; Google app published for External users | pending new deploy | Google pending live callback smoke; Apple needs Developer Program credentials, Telegram needs BotFather account, VK console is unavailable to Browser automation |
+
+## Regression pass for TZ (24), 2026-07-19
+
+| Defect / flow | Automated evidence | Safe rollout | Browser preview | Browser production |
+|---|---|---|---|---|
+| Automatic video-edit review replaces the default mentor decision only for configured lessons | deterministic metadata checks, asynchronous worker decision/failure tests, structured feedback/retry/appeal UI tests; full suite pending | expand migration; disabled by default; no criteria means `MANUAL_REQUIRED`; failed provider means `FAILED`, never rejection | pending new deploy; live upload also requires R2 variables | pending preview and real test videos |
+| AI rejection can be appealed and manually overridden | authenticated appeal API, staff-only resolution, progress update, notification and audit implemented | one appeal per submission; every AI and manual decision is retained | pending staff Browser flow | pending preview |
+| `/career-center` was completely unstyled because its CSS contained `AboutPage` selectors | route test covers real statistics and working career links; lint/typecheck/build pending | no external configuration | production defect reproduced in Browser; replacement layout pending deploy | pending new release |
 
 Browser smoke was recorded on 2026-07-17 after Layero reported Ready. Google production OAuth configuration was completed on 2026-07-19 and awaits the new deploy smoke. Apple, Telegram, VK and payment rows cannot be marked passed without their provider credentials and sandbox accounts. Production console inspection returned no warnings or errors on the exercised public routes.

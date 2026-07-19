@@ -43,7 +43,7 @@ const PublicCertificatePage = lazy(() => import("./pages/PublicCertificatePage")
 const StaticInfoPage = lazy(() => import("./pages/StaticInfoPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
-const adminPaths = ["/admin", "/admin/users", "/admin/bans", "/admin/content", "/admin/reviews", "/admin/announcements", "/admin/support"];
+const adminPaths = ["/admin", "/admin/users", "/admin/bans", "/admin/content", "/admin/reviews", "/admin/ai-reviews", "/admin/announcements", "/admin/support"];
 
 function LoadingScreen() {
   return <main className="route-loading" aria-live="polite"><div className="loading-state"><span className="timecode">LOADING / 00:00:01</span><p>Собираем кадры страницы…</p></div></main>;

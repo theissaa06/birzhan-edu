@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const { runPremiumMaintenance } = require("./premium.service");
+const { runPendingAutoReviews } = require("./video-review.service");
 
 async function expireBans(now = new Date()) {
   const expired = await prisma.userBan.findMany({
@@ -18,8 +19,12 @@ async function expireBans(now = new Date()) {
 }
 
 async function runMaintenance() {
-  const [premium, bans] = await Promise.all([runPremiumMaintenance(prisma), expireBans()]);
-  return { premium, bans };
+  const [premium, bans, autoReviews] = await Promise.all([
+    runPremiumMaintenance(prisma),
+    expireBans(),
+    runPendingAutoReviews(prisma),
+  ]);
+  return { premium, bans, autoReviews };
 }
 
 module.exports = { expireBans, runMaintenance };

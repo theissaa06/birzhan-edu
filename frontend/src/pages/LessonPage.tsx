@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
+import SubmissionReviewPanel from "../components/SubmissionReviewPanel";
 import api from "../services/api";
 import { createSubmission, createUploadUrl } from "../services/submissions";
 import "./LessonPage.css";
@@ -20,6 +21,15 @@ type Lesson = {
   hints?: string[] | null;
   orderNumber: number;
   type: LessonType;
+  autoReviewEnabled?: boolean;
+  reviewCriteria?: Array<{
+    id: number;
+    key: string;
+    title: string;
+    description: string;
+    kind: string;
+    required: boolean;
+  }>;
 };
 
 type Course = {
@@ -71,6 +81,37 @@ function normalizeList(value: unknown): string[] {
   return [];
 }
 
+async function readVideoMetadata(file: File) {
+  return new Promise<{ durationSeconds: number | null; width: number | null; height: number | null; hasAudio: boolean | null }>((resolve) => {
+    const video = document.createElement("video") as HTMLVideoElement & { mozHasAudio?: boolean; audioTracks?: { length: number } };
+    const objectUrl = URL.createObjectURL(file);
+    let settled = false;
+    const finish = (value: { durationSeconds: number | null; width: number | null; height: number | null; hasAudio: boolean | null }) => {
+      if (settled) return;
+      settled = true;
+      URL.revokeObjectURL(objectUrl);
+      resolve(value);
+    };
+    const timer = window.setTimeout(() => finish({ durationSeconds: null, width: null, height: null, hasAudio: null }), 10000);
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      window.clearTimeout(timer);
+      const hasAudio = typeof video.mozHasAudio === "boolean" ? video.mozHasAudio : video.audioTracks ? video.audioTracks.length > 0 : null;
+      finish({
+        durationSeconds: Number.isFinite(video.duration) ? video.duration : null,
+        width: video.videoWidth || null,
+        height: video.videoHeight || null,
+        hasAudio,
+      });
+    };
+    video.onerror = () => {
+      window.clearTimeout(timer);
+      finish({ durationSeconds: null, width: null, height: null, hasAudio: null });
+    };
+    video.src = objectUrl;
+  });
+}
+
 export default function LessonPage() {
   const { courseId, lessonId } = useParams();
 
@@ -93,6 +134,7 @@ export default function LessonPage() {
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [submissionError, setSubmissionError] = useState("");
+  const [submissionRefreshKey, setSubmissionRefreshKey] = useState(0);
 
   const currentLesson = useMemo(() => {
     if (!course || !lessonId) return null;
@@ -129,6 +171,13 @@ export default function LessonPage() {
   const hints = normalizeList(currentLesson?.hints);
   const currentHint = hints[hintIndex] || "Подсказок для этого урока пока нет.";
   const embedUrl = convertYouTubeToEmbed(currentLesson?.videoUrl || "");
+  const automaticReviewRequired = Boolean(currentLesson?.autoReviewEnabled && currentLesson.reviewCriteria?.length);
+
+  const handleReviewApproved = useCallback(() => {
+    if (!lessonId) return;
+    setCompleted(true);
+    setServerCompletedIds((current) => [...new Set([...current, Number(lessonId)])]);
+  }, [lessonId]);
 
   useEffect(() => {
     if (courseId && lessonId) {
@@ -179,6 +228,10 @@ export default function LessonPage() {
 
     markStarted();
   }, [lessonId]);
+
+  useEffect(() => {
+    if (automaticReviewRequired) setSubmissionType("video");
+  }, [automaticReviewRequired]);
 
   useEffect(() => {
     async function loadProgress() {
@@ -247,6 +300,10 @@ export default function LessonPage() {
 
   async function handleCompleteLesson() {
     if (!lessonId) return;
+    if (automaticReviewRequired) {
+      setSubmissionError("Этот практический урок завершится автоматически после успешной проверки видео.");
+      return;
+    }
 
     try {
       await api.post(`/lessons/${lessonId}/complete`);
@@ -270,12 +327,24 @@ export default function LessonPage() {
       setSubmissionMessage("");
 
       let finalUrl = submissionUrl.trim();
+      let technicalMetadata: {
+        uploadKey?: string;
+        fileName?: string;
+        contentType?: string;
+        size?: number;
+        durationSeconds?: number | null;
+        width?: number | null;
+        height?: number | null;
+        hasAudio?: boolean | null;
+      } | undefined;
 
       if (submissionType === "video") {
         if (!submissionFile) {
           setSubmissionError("Выберите видеофайл для загрузки.");
           return;
         }
+
+        const videoMetadata = await readVideoMetadata(submissionFile);
 
         const upload = await createUploadUrl({
           lessonId: Number(lessonId),
@@ -297,6 +366,13 @@ export default function LessonPage() {
         }
 
         finalUrl = upload.publicUrl;
+        technicalMetadata = {
+          uploadKey: upload.key,
+          fileName: submissionFile.name,
+          contentType: submissionFile.type,
+          size: submissionFile.size,
+          ...videoMetadata,
+        };
       }
 
       if (!finalUrl) {
@@ -304,15 +380,17 @@ export default function LessonPage() {
         return;
       }
 
-      await createSubmission({
+      const created = await createSubmission({
         lessonId: Number(lessonId),
         type: submissionType,
         url: finalUrl,
         notes: submissionNotes,
         isPublic: submissionPublic,
+        technicalMetadata,
       });
 
-      setSubmissionMessage("Работа отправлена на проверку и сохранена в профиле.");
+      setSubmissionMessage(created.message);
+      setSubmissionRefreshKey((value) => value + 1);
       setSubmissionUrl("");
       setSubmissionNotes("");
       setSubmissionFile(null);
@@ -600,12 +678,14 @@ export default function LessonPage() {
               <div className="lesson-submission-error">{submissionError}</div>
             )}
 
+            {automaticReviewRequired && <div className="lesson-auto-review-note"><FrameIcon name="spark" /><div><strong>Автопроверка включена</strong><p>Видео проверяется по {currentLesson.reviewCriteria?.length} структурированным критериям. Следующий урок откроется после успешного результата.</p></div></div>}
+
             <div className="lesson-submission-tabs">
               <button
                 type="button"
                 className={submissionType === "link" ? "active" : ""}
                 onClick={() => setSubmissionType("link")}
-                disabled={submissionLoading}
+                disabled={submissionLoading || automaticReviewRequired}
               >
                 Ссылка
               </button>
@@ -672,6 +752,8 @@ export default function LessonPage() {
             </button>
           </form>
 
+          <SubmissionReviewPanel lessonId={Number(currentLesson.id)} refreshKey={submissionRefreshKey} onApproved={handleReviewApproved} />
+
           <div className="lesson-checklist">
             <h2>Чек-лист урока</h2>
 
@@ -734,18 +816,24 @@ export default function LessonPage() {
                 completed ? "lesson-complete-btn done" : "lesson-complete-btn"
               }
               onClick={handleCompleteLesson}
-              disabled={completed}
+              disabled={completed || automaticReviewRequired}
             >
-              {completed ? "Урок уже пройден" : "Я выполнил задание"}
+              {completed ? "Урок уже пройден" : automaticReviewRequired ? "Ожидаем проверку видео" : "Я выполнил задание"}
             </button>
 
-            {nextLesson ? (
+            {nextLesson && (!automaticReviewRequired || completed) ? (
               <Link
                 to={`/courses/${course.id}/lessons/${nextLesson.id}`}
                 className="lesson-nav-btn primary"
               >
                 Следующий урок →
               </Link>
+            ) : nextLesson ? (
+              <button type="button" className="lesson-nav-btn primary" disabled>Следующий урок откроется после проверки</button>
+            ) : automaticReviewRequired && !completed ? (
+              <button type="button" className="lesson-nav-btn primary" disabled>
+                Курс завершится после проверки видео
+              </button>
             ) : (
               <button
                 type="button"
