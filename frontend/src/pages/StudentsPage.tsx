@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
 import UserBadges, { resolveUserBadges } from "../components/UserBadges";
+import UserAvatar from "../components/UserAvatar";
 import api from "../services/api";
 import "./StudentsPage.css";
 
@@ -12,6 +13,7 @@ type PublicUser = {
   badges?: string[];
   premiumUntil?: string | null;
   isPremium?: boolean;
+  avatarUrl?: string | null;
   createdAt: string;
 };
 
@@ -184,9 +186,7 @@ export default function StudentsPage() {
                 key={user.id}
               >
                 <div className="student-card__top">
-                  <div className="student-avatar" aria-hidden="true">
-                    {(user.username || "U").slice(0, 1).toUpperCase()}
-                  </div>
+                  <UserAvatar name={user.username} avatarUrl={user.avatarUrl} size="large" />
                   {isProtectedUser(user) && (
                     <span className="student-protected-mark" title="Официальный аккаунт">
                       <FrameIcon name="check" />

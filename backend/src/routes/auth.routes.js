@@ -10,6 +10,7 @@ const { sendPasswordResetEmail, sendPasswordChangedEmail } = require("../utils/m
 const { rolesFromUser, highestRole } = require("../utils/access");
 const { getPremiumAccess } = require("../services/premium.service");
 const { writeAudit, clientIp } = require("../utils/audit");
+const { avatarData } = require("../services/avatar.service");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESET_CODE_RE = /^\d{6}$/;
@@ -95,6 +96,7 @@ async function publicUser(user) {
     premiumPlan: premium?.plan || null,
     premiumUntil: premium?.paidUntil || null,
     graceUntil: premium?.graceUntil || null,
+    ...avatarData(user),
   };
 }
 
@@ -102,6 +104,7 @@ const authUserInclude = {
   roles: { select: { role: true } },
   bansReceived: { where: { status: "ACTIVE" }, orderBy: { startsAt: "desc" }, take: 1 },
   oauthIdentities: { select: { provider: true } },
+  avatar: { select: { kind: true, presetId: true, updatedAt: true } },
 };
 
 router.post("/register", registerLimiter, async (req, res) => {

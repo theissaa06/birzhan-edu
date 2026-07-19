@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
+import UserAvatar from "../components/UserAvatar";
+import { useAuthSession } from "../components/AuthSessionProvider";
 import {
   getAIStatus,
   sendAIMessage,
@@ -24,11 +26,12 @@ const quickQuestions = [
 ];
 
 export default function AIAssistantPage() {
+  const { user } = useAuthSession();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 1,
       role: "assistant",
-      text: "Привет! Я Frame AI 🎬\n\nСпрашивай что угодно — не только про монтаж. Помогу разобраться с учёбой, накидать текст, обсудить идею для ролика или просто ответить на вопрос, который давно вертится в голове. Отвечаю быстро, по делу, и без занудства.\n\nС чего начнём?",
+      text: "Привет! Я Frame AI.\n\nСпрашивай что угодно — не только про монтаж. Помогу разобраться с учёбой, накидать текст, обсудить идею для ролика или просто ответить на вопрос, который давно вертится в голове. Отвечаю быстро, по делу и без занудства.\n\nС чего начнём?",
     },
   ]);
 
@@ -39,6 +42,7 @@ export default function AIAssistantPage() {
   const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,7 +79,7 @@ export default function AIAssistantPage() {
 
   async function handleSend(customText?: string) {
     const text = (customText ?? input).trim();
-    if (!text || loading || aiUnavailable) return;
+    if (!text || loadingRef.current || aiUnavailable) return;
 
     setError("");
     setStatusMessage("");
@@ -88,6 +92,7 @@ export default function AIAssistantPage() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    loadingRef.current = true;
     setLoading(true);
 
     try {
@@ -132,14 +137,15 @@ export default function AIAssistantPage() {
             "Frame AI ответил в резервном режиме без обращения к модели.",
         );
       }
-    } catch (err: any) {
-      const backendMessage = err?.response?.data?.message;
-      const responseStatus = Number(err?.response?.status || 0);
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string }; status?: number }; code?: string };
+      const backendMessage = apiError.response?.data?.message;
+      const responseStatus = Number(apiError.response?.status || 0);
       const failText =
         (typeof backendMessage === "string" && backendMessage.trim()
           ? backendMessage.trim()
           : "") ||
-        (err?.code === "ECONNABORTED"
+        (apiError.code === "ECONNABORTED"
           ? "Не получилось получить ответ вовремя. Попробуй ещё раз."
           : responseStatus === 503
             ? "Frame AI временно недоступен. Мы уже восстанавливаем подключение к Gemini."
@@ -157,24 +163,25 @@ export default function AIAssistantPage() {
 
       setError(failText);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }
 
   function handleQuickQuestion(question: string) {
     setInput(question);
-    handleSend(question);
+    void handleSend(question);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    handleSend();
+    void handleSend();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   }
 
@@ -281,6 +288,11 @@ export default function AIAssistantPage() {
                 key={message.id}
                 className={`ai-message ai-message--${message.role}`}
               >
+                {message.role === "user" ? (
+                  <UserAvatar name={user?.username} avatarUrl={typeof user?.avatarUrl === "string" ? user.avatarUrl : null} size="small" decorative />
+                ) : (
+                  <span className="ai-message-avatar" aria-hidden="true"><FrameIcon name={message.role === "error" ? "warning" : "lens"} /></span>
+                )}
                 <div className="ai-message-label">
                   {message.role === "user"
                     ? "Вы"
@@ -295,6 +307,7 @@ export default function AIAssistantPage() {
 
             {loading && (
               <div className="ai-message ai-message--assistant">
+                <span className="ai-message-avatar" aria-hidden="true"><FrameIcon name="lens" /></span>
                 <div className="ai-message-label">FRAME AI</div>
 
                 <div className="ai-message-text ai-typing">
@@ -311,8 +324,7 @@ export default function AIAssistantPage() {
           {error && <div className="ai-error-banner">{error}</div>}
           {!error && aiUnavailable && (
             <div className="ai-error-banner" role="alert">
-              Gemini не настроен на сервере. Добавьте `GEMINI_API_KEY` в
-              Layero, чтобы включить реальные ответы.
+              Frame AI временно недоступен. Настройка подключения проверяется командой платформы.
             </div>
           )}
           {!error && statusMessage && (

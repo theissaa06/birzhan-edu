@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuthSession } from "./AuthSessionProvider";
 import FrameIcon from "./FrameIcon";
+import UserAvatar from "./UserAvatar";
 import { showToast } from "../services/appToast";
 import "./Header.css";
 
@@ -39,7 +40,7 @@ export default function Header() {
         <div className="site-actions">
           <Link to="/premium" className="site-premium-link"><FrameIcon name="premium" />Premium</Link>
           {staff && <Link to="/admin" className="site-admin-link">Admin</Link>}
-          {isAuthenticated ? <><Link to="/profile" className="site-profile-link">{user?.username || "Профиль"}</Link><button type="button" className="site-logout" onClick={logout}>Выйти</button></> : <><Link to="/login" className="site-login">Войти</Link><Link to="/register" className="site-register">Начать</Link></>}
+          {isAuthenticated ? <><Link to="/profile" className="site-profile-link"><UserAvatar name={user?.username} avatarUrl={typeof user?.avatarUrl === "string" ? user.avatarUrl : null} size="small" decorative />{user?.username || "Профиль"}</Link><button type="button" className="site-logout" onClick={logout}>Выйти</button></> : <><Link to="/login" className="site-login">Войти</Link><Link to="/register" className="site-register">Начать</Link></>}
         </div>
       </div>
     </header>

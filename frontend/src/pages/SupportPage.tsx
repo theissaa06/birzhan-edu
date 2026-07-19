@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import FrameIcon, { type FrameIconName } from "../components/FrameIcon";
 import { sendSupportMessage } from "../services/support";
@@ -61,6 +61,7 @@ export default function SupportPage() {
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const requestIdRef = useRef<string | null>(null);
 
   function handleChange(
     e: React.ChangeEvent<
@@ -86,14 +87,24 @@ export default function SupportPage() {
       setError("");
       setSent(false);
 
-      await sendSupportMessage({
+      const clientRequestId = requestIdRef.current || (
+        typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `support:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`
+      );
+      requestIdRef.current = clientRequestId;
+
+      const storedMessage = await sendSupportMessage({
         text: form.message,
         name: form.name,
         email: form.email,
         topic: form.topic,
+        clientRequestId,
       });
+      if (!storedMessage?.id) throw new Error("Сервер не подтвердил сохранение обращения.");
 
       setSent(true);
+      requestIdRef.current = null;
 
       setForm({
         name: "",

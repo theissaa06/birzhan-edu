@@ -11,7 +11,8 @@
 .site-actions > a, .site-logout { display: inline-flex; min-height: 38px; padding: 8px 11px; gap: 6px; align-items: center; justify-content: center; border: 1px solid var(--fs-line); color: var(--fs-muted); background: transparent; font-size: 12px; white-space: nowrap; }
 .site-premium-link .frame-icon { width: 18px; height: 18px; color: var(--fs-magenta); }
 .site-admin-link { color: var(--fs-warning) !important; }
-.site-profile-link { max-width: 120px; overflow: hidden; color: var(--fs-cyan) !important; text-overflow: ellipsis; }
+.site-profile-link { max-width: 180px; overflow: hidden; color: var(--fs-cyan) !important; text-overflow: ellipsis; }
+.site-profile-link .user-avatar { margin: -6px 1px -6px -5px; }
 .site-logout { cursor: pointer; }
 .site-menu-toggle { display: none; width: 42px; height: 42px; padding: 10px; border: 1px solid var(--fs-line); background: var(--fs-panel); }
 .site-menu-toggle span { display: block; height: 1px; margin: 5px 0; background: var(--fs-text); }

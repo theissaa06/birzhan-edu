@@ -141,6 +141,7 @@ model User {
   subscriptionActions   SubscriptionEvent[]    @relation("SubscriptionEventActor")
   oauthIdentities       OAuthIdentity[]
   oauthAttempts         OAuthLoginAttempt[]
+  avatar                UserAvatar?
   certificates          Certificate[]
   reviewComments        ReviewComment[]
   officialReplies       ReviewOfficialReply[]
@@ -150,6 +151,19 @@ model User {
 
   @@index([accountStatus])
   @@index([blockedUntil])
+}
+
+model UserAvatar {
+  userId    Int      @id
+  kind      String
+  presetId  String?
+  imageData Bytes?
+  mimeType  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([kind])
 }
 
 model UserRole {
@@ -572,19 +586,24 @@ model JobApplication {
 }
 
 model SupportMessage {
-  id        Int      @id @default(autoincrement())
-  text      String
-  from      String
-  name      String?
-  email     String?
-  topic     String?
-  status    String   @default("open")
-  userId    Int?
-  createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id              Int              @id @default(autoincrement())
+  text            String
+  from            String
+  name            String?
+  email           String?
+  topic           String?
+  status          String           @default("open")
+  userId          Int?
+  parentId        Int?
+  clientRequestId String?          @unique
+  createdAt       DateTime         @default(now())
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parent          SupportMessage?  @relation("SupportThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         SupportMessage[] @relation("SupportThread")
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
+  @@index([parentId, createdAt])
 }
 
 model Application {

@@ -12,6 +12,7 @@ export type AIResponse = {
   demo?: boolean;
   source?: "gemini" | "demo" | "unavailable" | string;
   code?: string;
+  requestId?: string;
 };
 
 export type AIStatus = {
@@ -22,7 +23,8 @@ export type AIStatus = {
   configured: boolean;
 };
 
-const AI_TIMEOUT = 20000;
+// Backend may perform one bounded retry after a transient Gemini failure.
+const AI_TIMEOUT = 45000;
 
 export async function sendAIMessage(
   message: string,

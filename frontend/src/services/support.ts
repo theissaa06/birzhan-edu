@@ -5,6 +5,8 @@ export type SupportMessage = {
   text: string;
   from: "user" | "admin";
   userId?: number | null;
+  parentId?: number | null;
+  status?: string;
   createdAt: string;
   user?: {
     id: number;
@@ -13,8 +15,8 @@ export type SupportMessage = {
   } | null;
 };
 
-export async function getSupportMessages() {
-  const response = await api.get("/support");
+export async function getMySupportMessages() {
+  const response = await api.get("/support/me");
   return response.data.data as SupportMessage[];
 }
 
@@ -23,6 +25,7 @@ export async function sendSupportMessage(data: {
   name?: string;
   email?: string;
   topic?: string;
+  clientRequestId: string;
 }) {
   const response = await api.post("/support", data);
   return response.data.data as SupportMessage;

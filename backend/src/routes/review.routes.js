@@ -4,6 +4,7 @@ const prisma = require("../config/prisma");
 const { authMiddleware, optionalAuthMiddleware, adminMiddleware } = require("../middleware/auth.middleware");
 const { rolesFromUser, highestRole } = require("../utils/access");
 const { writeAudit } = require("../utils/audit");
+const { avatarData } = require("../services/avatar.service");
 
 const writeLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -26,6 +27,7 @@ const authorSelect = {
   username: true,
   role: true,
   badges: true,
+  avatar: { select: { kind: true, presetId: true, updatedAt: true } },
   roles: { select: { role: true } },
 };
 
@@ -46,7 +48,7 @@ function staffLabel(user) {
 }
 
 function publicAuthor(user) {
-  return user ? { id: user.id, username: user.username, roles: rolesFromUser(user) } : null;
+  return user ? { id: user.id, username: user.username, roles: rolesFromUser(user), ...avatarData(user) } : null;
 }
 
 function serialize(review) {

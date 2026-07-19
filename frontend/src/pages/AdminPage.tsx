@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
+import UserAvatar from "../components/UserAvatar";
 import AdminVideoReviewPage from "../components/AdminVideoReviewPage";
 import { useAuthSession } from "../components/AuthSessionProvider";
 import api from "../services/api";
@@ -11,7 +12,7 @@ type AdminUser = { id: number; username: string; email: string; roles?: string[]
 type Ban = { id: number; status: string; reason: string; startsAt: string; endsAt?: string | null; user: { id: number; username: string; email: string }; actor?: { username: string } };
 type Review = { id: number; rating: number; text: string; isHidden?: boolean; createdAt: string; author?: { username?: string; roles?: string[] } | null; officialReply?: { id: number; text: string; label: string } | null; comments?: unknown[] };
 type Announcement = { id: number; title: string; message: string; audience: string; activeFrom: string; activeUntil?: string | null };
-type SupportMessage = { id: number; message: string; text?: string; status?: string; createdAt: string; username?: string; email?: string; user?: { username?: string; email?: string }; replies?: SupportMessage[] };
+type SupportMessage = { id: number; text: string; status?: string; createdAt: string; name?: string; email?: string; parentId?: number | null; user?: { username?: string; email?: string; avatarUrl?: string | null }; replies?: SupportMessage[] };
 type Stats = Record<string, number>;
 type ContentState = { courses: unknown[]; webinars: unknown[]; jobs: unknown[] };
 
@@ -57,6 +58,7 @@ export default function AdminPage() {
   const [replySaving, setReplySaving] = useState(false);
   const [selectedSupport, setSelectedSupport] = useState<SupportMessage | null>(null);
   const [supportReply, setSupportReply] = useState("");
+  const [supportReplySaving, setSupportReplySaving] = useState(false);
 
   const actorRoles = useMemo(() => new Set([...(user?.roles || []), ...(user?.badges || []), user?.role || ""].map((item) => item.toUpperCase())), [user]);
   const canManagePremium = actorRoles.has("OWNER") || actorRoles.has("DEVELOPER");
@@ -131,6 +133,32 @@ export default function AdminPage() {
     }
   }
 
+  async function submitSupportReply(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedSupport || supportReplySaving) return;
+    const text = supportReply.trim();
+    if (text.length < 2 || text.length > 4000) {
+      showToast({ tone: "error", title: "Проверьте ответ", message: "Ответ должен содержать от 2 до 4000 символов." });
+      return;
+    }
+
+    setSupportReplySaving(true);
+    try {
+      const { data } = await api.post(`/support/${selectedSupport.id}/reply`, { text });
+      if (data?.success !== true || !data?.data?.id || data.data.parentId !== selectedSupport.id) {
+        throw new Error(data?.message || "Сервер не подтвердил сохранение ответа.");
+      }
+      showToast({ tone: "success", title: "Ответ поддержки", message: data.message || "Ответ сохранён и доступен пользователю." });
+      setSelectedSupport(null);
+      setSupportReply("");
+      await load();
+    } catch (error) {
+      showToast({ tone: "error", title: "Ответ не сохранён", message: errorMessage(error) });
+    } finally {
+      setSupportReplySaving(false);
+    }
+  }
+
   const overview = (
     <div className="admin-metrics">
       {[
@@ -170,7 +198,51 @@ export default function AdminPage() {
 
         {!loading && section === "announcements" && <div className="admin-two-columns"><form className="admin-editor" onSubmit={submitAnnouncement}><h3>Новое объявление</h3><label>Заголовок<input value={announcement.title} onChange={(event) => setAnnouncement({ ...announcement, title: event.target.value })} required minLength={3} /></label><label>Сообщение<textarea value={announcement.message} onChange={(event) => setAnnouncement({ ...announcement, message: event.target.value })} required minLength={5} rows={5} /></label><label>Аудитория<select value={announcement.audience} onChange={(event) => setAnnouncement({ ...announcement, audience: event.target.value })}><option value="ALL">Все</option><option value="USERS">Пользователи</option><option value="PREMIUM">Premium</option><option value="STAFF">Команда</option></select></label><label>Показывать до<input type="datetime-local" value={announcement.activeUntil} onChange={(event) => setAnnouncement({ ...announcement, activeUntil: event.target.value })} /></label><button type="submit">Опубликовать</button></form><div className="admin-list">{announcements.map((item) => <article key={item.id}><strong>{item.title}</strong><p>{item.message}</p><small>{item.audience} · {date(item.activeFrom)} — {date(item.activeUntil)}</small><button onClick={() => void perform(() => api.delete(`/announcements/${item.id}`), "Объявление удалено.")}>Удалить</button></article>)}{!announcements.length && <p className="admin-empty">Активных объявлений нет.</p>}</div></div>}
 
-        {!loading && section === "support" && <div className="admin-list">{support.map((item) => <article key={item.id}><header><strong>{item.user?.username || item.username || item.email || "Гость"}</strong><span>{date(item.createdAt)} · {item.status || "open"}</span></header><p>{item.message || item.text}</p><button onClick={() => setSelectedSupport(item)}>Ответить</button></article>)}{!support.length && <p className="admin-empty">Открытых обращений нет.</p>}{selectedSupport && <section className="admin-editor"><h3>Ответ пользователю</h3><textarea value={supportReply} onChange={(event) => setSupportReply(event.target.value)} rows={5} /><div className="admin-editor-actions"><button onClick={() => void perform(() => api.post(`/support/${selectedSupport.id}/reply`, { text: supportReply }), "Ответ отправлен.")}>Отправить</button><button onClick={() => setSelectedSupport(null)}>Закрыть</button></div></section>}</div>}
+        {!loading && section === "support" && (
+          <div className="admin-list">
+            {support.map((item) => (
+              <article key={item.id}>
+                <header>
+                  <span className="admin-support-author"><UserAvatar name={item.user?.username || item.name || "Гость"} avatarUrl={item.user?.avatarUrl} size="small" /><strong>{item.user?.username || item.name || item.email || "Гость"}</strong></span>
+                  <span>{date(item.createdAt)} · {item.status || "open"}</span>
+                </header>
+                <p>{item.text}</p>
+                {item.replies?.map((threadReply) => (
+                  <blockquote key={threadReply.id}>
+                    <strong>Ответ поддержки · {date(threadReply.createdAt)}</strong>
+                    {threadReply.text}
+                  </blockquote>
+                ))}
+                <button type="button" onClick={() => { setSelectedSupport(item); setSupportReply(""); }}>
+                  {item.replies?.length ? "Ответить ещё" : "Ответить"}
+                </button>
+              </article>
+            ))}
+            {!support.length && <p className="admin-empty">Обращений пока нет.</p>}
+            {selectedSupport && (
+              <form className="admin-editor" aria-label="Форма ответа поддержки" onSubmit={submitSupportReply}>
+                <h3>Ответ пользователю</h3>
+                <label htmlFor="support-admin-reply">
+                  Текст ответа
+                  <textarea
+                    id="support-admin-reply"
+                    value={supportReply}
+                    onChange={(event) => setSupportReply(event.target.value)}
+                    rows={5}
+                    minLength={2}
+                    maxLength={4000}
+                    required
+                    disabled={supportReplySaving}
+                  />
+                </label>
+                <div className="admin-editor-actions">
+                  <button type="submit" disabled={supportReplySaving}>{supportReplySaving ? "Отправляем…" : "Отправить"}</button>
+                  <button type="button" disabled={supportReplySaving} onClick={() => { setSelectedSupport(null); setSupportReply(""); }}>Закрыть</button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
       </section>
     </main>
   );

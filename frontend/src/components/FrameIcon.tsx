@@ -15,7 +15,10 @@ export type FrameIconName =
   | "folder"
   | "briefcase"
   | "time"
-  | "lessons";
+  | "lessons"
+  | "support"
+  | "send"
+  | "close";
 
 type FrameIconProps = {
   name: FrameIconName;
@@ -137,6 +140,21 @@ export default function FrameIcon({ name, className = "", title }: FrameIconProp
             <path d="M8 7h12a4 4 0 014 4v14H10a4 4 0 01-4-4V9a2 2 0 012-2z" />
             <path d="M11 12h8M11 16h10M11 20h6" />
           </>
+        )}
+        {name === "support" && (
+          <>
+            <path d="M7 17v-2a9 9 0 0118 0v2" />
+            <path d="M7 17v6h4v-8H7M25 17v6h-4v-8h4M21 24c-1.2 2-3 3-5.5 3H14" />
+          </>
+        )}
+        {name === "send" && (
+          <>
+            <path d="M5 7l22 9-22 9 4-9z" />
+            <path d="M9 16h11" />
+          </>
+        )}
+        {name === "close" && (
+          <path d="M9 9l14 14M23 9L9 23" />
         )}
       </svg>
     </span>

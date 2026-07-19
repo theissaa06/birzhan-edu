@@ -3,11 +3,14 @@
 
 const express = require("express");
 const rateLimit = require("express-rate-limit");
+const crypto = require("node:crypto");
 const { GoogleGenAI } = require("@google/genai");
+const { clampInteger, generateWithRetry, providerStatus } = require("../services/gemini-chat.service");
 
 const router = express.Router();
 
-const AI_TIMEOUT_MS = 25000;
+const AI_TIMEOUT_MS = clampInteger(process.env.AI_REQUEST_TIMEOUT_MS, 18000, 5000, 60000);
+const AI_MAX_RETRIES = clampInteger(process.env.AI_MAX_RETRIES, 1, 0, 2);
 const MAX_MESSAGE_LENGTH = 8000;
 const MAX_HISTORY_ITEMS = 12;
 const MAX_HISTORY_TEXT_LENGTH = 1500;
@@ -22,10 +25,9 @@ const aiLimiter = rateLimit({
   max: 12,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    message:
-      "Слишком много запросов к Frame AI. Подожди минуту и попробуй снова.",
+  handler: (req, res) => {
+    console.warn("[Frame AI] Request rate limited", { requestId: req.headers["x-request-id"] || null, timestamp: new Date().toISOString() });
+    return res.status(429).json({ success: false, code: "AI_RATE_LIMIT", message: "Слишком много запросов к Frame AI. Подождите минуту и попробуйте снова." });
   },
 });
 
@@ -139,20 +141,6 @@ ${message}
 Ответ Frame AI:`;
 }
 
-function withTimeout(promise, timeoutMs) {
-  let timeoutId;
-
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error("AI_TIMEOUT"));
-    }, timeoutMs);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
-}
-
 router.get("/status", (req, res) => {
   return res.json({
     success: true,
@@ -164,6 +152,8 @@ router.get("/status", (req, res) => {
 });
 
 router.post("/chat", aiLimiter, async (req, res) => {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
   try {
     const { message, history } = req.body || {};
 
@@ -205,17 +195,24 @@ router.post("/chat", aiLimiter, async (req, res) => {
       });
     }
 
-    const response = await withTimeout(
-      ai.models.generateContent({
+    const result = await generateWithRetry({
+      timeoutMs: AI_TIMEOUT_MS,
+      maxRetries: AI_MAX_RETRIES,
+      generate: () => ai.models.generateContent({
         model: GEMINI_MODEL,
         contents: buildGeminiPrompt(trimmedMessage, history),
-        config: {
-          temperature: 0.4,
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
-        },
+        config: { temperature: 0.4, maxOutputTokens: MAX_OUTPUT_TOKENS },
       }),
-      AI_TIMEOUT_MS,
-    );
+      onRetry: ({ attempt, delayMs, status, code }) => console.warn("[Frame AI] Retrying provider request", {
+        requestId,
+        attempt,
+        delayMs,
+        providerStatus: status,
+        providerCode: code,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+    const response = result.response;
 
     const answer = response.text?.trim();
 
@@ -240,19 +237,38 @@ router.post("/chat", aiLimiter, async (req, res) => {
       });
     }
 
+    console.info("[Frame AI] Request succeeded", {
+      requestId,
+      model: GEMINI_MODEL,
+      attempts: result.attempts,
+      durationMs: result.durationMs,
+      messageLength: trimmedMessage.length,
+      historyItems: Array.isArray(history) ? Math.min(history.length, MAX_HISTORY_ITEMS) : 0,
+      timestamp: new Date().toISOString(),
+    });
     return res.json({
       success: true,
       answer,
       demo: false,
       source: "gemini",
+      requestId,
     });
   } catch (err) {
-    const isTimeout = err?.message === "AI_TIMEOUT";
+    const isTimeout = err?.code === "AI_TIMEOUT" || err?.message === "AI_TIMEOUT";
+    const status = providerStatus(err);
+    const isProviderLimit = status === 429;
+    const isProviderAuth = status === 401 || status === 403;
 
-    console.error("[Frame AI] Ошибка запроса", {
-      error: err?.message || err,
+    console.error("[Frame AI] Provider request failed", {
+      requestId,
+      providerStatus: status,
+      providerCode: err?.code || err?.name || "AI_PROVIDER_ERROR",
       timeout: isTimeout,
+      attempts: err?.attempts || 1,
+      durationMs: Date.now() - startedAt,
       messageLength: String(req.body?.message || "").length,
+      historyItems: Array.isArray(req.body?.history) ? Math.min(req.body.history.length, MAX_HISTORY_ITEMS) : 0,
+      timestamp: new Date().toISOString(),
     });
 
     if (ALLOW_DEMO_FALLBACK) {
@@ -267,15 +283,20 @@ router.post("/chat", aiLimiter, async (req, res) => {
       });
     }
 
-    return res.status(isTimeout ? 504 : 502).json({
+    return res.status(isTimeout ? 504 : isProviderLimit || isProviderAuth ? 503 : 502).json({
       success: false,
       answer: "",
       demo: false,
       source: "gemini",
-      code: isTimeout ? "AI_TIMEOUT" : "AI_PROVIDER_ERROR",
+      code: isTimeout ? "AI_TIMEOUT" : isProviderLimit ? "AI_PROVIDER_RATE_LIMIT" : isProviderAuth ? "AI_PROVIDER_CONFIGURATION_ERROR" : "AI_PROVIDER_ERROR",
       message: isTimeout
-        ? "Gemini не ответил вовремя. Попробуйте ещё раз."
-        : "Gemini временно недоступен. Попробуйте позже.",
+        ? "Frame AI не успел ответить. Повторите запрос ещё раз."
+        : isProviderLimit
+          ? "Frame AI достиг временного лимита провайдера. Попробуйте через несколько минут."
+          : isProviderAuth
+            ? "Frame AI временно недоступен из-за настройки подключения. Команда уже может увидеть эту ошибку в журнале."
+            : "Frame AI временно недоступен. Попробуйте позже.",
+      requestId,
     });
   }
 });

@@ -1,12 +1,13 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import FrameIcon from "../components/FrameIcon";
+import UserAvatar from "../components/UserAvatar";
 import { useAuthSession } from "../components/AuthSessionProvider";
 import api from "../services/api";
 import { showToast } from "../services/appToast";
 import "./ReviewsPage.css";
 
-type Author = { id: number; username: string; roles: string[] };
+type Author = { id: number; username: string; roles: string[]; avatarUrl?: string | null };
 type Comment = { id: number; text: string; createdAt: string; author: Author };
 type Review = { id: number; name: string; text: string; rating: number; direction?: string | null; userId: number; createdAt: string; updatedAt: string; author?: Author | null; comments: Comment[]; officialReply?: { id: number; text: string; label: string; createdAt: string; author: Author } | null };
 const directions = ["Общее впечатление", "CapCut", "Premiere Pro", "TikTok / Reels", "Цветокоррекция", "Звук", "VFX и эффекты"];
@@ -86,8 +87,28 @@ export default function ReviewsPage() {
     catch (error) { showToast({ tone: "error", title: "Комментарий не сохранён", message: (error as {response?:{data?:{message?:string}}}).response?.data?.message || (error instanceof Error ? error.message : "Повторите позже.") }); }
   }
 
-  return <main className="reviews-page"><header className="reviews-head"><span className="timecode">COMMUNITY / REVIEWS</span><h1>Отзывы студентов</h1><p>Один редактируемый отзыв на аккаунт. Комментарии и официальные ответы хранятся на сервере.</p><dl><div><dt>Опубликовано</dt><dd>{reviews.length}</dd></div><div><dt>Средняя оценка</dt><dd>{average.toFixed(1)} / 5</dd></div></dl></header>
-    <section className="reviews-layout"><div className="reviews-list">{loading && <div className="reviews-state">Загружаем отзывы…</div>}{!loading && !reviews.length && <div className="reviews-state"><FrameIcon name="frame" /><h2>Отзывов пока нет</h2><p>Станьте первым автором после входа.</p></div>}{reviews.map((review) => <article key={review.id} className="review-card"><header><div><strong>{review.author?.username || review.name}</strong><span>{review.direction || "Общее впечатление"}</span></div><b>{review.rating} / 5</b></header><p>{review.text}</p><small>{new Date(review.updatedAt || review.createdAt).toLocaleDateString("ru-RU")}</small>{review.officialReply && <blockquote><strong>{review.officialReply.label}</strong><p>{review.officialReply.text}</p></blockquote>}<section className="review-comments" aria-label="Комментарии"><h3>Комментарии · {review.comments?.length || 0}</h3>{review.comments?.map((comment) => <div key={comment.id}><strong>{comment.author?.username || "Пользователь"}</strong><p>{comment.text}</p></div>)}{isAuthenticated ? <form onSubmit={(event) => { event.preventDefault(); void submitComment(review.id); }}><input value={comments[review.id] || ""} onChange={(event) => setComments((current) => ({...current,[review.id]:event.target.value}))} minLength={2} maxLength={1000} placeholder="Добавить комментарий" aria-label={`Комментарий к отзыву ${review.name}`} /><button>Отправить</button></form> : <Link to="/login">Войдите, чтобы комментировать</Link>}</section></article>)}</div>
-      <aside className="review-editor"><h2>{ownReview ? "Редактировать отзыв" : "Оставить отзыв"}</h2>{isAuthenticated ? <form onSubmit={submitReview}><fieldset><legend>Оценка</legend><div className="review-rating">{[1,2,3,4,5].map((value) => <button key={value} type="button" className={rating === value ? "active" : ""} aria-pressed={rating === value} onClick={() => setRating(value)}>{value}</button>)}</div></fieldset><label>Направление<select value={direction} onChange={(event) => setDirection(event.target.value)}>{directions.map((item) => <option key={item}>{item}</option>)}</select></label><label>Текст<textarea value={text} onChange={(event) => setText(event.target.value)} minLength={20} maxLength={1500} rows={8} required /></label><button type="submit" disabled={sending}>{sending ? "Сохраняем…" : ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}</button></form> : <div className="reviews-state"><p>Авторизуйтесь, чтобы оставить один редактируемый отзыв.</p><Link to="/login">Войти</Link></div>}</aside></section>
+  return <main className="reviews-page">
+    <header className="reviews-head"><span className="timecode">COMMUNITY / REVIEWS</span><h1>Отзывы студентов</h1><p>Один редактируемый отзыв на аккаунт. Комментарии и официальные ответы хранятся на сервере.</p><dl><div><dt>Опубликовано</dt><dd>{reviews.length}</dd></div><div><dt>Средняя оценка</dt><dd>{average.toFixed(1)} / 5</dd></div></dl></header>
+    <section className="reviews-layout">
+      <div className="reviews-list">
+        {loading && <div className="reviews-state">Загружаем отзывы…</div>}
+        {!loading && !reviews.length && <div className="reviews-state"><FrameIcon name="frame" /><h2>Отзывов пока нет</h2><p>Станьте первым автором после входа.</p></div>}
+        {reviews.map((review) => {
+          const authorName = review.author?.username || review.name;
+          return <article key={review.id} className="review-card">
+            <header><div className="review-author"><UserAvatar name={authorName} avatarUrl={review.author?.avatarUrl} /><div><strong>{authorName}</strong><span>{review.direction || "Общее впечатление"}</span></div></div><b>{review.rating} / 5</b></header>
+            <p>{review.text}</p>
+            <small>{new Date(review.updatedAt || review.createdAt).toLocaleDateString("ru-RU")}</small>
+            {review.officialReply && <blockquote><div className="review-official-author"><UserAvatar name={review.officialReply.author?.username || "Frame School"} avatarUrl={review.officialReply.author?.avatarUrl} size="small" /><strong>{review.officialReply.label}</strong></div><p>{review.officialReply.text}</p></blockquote>}
+            <section className="review-comments" aria-label="Комментарии">
+              <h3>Комментарии · {review.comments?.length || 0}</h3>
+              {review.comments?.map((comment) => <div className="review-comment" key={comment.id}><UserAvatar name={comment.author?.username || "Пользователь"} avatarUrl={comment.author?.avatarUrl} size="small" /><div><strong>{comment.author?.username || "Пользователь"}</strong><p>{comment.text}</p></div></div>)}
+              {isAuthenticated ? <form onSubmit={(event) => { event.preventDefault(); void submitComment(review.id); }}><input value={comments[review.id] || ""} onChange={(event) => setComments((current) => ({...current,[review.id]:event.target.value}))} minLength={2} maxLength={1000} placeholder="Добавить комментарий" aria-label={`Комментарий к отзыву ${review.name}`} /><button>Отправить</button></form> : <Link to="/login">Войдите, чтобы комментировать</Link>}
+            </section>
+          </article>;
+        })}
+      </div>
+      <aside className="review-editor"><h2>{ownReview ? "Редактировать отзыв" : "Оставить отзыв"}</h2>{isAuthenticated ? <form onSubmit={submitReview}><fieldset><legend>Оценка</legend><div className="review-rating">{[1,2,3,4,5].map((value) => <button key={value} type="button" className={rating === value ? "active" : ""} aria-pressed={rating === value} onClick={() => setRating(value)}>{value}</button>)}</div></fieldset><label>Направление<select value={direction} onChange={(event) => setDirection(event.target.value)}>{directions.map((item) => <option key={item}>{item}</option>)}</select></label><label>Текст<textarea value={text} onChange={(event) => setText(event.target.value)} minLength={20} maxLength={1500} rows={8} required /></label><button type="submit" disabled={sending}>{sending ? "Сохраняем…" : ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}</button></form> : <div className="reviews-state"><p>Авторизуйтесь, чтобы оставить один редактируемый отзыв.</p><Link to="/login">Войти</Link></div>}</aside>
+    </section>
   </main>;
 }

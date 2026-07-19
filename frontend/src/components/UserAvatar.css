@@ -1,0 +1,42 @@
+.user-avatar {
+  --avatar-size: 42px;
+  position: relative;
+  flex: 0 0 var(--avatar-size);
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--fs-cyan, #35e6ff);
+  background:
+    linear-gradient(135deg, rgba(53, 230, 255, 0.12), rgba(255, 79, 216, 0.08)),
+    var(--fs-panel, #121620);
+  border: 1px solid rgba(53, 230, 255, 0.34);
+  border-radius: 9px;
+  font: 700 12px "JetBrains Mono", monospace;
+  letter-spacing: 0.04em;
+}
+
+.user-avatar::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.72;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.user-avatar--small { --avatar-size: 32px; border-radius: 7px; font-size: 10px; }
+.user-avatar--medium { --avatar-size: 42px; }
+.user-avatar--large { --avatar-size: 64px; border-radius: 11px; font-size: 16px; }
+.user-avatar--profile { --avatar-size: 116px; border-radius: 16px; font-size: 25px; }

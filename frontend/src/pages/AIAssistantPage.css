@@ -804,3 +804,4 @@
     font-size: 40px;
   }
 }
+.ai-message-avatar{width:32px;height:32px;display:grid;place-items:center;color:var(--fs-cyan,#35e6ff);border:1px solid rgba(53,230,255,.3);border-radius:7px;background:var(--fs-panel,#121620)}.ai-message-avatar .frame-icon{width:18px;height:18px}.ai-message--user>.user-avatar{align-self:flex-end}
