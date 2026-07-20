@@ -10,7 +10,7 @@ const {
   createUserContent,
 } = require("@google/genai");
 
-const VIDEO_MODEL = process.env.GEMINI_VIDEO_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const VIDEO_MODEL = process.env.GEMINI_VIDEO_MODEL || process.env.GEMINI_MODEL || "gemini-3.5-flash";
 const DOWNLOAD_TIMEOUT_MS = Number(process.env.AUTO_REVIEW_DOWNLOAD_TIMEOUT_MS || 120000);
 const PROCESSING_TIMEOUT_MS = Number(process.env.AUTO_REVIEW_PROCESSING_TIMEOUT_MS || 600000);
 const MAX_VIDEO_BYTES = Math.max(1, Math.min(Number(process.env.AUTO_REVIEW_MAX_VIDEO_MB || 300), 2048)) * 1024 * 1024;

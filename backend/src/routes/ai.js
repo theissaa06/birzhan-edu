@@ -24,7 +24,7 @@ const MAX_MESSAGE_LENGTH = 8000;
 const MAX_HISTORY_ITEMS = 12;
 const MAX_HISTORY_TEXT_LENGTH = 1500;
 const MAX_OUTPUT_TOKENS = 900;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 const GEMINI_API_KEY = String(process.env.GEMINI_API_KEY || "").trim();
 const ALLOW_DEMO_FALLBACK =
   process.env.AI_ALLOW_DEMO_FALLBACK === "true";
