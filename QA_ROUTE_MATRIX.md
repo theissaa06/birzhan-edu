@@ -44,3 +44,17 @@
 | `/career-center` was completely unstyled because its CSS contained `AboutPage` selectors | route test covers real statistics and working career links; lint/typecheck/test/build passed | no external configuration | passed on `2f7ce0b`: responsive design system, live stats, FAQ and working CTAs visible in Browser | passed: layout and live stats visible, vacancies CTA opens honest empty state, console clean |
 
 Browser smoke was recorded on 2026-07-17 after Layero reported Ready. Google production OAuth configuration was completed on 2026-07-19 and awaits the new deploy smoke. Apple, Telegram, VK and payment rows cannot be marked passed without their provider credentials and sandbox accounts. Production console inspection returned no warnings or errors on the exercised public routes.
+
+## Regression pass for TZ (30) and follow-up fixes, 2026-07-20
+
+| Defect / flow | Automated evidence | Layero preview | Production gate |
+|---|---|---|---|
+| Support widget could report delivery before the server persisted the message | idempotent delivery, user scoping, threaded replies, audit/notification and frontend confirmation tests passed | API and UI deployed on `00c6412`; authenticated readback remains part of production smoke | required after `main` deploy |
+| User avatars were missing from profile, reviews, students, support and Frame AI | preset stability, real-content validation, 512px WEBP normalization, API and editor tests passed | preset API and shared avatar components deployed on `00c6412` | passive route smoke required; no production profile mutation |
+| Frame AI lacked conversation memory, modes and content actions | ownership-isolated conversation CRUD, persistence, retry policy and UI mode/action/history tests passed | modes/actions visible; branch-origin CORS fixed and new Gemini key rotated; live reply requires the redeploy triggered by this QA commit | real multi-message response and cleanup required |
+| Manual Premium used a native select and hid duration/source details | backend confirmation/expiry/override tests and frontend segmented-control tests passed | new controls deployed; privileged write requires a confirmed Developer/Owner session | automated RBAC evidence accepted when no privileged Browser fixture exists |
+| Premium page did not explain whether access was paid or staff-granted | paid/staff origin, expiry, user disable confirmation and support-only recovery tests passed | public/auth guard smoke available; authenticated entitlement fixture required for full visual state | no entitlement mutation on a real user during smoke |
+| OAuth account linking navigated directly to an authenticated API route and exposed raw JSON | authenticated JSON-start contract, provider state/nonce/PKCE and one-use exchange tests passed | frontend now requests the link URL with its bearer token and keeps failures inside the app | authenticated profile smoke must confirm no raw API page |
+| Layero branch preview was rejected by backend CORS | project-scoped HTTPS preview-origin test passed; unrelated Layero projects and suffix attacks rejected | passed on `00c6412`: request reaches `/api/ai/chat` | same-origin production remains unchanged |
+
+Local release gate: frontend 30/30 tests plus lint, TypeScript and production build; backend 32/32 tests plus Prisma validation and syntax checks. Total: 62 automated tests passed.
