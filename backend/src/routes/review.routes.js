@@ -277,4 +277,57 @@ router.patch("/:id/moderation", authMiddleware, adminMiddleware, async (req, res
   return res.json({ success: true, message: isHidden ? "Отзыв скрыт." : "Отзыв опубликован." });
 });
 
+router.delete("/:id", authMiddleware, adminMiddleware, writeLimiter, async (req, res) => {
+  const reviewId = Number(req.params.id);
+  const timestamp = new Date().toISOString();
+  try {
+    if (!Number.isInteger(reviewId) || reviewId <= 0) {
+      return res.status(400).json({ success: false, code: "REVIEW_ID_INVALID", message: "Некорректный ID отзыва." });
+    }
+
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true, userId: true, name: true, text: true, rating: true, direction: true, isHidden: true,
+        _count: { select: { comments: true } },
+        officialReply: { select: { id: true } },
+      },
+    });
+    if (!review) return res.status(404).json({ success: false, code: "REVIEW_NOT_FOUND", message: "Отзыв уже удалён или не существует." });
+
+    await prisma.$transaction(async (tx) => {
+      await writeAudit(tx, {
+        req,
+        action: "review.deleted",
+        entityType: "Review",
+        entityId: review.id,
+        targetUserId: review.userId || undefined,
+        before: {
+          name: review.name, text: review.text, rating: review.rating, direction: review.direction,
+          isHidden: review.isHidden, comments: review._count.comments, hadOfficialReply: Boolean(review.officialReply),
+        },
+        after: { deleted: true },
+      });
+      if (review.userId && review.userId !== req.user.id) {
+        await tx.notification.create({
+          data: {
+            userId: review.userId,
+            type: "review",
+            title: "Отзыв удалён модератором",
+            message: "Отзыв удалён вместе с комментариями и официальным ответом.",
+            link: "/reviews",
+          },
+        });
+      }
+      await tx.review.delete({ where: { id: review.id } });
+    });
+
+    console.info("[Reviews] Review permanently deleted", { endpoint: `DELETE /api/reviews/${reviewId}`, reviewId, actorId: req.user.id, timestamp });
+    return res.json({ success: true, deletedId: reviewId, message: "Отзыв удалён навсегда." });
+  } catch (error) {
+    console.error("[Reviews] Permanent delete failed", { endpoint: `DELETE /api/reviews/${reviewId || req.params.id}`, reviewId: Number.isInteger(reviewId) ? reviewId : null, actorId: req.user?.id || null, timestamp, reason: error?.message || String(error), stack: error?.stack });
+    return res.status(500).json({ success: false, code: "REVIEW_DELETE_FAILED", message: "Не удалось удалить отзыв. Повторите попытку позже." });
+  }
+});
+
 module.exports = router;

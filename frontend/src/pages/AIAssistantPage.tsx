@@ -199,12 +199,6 @@ export default function AIAssistantPage() {
 
       setAction("answer");
 
-      if (response.demo || response.source === "demo") {
-        setStatusMessage(
-          response.message ||
-            "Frame AI ответил в резервном режиме без обращения к модели.",
-        );
-      }
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: { message?: string }; status?: number }; code?: string };
       const backendMessage = apiError.response?.data?.message;
@@ -406,11 +400,9 @@ export default function AIAssistantPage() {
               <span className="ai-online">
                 {aiStatus?.mode === "gemini"
                   ? "GEMINI ONLINE"
-                  : aiStatus?.mode === "demo"
-                    ? "DEMO"
-                    : aiStatus?.mode === "unavailable"
-                      ? "НЕ НАСТРОЕН"
-                      : "ПРОВЕРЯЕМ"}
+                  : aiStatus?.mode === "unavailable"
+                    ? "НЕ НАСТРОЕН"
+                    : "ПРОВЕРЯЕМ"}
               </span>
               <h3>Frame AI</h3>
             </div>

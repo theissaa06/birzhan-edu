@@ -9,8 +9,7 @@ export type AIResponse = {
   success: boolean;
   answer?: string;
   message?: string;
-  demo?: boolean;
-  source?: "gemini" | "demo" | "unavailable" | string;
+  source?: "gemini" | "unavailable" | string;
   code?: string;
   requestId?: string;
   conversation?: AIConversation | null;
@@ -43,7 +42,7 @@ export type AIStatus = {
   success: boolean;
   provider: "gemini" | string;
   model: string;
-  mode: "gemini" | "demo" | "unavailable";
+  mode: "gemini" | "unavailable";
   configured: boolean;
 };
 

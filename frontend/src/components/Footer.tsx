@@ -18,7 +18,7 @@ export default function Footer() {
           </div>
           <div className="footer-column"><h3>Направления</h3><ul>{directions.map(([label, category]) => <li key={category}><Link to={`/courses?category=${category}`}>{label}</Link></li>)}</ul></div>
           <div className="footer-column"><h3>О платформе</h3><ul>
-            <li><Link to="/about">О нас</Link></li><li><Link to="/students">Студенты</Link></li>
+            <li><Link to="/about">О нас</Link></li><li><Link to="/students">Сообщество</Link></li>
             <li><Link to="/reviews">Отзывы</Link></li><li><Link to="/media">Медиа</Link></li>
             <li><Link to="/webinars">Вебинары</Link></li><li><Link to="/bonus">Бонусы 2026</Link></li>
           </ul></div>

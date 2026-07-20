@@ -47,6 +47,13 @@ function localDateTimeAfterDays(days: number) {
   return new Date(value.getTime() - value.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
+function premiumExpirySummary(value: string) {
+  if (!value) return "Без ограничения по сроку";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Дата и время указаны некорректно";
+  return `${parsed.toLocaleString("ru-RU", { dateStyle: "long", timeStyle: "short" })} · ${Intl.DateTimeFormat().resolvedOptions().timeZone || "локальное время"} · UTC ${parsed.toISOString().replace("T", " ").slice(0, 16)}`;
+}
+
 export default function AdminPage() {
   const location = useLocation();
   const { user } = useAuthSession();
@@ -69,8 +76,11 @@ export default function AdminPage() {
   const [premiumConfirmed, setPremiumConfirmed] = useState(false);
   const [premiumSaving, setPremiumSaving] = useState(false);
   const [premiumError, setPremiumError] = useState("");
+  const [premiumErrorField, setPremiumErrorField] = useState<"reason" | "validUntil" | "confirmation" | "server" | "">("");
   const [announcement, setAnnouncement] = useState({ title: "", message: "", audience: "ALL", activeUntil: "" });
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [pendingReviewDeleteId, setPendingReviewDeleteId] = useState<number | null>(null);
+  const [reviewDeleteSaving, setReviewDeleteSaving] = useState(false);
   const [reply, setReply] = useState("");
   const [replySaving, setReplySaving] = useState(false);
   const [selectedSupport, setSelectedSupport] = useState<SupportMessage | null>(null);
@@ -154,6 +164,23 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteReviewPermanently(review: Review) {
+    if (reviewDeleteSaving) return;
+    setReviewDeleteSaving(true);
+    try {
+      const { data } = await api.delete(`/reviews/${review.id}`);
+      if (data?.success !== true || Number(data.deletedId) !== review.id) throw new Error(data?.message || "Сервер не подтвердил удаление отзыва.");
+      setReviews((current) => current.filter((item) => item.id !== review.id));
+      if (selectedReview?.id === review.id) { setSelectedReview(null); setReply(""); }
+      setPendingReviewDeleteId(null);
+      showToast({ tone: "success", title: "Отзыв удалён", message: data.message || "Отзыв, комментарии и официальный ответ удалены." });
+    } catch (error) {
+      showToast({ tone: "error", title: "Отзыв не удалён", message: errorMessage(error) });
+    } finally {
+      setReviewDeleteSaving(false);
+    }
+  }
+
   async function submitSupportReply(event: FormEvent) {
     event.preventDefault();
     if (!selectedSupport || supportReplySaving) return;
@@ -185,9 +212,10 @@ export default function AdminPage() {
     setReason("");
     setPremiumMode("FORCE_ENABLED");
     setPremiumReason("");
-    setPremiumValidUntil("");
+    setPremiumValidUntil(localDateTimeAfterDays(30));
     setPremiumConfirmed(false);
     setPremiumError("");
+    setPremiumErrorField("");
   }
 
   async function submitPremiumOverride(event: FormEvent) {
@@ -196,6 +224,7 @@ export default function AdminPage() {
     const cleanReason = premiumReason.trim();
     if (cleanReason.length < 5) {
       setPremiumError("Укажите понятную причину не короче 5 символов.");
+      setPremiumErrorField("reason");
       return;
     }
     let validUntil: string | null = null;
@@ -203,17 +232,20 @@ export default function AdminPage() {
       const parsed = new Date(premiumValidUntil);
       if (Number.isNaN(parsed.getTime()) || parsed <= new Date()) {
         setPremiumError("Дата окончания должна находиться в будущем.");
+        setPremiumErrorField("validUntil");
         return;
       }
       validUntil = parsed.toISOString();
     }
     if (!premiumConfirmed) {
       setPremiumError("Подтвердите ручное изменение Premium.");
+      setPremiumErrorField("confirmation");
       return;
     }
 
     setPremiumSaving(true);
     setPremiumError("");
+    setPremiumErrorField("");
     try {
       const { data } = await api.post(`/admin/users/${selectedUser.id}/premium-override`, {
         mode: premiumMode,
@@ -224,10 +256,12 @@ export default function AdminPage() {
       if (data?.success !== true) throw new Error(data?.message || "Сервер не подтвердил изменение Premium.");
       showToast({ tone: "success", title: "Premium обновлён", message: data.message || "Пользователь уведомлён об изменении." });
       setPremiumConfirmed(false);
+      setPremiumErrorField("");
       await load();
     } catch (error) {
       const message = errorMessage(error);
       setPremiumError(message);
+      setPremiumErrorField("server");
       showToast({ tone: "error", title: "Проверьте Premium", message });
     } finally {
       setPremiumSaving(false);
@@ -275,23 +309,31 @@ export default function AdminPage() {
                 <div><dt>Оплаченный период</dt><dd>{selectedUser.paidUntil ? `${selectedUser.paidSubscription?.plan || "Premium"} · до ${date(selectedUser.paidUntil)}${selectedUser.paidSubscription?.provider ? ` · ${selectedUser.paidSubscription.provider}` : ""}` : "нет активного периода"}</dd></div>
                 {selectedUser.premiumOverride && <div><dt>Причина override</dt><dd>{selectedUser.premiumOverride.reason}</dd></div>}
               </dl>
-              <div className="admin-premium-modes" role="radiogroup" aria-label="Действие с Premium">
+              <fieldset className="admin-premium-fieldset"><legend>1. Выберите действие</legend><div className="admin-premium-modes" role="radiogroup" aria-label="Действие с Premium">
                 {[
                   ["FORCE_ENABLED", "Включить", "Разрешить доступ вручную"],
                   ["FORCE_DISABLED", "Отключить", "Запретить доступ вручную"],
                   ["CLEAR", "Снять override", "Вернуть расчёт по оплате"],
-                ].map(([value, label, description]) => <button key={value} type="button" role="radio" aria-checked={premiumMode === value} className={premiumMode === value ? "is-active" : ""} onClick={() => { setPremiumMode(value); setPremiumConfirmed(false); setPremiumError(""); }}>{label}<small>{description}</small></button>)}
-              </div>
-              <label>Причина изменения<input value={premiumReason} onChange={(event) => { setPremiumReason(event.target.value); setPremiumError(""); }} placeholder="Например: доступ на время проверки" minLength={5} maxLength={500} required /></label>
-              {premiumMode !== "CLEAR" && <label>Действует до, необязательно
-                <input type="datetime-local" value={premiumValidUntil} onChange={(event) => { setPremiumValidUntil(event.target.value); setPremiumError(""); }} />
-                <span className="admin-duration-actions">
-                  {[7, 30, 90].map((days) => <button key={days} type="button" onClick={() => { setPremiumValidUntil(localDateTimeAfterDays(days)); setPremiumError(""); }}>{days} дней</button>)}
-                  <button type="button" onClick={() => { setPremiumValidUntil(""); setPremiumError(""); }}>Без срока</button>
+                ].map(([value, label, description]) => <button key={value} type="button" role="radio" aria-checked={premiumMode === value} className={premiumMode === value ? "is-active" : ""} onClick={() => { setPremiumMode(value); if (value !== "CLEAR" && !premiumValidUntil) setPremiumValidUntil(localDateTimeAfterDays(30)); setPremiumConfirmed(false); setPremiumError(""); setPremiumErrorField(""); }}>{label}<small>{description}</small></button>)}
+              </div></fieldset>
+              <label htmlFor="premium-change-reason">2. Причина изменения
+                <textarea id="premium-change-reason" rows={3} value={premiumReason} onChange={(event) => { setPremiumReason(event.target.value); setPremiumError(""); setPremiumErrorField(""); }} placeholder="Например: доступ на 30 дней для проверки курса" minLength={5} maxLength={500} required aria-invalid={premiumErrorField === "reason"} aria-describedby={premiumErrorField === "reason" ? "premium-reason-error" : undefined} />
+              </label>
+              {premiumErrorField === "reason" && <p id="premium-reason-error" className="admin-inline-error" role="alert">{premiumError}</p>}
+              {premiumMode !== "CLEAR" && <fieldset className="admin-premium-fieldset"><legend>3. Срок доступа</legend>
+                <label htmlFor="premium-valid-until">Дата и время окончания
+                  <input id="premium-valid-until" type="datetime-local" value={premiumValidUntil} min={localDateTimeAfterDays(0)} onChange={(event) => { setPremiumValidUntil(event.target.value); setPremiumError(""); setPremiumErrorField(""); }} aria-invalid={premiumErrorField === "validUntil"} aria-describedby="premium-expiry-preview" />
+                </label>
+                <span className="admin-duration-actions" aria-label="Быстрый выбор срока">
+                  {[1, 7, 30, 90].map((days) => <button key={days} type="button" onClick={() => { setPremiumValidUntil(localDateTimeAfterDays(days)); setPremiumError(""); setPremiumErrorField(""); }}>{days} {days === 1 ? "день" : "дней"}</button>)}
+                  <button type="button" onClick={() => { setPremiumValidUntil(""); setPremiumError(""); setPremiumErrorField(""); }}>Без срока</button>
                 </span>
-              </label>}
-              <label className="admin-confirm-row"><input type="checkbox" checked={premiumConfirmed} onChange={(event) => { setPremiumConfirmed(event.target.checked); setPremiumError(""); }} /><span>Подтверждаю ручное изменение Premium для {selectedUser.username}</span></label>
-              {premiumError && <p className="admin-inline-error" role="alert">{premiumError}</p>}
+                <p id="premium-expiry-preview" className="admin-premium-expiry" aria-live="polite"><strong>Выбранный срок:</strong> {premiumExpirySummary(premiumValidUntil)}</p>
+                {premiumErrorField === "validUntil" && <p className="admin-inline-error" role="alert">{premiumError}</p>}
+              </fieldset>}
+              <div className="admin-premium-operation" aria-live="polite"><span>Будет выполнено</span><strong>{premiumMode === "FORCE_ENABLED" ? "Premium включён" : premiumMode === "FORCE_DISABLED" ? "Premium отключён" : "Ручное переопределение снято"}</strong><small>{premiumMode === "CLEAR" ? "Доступ снова будет рассчитан по оплаченной подписке." : premiumExpirySummary(premiumValidUntil)}</small></div>
+              <label className="admin-confirm-row"><input type="checkbox" checked={premiumConfirmed} onChange={(event) => { setPremiumConfirmed(event.target.checked); setPremiumError(""); setPremiumErrorField(""); }} /><span>4. Подтверждаю ручное изменение Premium для {selectedUser.username}</span></label>
+              {(premiumErrorField === "confirmation" || premiumErrorField === "server") && <p className="admin-inline-error" role="alert">{premiumError}</p>}
               <button type="submit" disabled={premiumSaving}>{premiumSaving ? "Сохраняем…" : premiumMode === "FORCE_ENABLED" ? "Включить Premium" : premiumMode === "FORCE_DISABLED" ? "Отключить Premium" : "Снять переопределение"}</button>
             </form>}
             <button type="button" onClick={() => setSelectedUser(null)}>Закрыть управление</button>
@@ -302,7 +344,24 @@ export default function AdminPage() {
 
         {!loading && section === "content" && <div className="admin-content-grid">{[["Курсы", content.courses, "/courses"], ["Вебинары", content.webinars, "/webinars"], ["Вакансии", content.jobs, "/jobs"]].map(([title, items, link]) => <article key={String(title)}><span className="timecode">SERVER DATA</span><h3>{String(title)}</h3><strong>{(items as unknown[]).length}</strong><NavLink to={String(link)}>Открыть публичный раздел</NavLink></article>)}</div>}
 
-        {!loading && section === "reviews" && <div className="admin-list">{reviews.map((review) => <article key={review.id}><header><strong>{review.author?.username || "Пользователь"}</strong><span>{review.rating}/5 · {date(review.createdAt)}</span></header><p>{review.text}</p>{review.officialReply && <blockquote><strong>{review.officialReply.label}</strong>{review.officialReply.text}</blockquote>}<div className="admin-row-actions"><button type="button" onClick={() => void perform(() => api.patch(`/reviews/${review.id}/moderation`, { isHidden: !review.isHidden }), review.isHidden ? "Отзыв опубликован." : "Отзыв скрыт.")}>{review.isHidden ? "Опубликовать" : "Скрыть"}</button><button type="button" aria-expanded={selectedReview?.id === review.id} onClick={() => { setSelectedReview(review); setReply(review.officialReply?.text || ""); }}>{review.officialReply ? "Редактировать официальный ответ" : "Официальный ответ"}</button></div></article>)}{!reviews.length && <p className="admin-empty">Отзывов пока нет.</p>}{selectedReview && <form className="admin-editor" aria-label="Форма официального ответа" onSubmit={submitOfficialReply}><div><span className="timecode">REVIEW / {selectedReview.id}</span><h3>{selectedReview.officialReply ? "Редактировать официальный ответ" : "Новый официальный ответ"}</h3><p>Метка «Ответ разработчика» или «Ответ администрации» определяется сервером по вашей роли.</p></div><label htmlFor="official-review-reply">Текст ответа<textarea id="official-review-reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={5} minLength={5} maxLength={1500} required disabled={replySaving} /></label><small className="admin-editor-count">{reply.length} / 1500</small><div className="admin-editor-actions"><button type="submit" disabled={replySaving}>{replySaving ? "Сохраняем…" : selectedReview.officialReply ? "Сохранить изменения" : "Опубликовать ответ"}</button><button type="button" disabled={replySaving} onClick={() => { setSelectedReview(null); setReply(""); }}>Закрыть</button></div></form>}</div>}
+        {!loading && section === "reviews" && <div className="admin-list">
+          {reviews.map((review) => <article key={review.id}>
+            <header><strong>{review.author?.username || "Пользователь"}</strong><span>{review.rating}/5 · {date(review.createdAt)}</span></header>
+            <p>{review.text}</p>
+            {review.officialReply && <blockquote><strong>{review.officialReply.label}</strong>{review.officialReply.text}</blockquote>}
+            <div className="admin-row-actions">
+              <button type="button" className="admin-danger-button" aria-expanded={pendingReviewDeleteId === review.id} onClick={() => setPendingReviewDeleteId((current) => current === review.id ? null : review.id)}>Удалить отзыв</button>
+              <button type="button" aria-expanded={selectedReview?.id === review.id} onClick={() => { setSelectedReview(review); setReply(review.officialReply?.text || ""); }}>{review.officialReply ? "Редактировать официальный ответ" : "Официальный ответ"}</button>
+            </div>
+            {pendingReviewDeleteId === review.id && <div className="admin-delete-confirm" role="alert">
+              <strong>Удалить отзыв навсегда?</strong>
+              <p>Сам отзыв, комментарии и официальный ответ исчезнут со страницы и не смогут быть восстановлены.</p>
+              <div className="admin-row-actions"><button type="button" className="admin-danger-button" disabled={reviewDeleteSaving} onClick={() => void deleteReviewPermanently(review)}>{reviewDeleteSaving ? "Удаляем…" : "Удалить навсегда"}</button><button type="button" disabled={reviewDeleteSaving} onClick={() => setPendingReviewDeleteId(null)}>Отмена</button></div>
+            </div>}
+          </article>)}
+          {!reviews.length && <p className="admin-empty">Отзывов пока нет.</p>}
+          {selectedReview && <form className="admin-editor" aria-label="Форма официального ответа" onSubmit={submitOfficialReply}><div><span className="timecode">REVIEW / {selectedReview.id}</span><h3>{selectedReview.officialReply ? "Редактировать официальный ответ" : "Новый официальный ответ"}</h3><p>Метка «Ответ разработчика» или «Ответ администрации» определяется сервером по вашей роли.</p></div><label htmlFor="official-review-reply">Текст ответа<textarea id="official-review-reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={5} minLength={5} maxLength={1500} required disabled={replySaving} /></label><small className="admin-editor-count">{reply.length} / 1500</small><div className="admin-editor-actions"><button type="submit" disabled={replySaving}>{replySaving ? "Сохраняем…" : selectedReview.officialReply ? "Сохранить изменения" : "Опубликовать ответ"}</button><button type="button" disabled={replySaving} onClick={() => { setSelectedReview(null); setReply(""); }}>Закрыть</button></div></form>}
+        </div>}
 
         {!loading && section === "ai-reviews" && <AdminVideoReviewPage />}
 

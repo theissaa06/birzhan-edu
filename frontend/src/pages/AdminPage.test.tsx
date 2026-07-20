@@ -18,6 +18,7 @@ vi.mock("../services/appToast", () => ({ showToast: vi.fn() }));
 const getMock = vi.mocked(api.get);
 const putMock = vi.mocked(api.put);
 const postMock = vi.mocked(api.post);
+const deleteMock = vi.mocked(api.delete);
 const toastMock = vi.mocked(showToast);
 const review = {
   id: 91,
@@ -46,6 +47,7 @@ describe("AdminPage official review reply", () => {
   beforeEach(() => {
     getMock.mockReset();
     putMock.mockReset();
+    deleteMock.mockReset();
     toastMock.mockReset();
     mockLoads();
   });
@@ -83,6 +85,20 @@ describe("AdminPage official review reply", () => {
     await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ tone: "error", title: "Ответ не сохранён" })));
     expect(screen.getByRole("form", { name: "Форма официального ответа" })).toBeInTheDocument();
     expect(toastMock).not.toHaveBeenCalledWith(expect.objectContaining({ tone: "success" }));
+  });
+
+  it("requires confirmation and permanently removes a review from the admin list", async () => {
+    deleteMock.mockResolvedValueOnce({ data: { success: true, deletedId: 91, message: "Отзыв удалён навсегда." } });
+    renderPage();
+
+    expect(await screen.findByText("Test Student")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Удалить отзыв" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Удалить отзыв навсегда?");
+    fireEvent.click(screen.getByRole("button", { name: "Удалить навсегда" }));
+
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("/reviews/91"));
+    await waitFor(() => expect(screen.queryByText("Test Student")).not.toBeInTheDocument());
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ tone: "success", title: "Отзыв удалён" }));
   });
 });
 
@@ -128,8 +144,11 @@ describe("AdminPage manual Premium controls", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Управлять" }));
     expect(screen.getByText("нет активного периода")).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect((screen.getByLabelText("Дата и время окончания") as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(screen.getByText(/Выбранный срок:/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "30 дней" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Причина изменения" }), { target: { value: "Доступ на проверку" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /Причина изменения/ }), { target: { value: "Доступ на проверку" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю ручное изменение Premium/ }));
     fireEvent.click(screen.getByRole("button", { name: "Включить Premium" }));
 

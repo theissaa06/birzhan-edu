@@ -1,13 +1,13 @@
 // backend/src/routes/ai.js
-// POST /api/ai/chat - Frame AI через Gemini + безопасный demo fallback.
+// POST /api/ai/chat - Frame AI через реальный Gemini API без локальных заглушек.
 
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const crypto = require("node:crypto");
-const { GoogleGenAI } = require("@google/genai");
 const prisma = require("../config/prisma");
 const { authMiddleware, optionalAuthMiddleware } = require("../middleware/auth.middleware");
 const { clampInteger, generateWithRetry, providerStatus } = require("../services/gemini-chat.service");
+const { generateGeminiText, safeProviderDetail } = require("../services/gemini-rest.service");
 const {
   normalizeAIMode,
   normalizeAIAction,
@@ -24,10 +24,8 @@ const MAX_MESSAGE_LENGTH = 8000;
 const MAX_HISTORY_ITEMS = 12;
 const MAX_HISTORY_TEXT_LENGTH = 1500;
 const MAX_OUTPUT_TOKENS = 900;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+const GEMINI_MODEL = String(process.env.GEMINI_MODEL || "gemini-3.5-flash").trim();
 const GEMINI_API_KEY = String(process.env.GEMINI_API_KEY || "").trim();
-const ALLOW_DEMO_FALLBACK =
-  process.env.AI_ALLOW_DEMO_FALLBACK === "true";
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -40,15 +38,7 @@ const aiLimiter = rateLimit({
   },
 });
 
-const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
-
-if (!ai) {
-  console.warn(
-    ALLOW_DEMO_FALLBACK
-      ? "[Frame AI] GEMINI_API_KEY не настроен. Разрешён явный demo fallback."
-      : "[Frame AI] GEMINI_API_KEY не настроен. Production AI недоступен до добавления ключа.",
-  );
-}
+if (!GEMINI_API_KEY) console.warn("[Frame AI] GEMINI_API_KEY не настроен. Frame AI недоступен до добавления ключа.");
 
 const SYSTEM_PROMPT = `Ты Frame AI - помощник образовательной платформы Frame School.
 
@@ -65,60 +55,6 @@ const SYSTEM_PROMPT = `Ты Frame AI - помощник образователь
 - Если вопрос про монтаж, давай конкретные шаги.
 - Если вопрос про Frame School, отвечай как помощник платформы.
 - Если не хватает данных, задай один короткий уточняющий вопрос.`;
-
-function getDemoAnswer(message = "") {
-  const originalText = String(message || "").trim();
-  const text = originalText.toLowerCase();
-
-  if (!originalText) {
-    return "Напиши вопрос, и я помогу с обучением, монтажом, курсами Frame School или идеей для видео.";
-  }
-
-  if (text.includes("2+2") || text.replace(/\s/g, "") === "2+2") {
-    return "2 + 2 = 4.";
-  }
-
-  if (
-    text.includes("привет") ||
-    text.includes("салам") ||
-    text.includes("здравств") ||
-    text.includes("hello") ||
-    text.includes("hi")
-  ) {
-    return "Привет! Я Frame AI. Могу помочь с курсами Frame School, идеями для роликов, CapCut, Premiere Pro, портфолио, текстами и учебными вопросами.";
-  }
-
-  if (
-    text.includes("capcut") ||
-    text.includes("капкат") ||
-    text.includes("premiere") ||
-    text.includes("монтаж") ||
-    text.includes("видео")
-  ) {
-    return "Для монтажа начни с цели ролика: выбери лучший материал, убери лишнее, подстрой склейки под ритм, добавь текстовые акценты, проверь звук и сделай лёгкую цветокоррекцию. Если расскажешь формат ролика, я дам точный план.";
-  }
-
-  if (
-    text.includes("идея") ||
-    text.includes("tiktok") ||
-    text.includes("reels") ||
-    text.includes("shorts") ||
-    text.includes("youtube")
-  ) {
-    return "Идея для ролика: формат “до/после”. Покажи сырой материал, затем 2-3 шага обработки: нарезка, музыка, цвет, эффекты, и в конце финальный результат. Такой формат хорошо работает для TikTok, Reels и Shorts.";
-  }
-
-  if (
-    text.includes("сертификат") ||
-    text.includes("курс") ||
-    text.includes("урок") ||
-    text.includes("frame school")
-  ) {
-    return "В Frame School курс строится вокруг практики: ты проходишь уроки, выполняешь задания, фиксируешь прогресс и собираешь работы в портфолио. Сертификат логично выдавать после завершения всех обязательных заданий курса.";
-  }
-
-  return `Я понял вопрос: “${originalText}”. Сейчас я работаю в резервном режиме без обращения к модели, но могу помочь по темам Frame School: обучение, монтаж, CapCut, Premiere Pro, идеи для видео, портфолио и сертификаты.`;
-}
 
 function buildGeminiPrompt(message, history = [], mode = "assistant", action = "answer") {
   const instructions = optionInstructions(mode, action);
@@ -225,8 +161,8 @@ router.get("/status", (req, res) => {
     success: true,
     provider: "gemini",
     model: GEMINI_MODEL,
-    mode: ai ? "gemini" : ALLOW_DEMO_FALLBACK ? "demo" : "unavailable",
-    configured: Boolean(ai),
+    mode: GEMINI_API_KEY ? "gemini" : "unavailable",
+    configured: Boolean(GEMINI_API_KEY),
   });
 });
 
@@ -339,40 +275,23 @@ router.post("/chat", optionalAuthMiddleware, aiLimiter, async (req, res) => {
 
     const effectiveHistory = storedHistory || history;
 
-    if (!ai) {
-      if (!ALLOW_DEMO_FALLBACK) {
-        return res.status(503).json({
-          success: false,
-          answer: "",
-          demo: false,
-          source: "unavailable",
-          code: "AI_NOT_CONFIGURED",
-          message:
-            "Frame AI временно недоступен: Gemini не настроен на сервере.",
-        });
-      }
-
-      const answer = getDemoAnswer(trimmedMessage);
-      const savedConversation = req.user
-        ? await persistExchange({ userId: req.user.id, conversation, message: trimmedMessage, answer, mode, action })
-        : null;
-      return res.json({
-        success: true,
-        answer,
-        demo: true,
-        source: "demo",
-        conversation: savedConversation,
-        message: "Frame AI работает в резервном режиме.",
-      });
-    }
+    if (!GEMINI_API_KEY) return res.status(503).json({
+      success: false,
+      answer: "",
+      source: "unavailable",
+      code: "AI_NOT_CONFIGURED",
+      message: "Frame AI временно недоступен: Gemini не настроен на сервере.",
+    });
 
     const result = await generateWithRetry({
       timeoutMs: AI_TIMEOUT_MS,
       maxRetries: AI_MAX_RETRIES,
-      generate: () => ai.models.generateContent({
+      generate: () => generateGeminiText({
+        apiKey: GEMINI_API_KEY,
         model: GEMINI_MODEL,
-        contents: buildGeminiPrompt(trimmedMessage, effectiveHistory, mode, action),
-        config: { temperature: 0.4, maxOutputTokens: MAX_OUTPUT_TOKENS },
+        prompt: buildGeminiPrompt(trimmedMessage, effectiveHistory, mode, action),
+        temperature: 0.4,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
       }),
       onRetry: ({ attempt, delayMs, status, code }) => console.warn("[Frame AI] Retrying provider request", {
         requestId,
@@ -387,26 +306,13 @@ router.post("/chat", optionalAuthMiddleware, aiLimiter, async (req, res) => {
 
     const answer = response.text?.trim();
 
-    if (!answer) {
-      if (!ALLOW_DEMO_FALLBACK) {
-        return res.status(502).json({
-          success: false,
-          answer: "",
-          demo: false,
-          source: "gemini",
-          code: "AI_EMPTY_RESPONSE",
-          message: "Gemini не вернул ответ. Попробуйте повторить запрос.",
-        });
-      }
-
-      return res.json({
-        success: true,
-        answer: getDemoAnswer(trimmedMessage),
-        demo: true,
-        source: "demo",
-        message: "Frame AI вернул пустой ответ, включён резервный режим.",
-      });
-    }
+    if (!answer) return res.status(502).json({
+      success: false,
+      answer: "",
+      source: "gemini",
+      code: "AI_EMPTY_RESPONSE",
+      message: "Gemini не вернул ответ. Попробуйте повторить запрос.",
+    });
 
     console.info("[Frame AI] Request succeeded", {
       requestId,
@@ -423,7 +329,6 @@ router.post("/chat", optionalAuthMiddleware, aiLimiter, async (req, res) => {
     return res.json({
       success: true,
       answer,
-      demo: false,
       source: "gemini",
       requestId,
       conversation: savedConversation,
@@ -443,25 +348,14 @@ router.post("/chat", optionalAuthMiddleware, aiLimiter, async (req, res) => {
       durationMs: Date.now() - startedAt,
       messageLength: String(req.body?.message || "").length,
       historyItems: Array.isArray(req.body?.history) ? Math.min(req.body.history.length, MAX_HISTORY_ITEMS) : 0,
+      providerDetail: safeProviderDetail(err?.providerDetail || err?.message),
+      model: GEMINI_MODEL,
       timestamp: new Date().toISOString(),
     });
-
-    if (ALLOW_DEMO_FALLBACK) {
-      return res.json({
-        success: true,
-        answer: getDemoAnswer(req.body?.message),
-        demo: true,
-        source: "demo",
-        message: isTimeout
-          ? "Не получилось получить ответ вовремя. Попробуй ещё раз."
-          : "Frame AI работает в резервном режиме.",
-      });
-    }
 
     return res.status(isTimeout ? 504 : isProviderLimit || isProviderAuth ? 503 : 502).json({
       success: false,
       answer: "",
-      demo: false,
       source: "gemini",
       code: isTimeout ? "AI_TIMEOUT" : isProviderLimit ? "AI_PROVIDER_RATE_LIMIT" : isProviderAuth ? "AI_PROVIDER_CONFIGURATION_ERROR" : "AI_PROVIDER_ERROR",
       message: isTimeout

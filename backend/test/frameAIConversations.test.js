@@ -3,8 +3,8 @@ const test = require("node:test");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 
-process.env.AI_ALLOW_DEMO_FALLBACK = "true";
-delete process.env.GEMINI_API_KEY;
+process.env.GEMINI_API_KEY = "test-gemini-key";
+process.env.GEMINI_MODEL = "gemini-3.5-flash";
 
 const prisma = require("../src/config/prisma");
 const aiRouter = require("../src/routes/ai");
@@ -35,6 +35,7 @@ test("Frame AI exposes only supported modes and content actions", () => {
 test("authenticated Frame AI persists, scopes, reopens, and deletes conversation memory", async () => {
   const previousSecret = process.env.JWT_SECRET;
   process.env.JWT_SECRET = "frame-ai-memory-test-secret";
+  const nativeFetch = globalThis.fetch;
   const originals = {
     userFindUnique: prisma.user.findUnique,
     userUpdate: prisma.user.update,
@@ -127,6 +128,16 @@ test("authenticated Frame AI persists, scopes, reopens, and deletes conversation
     },
   });
 
+  globalThis.fetch = async (url, options) => {
+    if (String(url).startsWith("https://generativelanguage.googleapis.com/")) {
+      const payload = JSON.parse(String(options?.body || "{}"));
+      assert.equal(options?.headers?.["x-goog-api-key"], "test-gemini-key");
+      assert.match(payload.contents[0].parts[0].text, /Составь план короткого ролика/);
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Реальный ответ тестового Gemini provider." }] } }] }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return nativeFetch(url, options);
+  };
+
   try {
     await withServer(async (origin) => {
       const chatResponse = await request(origin, "/chat", {
@@ -136,7 +147,9 @@ test("authenticated Frame AI persists, scopes, reopens, and deletes conversation
       const chat = await chatResponse.json();
       assert.equal(chatResponse.status, 200);
       assert.equal(chat.success, true);
-      assert.equal(chat.demo, true);
+      assert.equal(chat.source, "gemini");
+      assert.equal(chat.answer, "Реальный ответ тестового Gemini provider.");
+      assert.equal("demo" in chat, false);
       assert.equal(chat.conversation.mode, "mentor");
       assert.equal(conversations.length, 1);
       assert.equal(messages.length, 2);
@@ -170,6 +183,7 @@ test("authenticated Frame AI persists, scopes, reopens, and deletes conversation
     prisma.aIConversation.deleteMany = originals.conversationDeleteMany;
     prisma.aIChatMessage.createMany = originals.messageCreateMany;
     prisma.$transaction = originals.transaction;
+    globalThis.fetch = nativeFetch;
     if (previousSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = previousSecret;
   }

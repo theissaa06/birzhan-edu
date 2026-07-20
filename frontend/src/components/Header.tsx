@@ -7,7 +7,7 @@ import { showToast } from "../services/appToast";
 import "./Header.css";
 
 const links = [
-  ["Курсы", "/courses"], ["Студентам", "/students"], ["Отзывы", "/reviews"],
+  ["Курсы", "/courses"], ["Сообщество", "/students"], ["Отзывы", "/reviews"],
   ["Вебинары", "/webinars"], ["Медиа", "/media"], ["Карьера", "/career-center"],
 ] as const;
 
