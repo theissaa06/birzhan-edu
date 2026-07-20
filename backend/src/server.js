@@ -53,6 +53,23 @@ const allowedOrigins = new Set([
     .filter(Boolean),
 ]);
 
+const layeroProjectHostPrefix = String(process.env.LAYERO_PROJECT_HOST_PREFIX || "theissaa-birzhan-edu")
+  .trim()
+  .toLowerCase();
+
+function trustedLayeroPreviewOrigin(origin) {
+  try {
+    const url = new URL(origin);
+    const suffix = ".preview.layero.ru";
+    if (url.protocol !== "https:" || url.port || !url.hostname.endsWith(suffix)) return false;
+    const deploymentHost = url.hostname.slice(0, -suffix.length);
+    return deploymentHost === layeroProjectHostPrefix
+      || (deploymentHost.startsWith(`${layeroProjectHostPrefix}-`) && /^[a-z0-9-]+$/.test(deploymentHost));
+  } catch {
+    return false;
+  }
+}
+
 function localDevelopmentOrigin(origin) {
   try {
     const url = new URL(origin);
@@ -65,7 +82,7 @@ app.use(cors({
   origin(origin, callback) {
     if (!origin) return callback(null, true);
     const normalized = origin.replace(/\/$/, "");
-    return allowedOrigins.has(normalized) || localDevelopmentOrigin(normalized)
+    return allowedOrigins.has(normalized) || trustedLayeroPreviewOrigin(normalized) || localDevelopmentOrigin(normalized)
       ? callback(null, true)
       : callback(Object.assign(new Error("Origin is not allowed"), { code: "CORS_REJECTED" }));
   },
@@ -171,4 +188,4 @@ function startServer() {
 
 if (require.main === module) startServer();
 
-module.exports = { app, startServer };
+module.exports = { app, startServer, trustedLayeroPreviewOrigin };
